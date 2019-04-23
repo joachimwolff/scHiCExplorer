@@ -96,7 +96,7 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
     cell_index_write = 0
     line_count = 0
 
-    
+    log.debug('len(pFastqFile) {}'.format(len(pFastqFile)))
     for fastq in pFastqFile:
         if fastq.split('/')[-1].split(".")[0] in pSrrToSampleDict:
             sample = pSrrToSampleDict[fastq.split('/')[-1].split(".")[0]]
@@ -117,14 +117,22 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
             # if line_count > 2000000:
             #     break
             # print(line)
-            try:
-                line = True
-                fastq_read = []
-                for i in range(0, 16):
-                    fastq_read.append(fh.readline()) # 5 and 9
-                line_count += 16
-            except:
-                line = False    
+            # try:
+                # line = True
+            fastq_read = []
+            for i in range(0, 16):
+                line_to_append = fh.readline()
+                if not line_to_append:
+                    line = False
+                    log.debug('end of file! line: {}'.format(line_count))
+                    break
+                fastq_read.append(line_to_append) # 5 and 9
+            if not line:
+                break 
+            line_count += 16
+            # except:
+            #     line = False    
+            #     break
                 # cell_index = 0
                 # print(fastq_read)
             forward_barcode = fastq_read[5].strip().decode("utf-8")
@@ -156,7 +164,7 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
             writeFile(file_writer[cell_index_write][1], fastq_read[12:])
 
                 
-            
+        fh.close()
 
             # print(fh.readlines())
 
