@@ -1,6 +1,9 @@
 import argparse
 import os
 import gzip
+import shutil
+from multiprocessing import Process, Queue
+import time
 import warnings
 warnings.simplefilter(action="ignore", category=RuntimeWarning)
 warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
@@ -39,6 +42,11 @@ def parse_arguments(args=None):
                                 metavar='FOLDER',
                                 required=False,
                                 default='demultiplexed')
+    parserRequired.add_argument('--threads',
+                           help='Number of threads. Using the python multiprocessing module.',
+                           required=False,
+                           default=4,
+                           type=int)
     return parser
 
 def writeFile(pFileName, pReadArray):
@@ -88,7 +96,58 @@ def readBarcodeFile(pFileName):
                 line = False
     return barcode_sample, sample_run_to_individual_run
 
-def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividualSampleDict, pSrrToSampleDict):
+def compressFiles(pFileNameList, pQueue):
+    for cells in pFileNameList:
+        for cell_ in cells:
+            with open(cell_, 'rb') as f_in:
+                with gzip.open(cell_+'.gz', 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            os.remove(cell_)
+    pQueue.put('Done')
+
+
+def handleCompressingMulticore(pFileNameList, pThreads):
+    filesPerThread = len(pFileNameList) // pThreads
+
+    queue = [None] * pThreads
+    process = [None] * pThreads
+    file_list_sample = [None] * pThreads
+    all_data_collected = False
+
+    for i in range(pThreads):
+
+        if i < pThreads - 1:
+            file_list_sample = pFileNameList[i * filesPerThread:(i + 1) * filesPerThread]
+            
+        else:
+            file_list_sample = pFileNameList[i * filesPerThread:]
+            
+
+        queue[i] = Queue()
+        process[i] = Process(target=compressFiles, kwargs=dict(
+            pFileNameList=file_list_sample,
+            pQueue=queue[i],
+            )
+        )
+
+        process[i].start()
+
+    while not all_data_collected:
+        for i in range(pThreads):
+            if queue[i] is not None and not queue[i].empty():
+                _ = queue[i].get()
+                process[i].join()
+                process[i].terminate()
+                process[i] = None
+
+        all_data_collected = True
+
+        for i in range(pThreads):
+            if process[i] is not None:
+                all_data_collected = False
+        time.sleep(1)
+
+def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividualSampleDict, pSrrToSampleDict, pThreads):
     # pass
     file_writer = []
     cell_index = {}
@@ -114,7 +173,7 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
         # line = fh.readline()
         line = True
         while line:
-            # if line_count > 2000000:
+            # if line_count > 200000:
             #     break
             # print(line)
             # try:
@@ -167,8 +226,8 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
         fh.close()
 
             # print(fh.readlines())
-
-    # for cells in file_writer:
+    handleCompressingMulticore(file_writer, pThreads)
+    
     #     cells[0].close()
     #     cells[1].close()
     
@@ -192,4 +251,4 @@ def main(args=None):
     srr_to_sample_dict = readSrrToSampleFile(args.srrToSampleFile)
     log.debug('srr_to_sample_dict {}'.format(srr_to_sample_dict))
 
-    splitFastq(args.fastq, args.outputFolder, barcode_sample_dict, sample_to_individual_sample_dict, srr_to_sample_dict)
+    splitFastq(args.fastq, args.outputFolder, barcode_sample_dict, sample_to_individual_sample_dict, srr_to_sample_dict, args.threads)
