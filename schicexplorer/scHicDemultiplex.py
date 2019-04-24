@@ -55,7 +55,7 @@ def parse_arguments(args=None):
 
 def writeFile(pFileName, pReadArray):
     
-    with open(pFileName, 'ab') as f:
+    with gzip.open(pFileName, 'ab') as f:
         # f.write(content)
         for read in pReadArray:
             f.write(read)
@@ -247,8 +247,8 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
                 cell_index_write = cell_counter
                 cell_index[forward_barcode + reverse_barcode + '_' + sample_name] = cell_counter
                 cell_counter += 1
-                forward_read_cell = pOutputFolder + '/' +  sample_name + '_' + forward_barcode + '_' + reverse_barcode + '_R1.fastq'
-                reverse_read_cell = pOutputFolder + '/' + sample_name + '_' + forward_barcode + '_' + reverse_barcode + '_R2.fastq'
+                forward_read_cell = pOutputFolder + '/' +  sample_name + '_' + forward_barcode + '_' + reverse_barcode + '_R1.fastq.gz'
+                reverse_read_cell = pOutputFolder + '/' + sample_name + '_' + forward_barcode + '_' + reverse_barcode + '_R2.fastq.gz'
 
                 file_writer.append([forward_read_cell, reverse_read_cell])
                 
@@ -261,7 +261,7 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
 
 
             # print(fh.readlines())
-    handleCompressingMulticore(file_writer, pThreads)
+    # handleCompressingMulticore(file_writer, pThreads)
     
     #     cells[0].close()
     #     cells[1].close()
