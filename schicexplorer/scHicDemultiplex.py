@@ -47,6 +47,10 @@ def parse_arguments(args=None):
                            required=False,
                            default=4,
                            type=int)
+    parserRequired.add_argument('--deleteFile', '-d',
+                           help='Delete the input file after processing.',
+                           required=False,
+                           action='store_true')
     return parser
 
 def writeFile(pFileName, pReadArray):
@@ -147,7 +151,7 @@ def handleCompressingMulticore(pFileNameList, pThreads):
                 all_data_collected = False
         time.sleep(1)
 
-def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividualSampleDict, pSrrToSampleDict, pThreads):
+def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividualSampleDict, pSrrToSampleDict, pThreads, pDelete):
     # pass
     file_writer = []
     cell_index = {}
@@ -166,7 +170,7 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
         if sample not in pSampleToIndividualSampleDict:
             log.warning('No sample known with SRR: {}'.format(fastq.split('/')[-1].split(".")[0]))
             continue
-
+        log.debug('pSampleToIndividualSampleDict[sample]: {}'.format(pSampleToIndividualSampleDict[sample]))
 
         fh = opener(fastq)
 
@@ -225,6 +229,7 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
                 
         fh.close()
 
+
             # print(fh.readlines())
     handleCompressingMulticore(file_writer, pThreads)
     
@@ -245,10 +250,10 @@ def main(args=None):
                 raise
     barcode_sample_dict, sample_to_individual_sample_dict = readBarcodeFile(args.barcodeFile)
 
-    log.debug('barcode_sample_dict {}'.format(barcode_sample_dict))
-    log.debug('sample_to_individual_sample_dict {}'.format(sample_to_individual_sample_dict))
+    # log.debug('barcode_sample_dict {}'.format(barcode_sample_dict))
+    # log.debug('sample_to_individual_sample_dict {}'.format(sample_to_individual_sample_dict))
 
     srr_to_sample_dict = readSrrToSampleFile(args.srrToSampleFile)
-    log.debug('srr_to_sample_dict {}'.format(srr_to_sample_dict))
+    # log.debug('srr_to_sample_dict {}'.format(srr_to_sample_dict))
 
-    splitFastq(args.fastq, args.outputFolder, barcode_sample_dict, sample_to_individual_sample_dict, srr_to_sample_dict, args.threads)
+    splitFastq(args.fastq, args.outputFolder, barcode_sample_dict, sample_to_individual_sample_dict, srr_to_sample_dict, args.threads, args.deleteFile)
