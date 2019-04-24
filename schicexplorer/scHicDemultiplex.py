@@ -100,6 +100,14 @@ def readBarcodeFile(pFileName):
                 line = False
     return barcode_sample, sample_run_to_individual_run
 
+def reverseComplement(pString):
+    complement = {'A':'T', 'C':'G', 'G':'C', 'T':'A', 'N':'N'}
+    pString = pString[::-1]
+    new_string = ''
+    for i in pString:
+        new_string += complement[i]
+    return new_string
+
 def compressFiles(pFileNameList, pQueue):
     for cells in pFileNameList:
         for cell_ in cells:
@@ -158,7 +166,7 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
     cell_counter = 0
     cell_index_write = 0
     line_count = 0
-
+    foo = set()
     log.debug('len(pFastqFile) {}'.format(len(pFastqFile)))
     for fastq in pFastqFile:
         if fastq.split('/')[-1].split(".")[0] in pSrrToSampleDict:
@@ -171,7 +179,9 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
             log.warning('No sample known with SRR: {}'.format(fastq.split('/')[-1].split(".")[0]))
             continue
         log.debug('pSampleToIndividualSampleDict[sample]: {}'.format(pSampleToIndividualSampleDict[sample]))
-
+        for sample_ in pSampleToIndividualSampleDict[sample]:
+                if sample_ in pBarcodeSampleDict:
+                    log.debug(' sample {} pBarcodeSampleDict[sample_] {}'.format(sample_, pBarcodeSampleDict[sample_]))
         fh = opener(fastq)
 
         # line = fh.readline()
@@ -204,8 +214,28 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
             sample_name = None
             for sample_ in pSampleToIndividualSampleDict[sample]:
                 if sample_ in pBarcodeSampleDict:
+                    # log.debug(' sample {}'.format(sample_))
                     if forward_barcode + reverse_barcode in pBarcodeSampleDict[sample_]:
                         sample_name = sample_
+                        # log.debug('forward_barcode + reverse_barcode {} in {}'.format(forward_barcode + reverse_barcode, sample_))
+                        break
+            
+            # use reverse complement of second barcode, reason is an error of NextSeq
+            # https://bitbucket.org/tanaylab/schic2/src/68d7972f64ac2fd32b7c31c5041b39a7176bf14d/map3c/split_barcodes?at=default&fileviewer=file-view-default#split_barcodes-40
+            if sample_name is None:
+                reverse_barcode = reverseComplement(reverse_barcode)
+                for sample_ in pSampleToIndividualSampleDict[sample]:
+                    if sample_ in pBarcodeSampleDict:
+                        # log.debug(' sample {}'.format(sample_))
+                        if forward_barcode + reverse_barcode in pBarcodeSampleDict[sample_]:
+                            sample_name = sample_
+                            # log.debug('forward_barcode + reverse_barcode {} in {}'.format(forward_barcode + reverse_barcode, sample_))
+                            break
+                
+            # if forward_barcode + reverse_barcode not in foo:
+            #     foo.add(forward_barcode + reverse_barcode)
+            # # log.debug('')
+            #     log.debug('foo {}'.format(foo))
             # if forward_barcode + reverse_barcode in 
             if sample_name is None:
                 continue
