@@ -17,10 +17,15 @@ log = logging.getLogger(__name__)
 
 import cooler
 from sparse_neighbors_search import MinHash
+from sparse_neighbors_search import MinHashDBSCAN
+from sparse_neighbors_search import MinHashSpectralClustering
+
+
 from hicmatrix import HiCMatrix
 from schicexplorer.utilities import opener
+from hicmatrix.lib import MatrixFileHandler
 
-
+from scipy.sparse import csr_matrix
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
@@ -32,7 +37,7 @@ def parse_arguments(args=None):
     # define the arguments
     parserRequired.add_argument('--matrix', '-m',
                                 help='The single cell Hi-C interaction matrices to cluster. Needs to be in mcool format',
-                                metavar='mcool scHi-C matrix,
+                                metavar='mcool scHi-C matrix',
                                 required=True)
 
     parserRequired.add_argument('--outputFolder', '-o',
@@ -46,10 +51,7 @@ def parse_arguments(args=None):
                            required=False,
                            default=4,
                            type=int)
-    parserRequired.add_argument('--deleteFile', '-d',
-                           help='Delete the input file after processing.',
-                           required=False,
-                           action='store_true')
+
     return parser
 
 def mapNeihgborsToMatrixNames():
@@ -65,15 +67,16 @@ def main(args=None):
         except OSError as exc: # Guard against race condition
             if exc.errno != errno.EEXIST:
                 raise
-    matrices = cooler.Cooler(args.matrix).bins().columns.values
+    matrices = cooler.fileops.list_coolers(args.matrix)
+    log.debug('matrices {}'.format(matrices))
     neighborhood_matrix = None
     for i, matrix in enumerate(matrices):
-        matrixFileHandlerInput = MatrixFileHandler(pFileType=cool, pMatrixFile=matrix)
+        matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=args.matrix+ '::' +matrix)
         _matrix, _, _, \
                 _, _ = matrixFileHandlerInput.load()
     
         if neighborhood_matrix is None:
-            neighborhood_matrix = csr_matrix(len(matrices), _matrix.shape[0] * _matrix.shape[1]), dtype=int)
+            neighborhood_matrix = csr_matrix((len(matrices), _matrix.shape[0] * _matrix.shape[1]), dtype=int)
 
         instances, features = _matrix.nonzero()
 
@@ -82,8 +85,16 @@ def main(args=None):
         features = None
         neighborhood_matrix[i, instances] = 1 #TODO this is so far wrong
 
-    minHash = MinHash(number_of_hash_functions=20)
+    # log.debug('neighborhood_matrix {}'.format(neighborhood_matrix))
+    minHash = MinHash(number_of_hash_functions=20, number_of_cores=4)
+    minHash.fit(neighborhood_matrix)
+    print(minHash.kneighbors_graph(mode='distance'))
+    minHashDbscan = MinHashDBSCAN(number_of_hash_functions=20, number_of_cores=4)
+    # minHashClustering = MinHashClustering(minHash)
+    print(minHashDbscan.fit_predict(neighborhood_matrix))
 
-    print(minHash.fit_kneighbors(neighborhood_matrix))
+    minHashSpectralClustering = MinHashSpectralClustering(number_of_hash_functions=20, number_of_cores=4)
+    # minHashClustering = MinHashClustering(minHash)
+    print(minHashSpectralClustering.fit_predict(neighborhood_matrix))
 
     # with
