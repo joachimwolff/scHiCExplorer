@@ -104,7 +104,7 @@ setup(
     author='Joachim Wolff',
     author_email='wolffj@informatik.uni-freiburg.de',
     packages=find_packages(),
-    scripts=['bin/scHicDemultiplex', 'bin/scHicClusterMinHash'
+    scripts=['bin/scHicDemultiplex', 'bin/scHicClusterMinHash', 'bin/scHicMergeToMCool'
              ],
     include_package_data=True,
     package_dir={'schicexplorer': 'schicexplorer'},
