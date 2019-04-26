@@ -2,3 +2,4 @@ python >=3.6
 pysam
 cooler
 hicmatrix
+sparse_neighbors_search >=0.4

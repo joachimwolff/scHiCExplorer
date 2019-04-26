@@ -93,7 +93,8 @@ class install(_install):
 
 install_requires_py = [
                        "pysam >= 0.14",
-                       "cooler >= 0.8.3"
+                       "cooler >= 0.8.3",
+                       "sparse_neighbors_search >=0.4"
                        ]
 
 
@@ -103,7 +104,7 @@ setup(
     author='Joachim Wolff',
     author_email='wolffj@informatik.uni-freiburg.de',
     packages=find_packages(),
-    scripts=['bin/scHicDemultiplex'
+    scripts=['bin/scHicDemultiplex', 'bin/scHicClusterMinHash', 'bin/scHicMergeToMCool'
              ],
     include_package_data=True,
     package_dir={'schicexplorer': 'schicexplorer'},
