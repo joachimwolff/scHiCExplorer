@@ -47,6 +47,11 @@ def parse_arguments(args=None):
                            required=False,
                            default=4,
                            type=int)
+    parserRequired.add_argument('--bufferSize',
+                           help='Number of lines to buffer in memory, if full, write the data to disk.',
+                           required=False,
+                           default=20e6,
+                           type=int)
     parserRequired.add_argument('--deleteFile', '-d',
                            help='Delete the input file after processing.',
                            required=False,
@@ -117,28 +122,36 @@ def compressFiles(pFileNameList, pQueue):
             os.remove(cell_)
     pQueue.put('Done')
 
+def writeSampleFiles(pFileNameList, pBuffer, pQueue):
+    for i, cells in enumerate(pFileNameList):
+        for j, cell_ in enumerate(cells):
+            writeFile(cell_, pBuffer[i][j])
+    pQueue.put('Done')
 
-def handleCompressingMulticore(pFileNameList, pThreads):
+def handleCompressingMulticore(pFileNameList, pBuffer, pThreads):
     filesPerThread = len(pFileNameList) // pThreads
 
     queue = [None] * pThreads
     process = [None] * pThreads
     file_list_sample = [None] * pThreads
+    buffer_sample = [None] * pThreads
+
     all_data_collected = False
 
     for i in range(pThreads):
 
         if i < pThreads - 1:
             file_list_sample = pFileNameList[i * filesPerThread:(i + 1) * filesPerThread]
-            
+            buffer_sample = pBuffer[i * filesPerThread:(i + 1) * filesPerThread]
         else:
             file_list_sample = pFileNameList[i * filesPerThread:]
-            
+            buffer_sample = pBuffer[i * filesPerThread:]
 
         queue[i] = Queue()
-        process[i] = Process(target=compressFiles, kwargs=dict(
+        process[i] = Process(target=writeSampleFiles, kwargs=dict(
             pFileNameList=file_list_sample,
-            pQueue=queue[i],
+            pBuffer=buffer_sample,
+            pQueue=queue[i]
             )
         )
 
@@ -159,14 +172,15 @@ def handleCompressingMulticore(pFileNameList, pThreads):
                 all_data_collected = False
         time.sleep(1)
 
-def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividualSampleDict, pSrrToSampleDict, pThreads, pDelete):
+def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividualSampleDict, pSrrToSampleDict, pThreads, pDelete, pBufferSize):
     # pass
     file_writer = []
     cell_index = {}
     cell_counter = 0
     cell_index_write = 0
     line_count = 0
-    foo = set()
+    # foo = set()
+    lines_out_buffer = []
     log.debug('len(pFastqFile) {}'.format(len(pFastqFile)))
     for fastq in pFastqFile:
         if fastq.split('/')[-1].split(".")[0] in pSrrToSampleDict:
@@ -242,7 +256,8 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
 
             if forward_barcode + reverse_barcode + '_' + sample_name in cell_index:
                 cell_index_write = cell_index[forward_barcode + reverse_barcode + '_' + sample_name]
-
+                lines_out_buffer[cell_index_write][0].extend(fastq_read[:4])
+                lines_out_buffer[cell_index_write][1].extend(fastq_read[12:])
             else:
                 cell_index_write = cell_counter
                 cell_index[forward_barcode + reverse_barcode + '_' + sample_name] = cell_counter
@@ -251,17 +266,36 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
                 reverse_read_cell = pOutputFolder + '/' + sample_name + '_' + forward_barcode + '_' + reverse_barcode + '_R2.fastq.gz'
 
                 file_writer.append([forward_read_cell, reverse_read_cell])
+                lines_out_buffer.append([fastq_read[:4], fastq_read[12:]])
+
                 
 
-            writeFile(file_writer[cell_index_write][0], fastq_read[:4])
-            writeFile(file_writer[cell_index_write][1], fastq_read[12:])
+            if line_count % pBufferSize == 0 or line is False:
+                buffered_elements = 0
+                for lines_buffered in lines_out_buffer:
+                    buffered_elements += len(lines_buffered[0])
+                    buffered_elements += len(lines_buffered[1])
+
+                if buffered_elements > pBufferSize  or line is False:
+                    log.debug('write after {} read lines. buffersize: {}, planned {}'.format(line_count,buffered_elements,pBufferSize ))
+                    handleCompressingMulticore(file_writer, lines_out_buffer, pThreads)
+
+                    lines_out_buffer = None  
+                    lines_out_buffer = []
+                    cell_index = None
+                    cell_index = {}
+                    file_writer = None
+                    file_writer = []
+                    cell_counter = 0
+                    # writeFile(file_writer[cell_index_write][0], fastq_read[:4])
+                    # writeFile(file_writer[cell_index_write][1], fastq_read[12:])
 
                 
         fh.close()
 
 
             # print(fh.readlines())
-    # handleCompressingMulticore(file_writer, pThreads)
+    # 
     
     #     cells[0].close()
     #     cells[1].close()
@@ -286,4 +320,4 @@ def main(args=None):
     srr_to_sample_dict = readSrrToSampleFile(args.srrToSampleFile)
     # log.debug('srr_to_sample_dict {}'.format(srr_to_sample_dict))
 
-    splitFastq(args.fastq, args.outputFolder, barcode_sample_dict, sample_to_individual_sample_dict, srr_to_sample_dict, args.threads, args.deleteFile)
+    splitFastq(args.fastq, args.outputFolder, barcode_sample_dict, sample_to_individual_sample_dict, srr_to_sample_dict, args.threads, args.deleteFile, args.bufferSize)
