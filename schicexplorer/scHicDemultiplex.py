@@ -130,47 +130,49 @@ def writeSampleFiles(pFileNameList, pBuffer, pQueue):
 
 def handleCompressingMulticore(pFileNameList, pBuffer, pThreads):
     filesPerThread = len(pFileNameList) // pThreads
+    if filesPerThread == 0:
+        writeSampleFiles(pFileNameList, pBuffer, None)
+    else:
+        queue = [None] * pThreads
+        process = [None] * pThreads
+        file_list_sample = [None] * pThreads
+        buffer_sample = [None] * pThreads
 
-    queue = [None] * pThreads
-    process = [None] * pThreads
-    file_list_sample = [None] * pThreads
-    buffer_sample = [None] * pThreads
+        all_data_collected = False
 
-    all_data_collected = False
+        for i in range(pThreads):
 
-    for i in range(pThreads):
+            if i < pThreads - 1:
+                file_list_sample = pFileNameList[i * filesPerThread:(i + 1) * filesPerThread]
+                buffer_sample = pBuffer[i * filesPerThread:(i + 1) * filesPerThread]
+            else:
+                file_list_sample = pFileNameList[i * filesPerThread:]
+                buffer_sample = pBuffer[i * filesPerThread:]
 
-        if i < pThreads - 1:
-            file_list_sample = pFileNameList[i * filesPerThread:(i + 1) * filesPerThread]
-            buffer_sample = pBuffer[i * filesPerThread:(i + 1) * filesPerThread]
-        else:
-            file_list_sample = pFileNameList[i * filesPerThread:]
-            buffer_sample = pBuffer[i * filesPerThread:]
-
-        queue[i] = Queue()
-        process[i] = Process(target=writeSampleFiles, kwargs=dict(
-            pFileNameList=file_list_sample,
-            pBuffer=buffer_sample,
-            pQueue=queue[i]
+            queue[i] = Queue()
+            process[i] = Process(target=writeSampleFiles, kwargs=dict(
+                pFileNameList=file_list_sample,
+                pBuffer=buffer_sample,
+                pQueue=queue[i]
+                )
             )
-        )
 
-        process[i].start()
+            process[i].start()
 
-    while not all_data_collected:
-        for i in range(pThreads):
-            if queue[i] is not None and not queue[i].empty():
-                _ = queue[i].get()
-                process[i].join()
-                process[i].terminate()
-                process[i] = None
+        while not all_data_collected:
+            for i in range(pThreads):
+                if queue[i] is not None and not queue[i].empty():
+                    _ = queue[i].get()
+                    process[i].join()
+                    process[i].terminate()
+                    process[i] = None
 
-        all_data_collected = True
+            all_data_collected = True
 
-        for i in range(pThreads):
-            if process[i] is not None:
-                all_data_collected = False
-        time.sleep(1)
+            for i in range(pThreads):
+                if process[i] is not None:
+                    all_data_collected = False
+            time.sleep(1)
 
 def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividualSampleDict, pSrrToSampleDict, pThreads, pDelete, pBufferSize):
     # pass

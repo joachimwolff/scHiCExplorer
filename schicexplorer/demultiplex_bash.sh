@@ -4,7 +4,7 @@ for id in $(parsec  histories show_dataset_collection b4b580c4c286c45f 60311dd1b
   # process
   scHicDemultiplex -f file.fastq -s ../samples.txt -b ../GSE94489_README.txt -t 20
   # upload whatever via ftp
-  curl -T "{$(echo *.gz | tr ' ' ',')}" ftp://galaxy.uni-freiburg.de -user wolffj@informatik.uni-freiburg.de:Password
+  curl -T "{$(echo *.gz | tr ' ' ',')}" ftp://galaxy.uni-freiburg.de -u wolffj@informatik.uni-freiburg.de:Password
   rm file.fastq
   rm *.gz
 done
