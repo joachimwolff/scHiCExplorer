@@ -77,7 +77,7 @@ def parse_arguments(args=None):
 
 
 
-def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pQueue):
+def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pIndex, pXDimension, pQueue):
     read_coverage = []
     sparsity = []
     for i, matrix in enumerate(pMatricesList):
@@ -131,7 +131,7 @@ def main(args=None):
             matrices_name_list = matrices_list[i * matricesPerThread:]
 
         queue[i] = Queue()
-        process[i] = Process(target=open_and_store_matrix, kwargs=dict(
+        process[i] = Process(target=compute_read_coverage_sparsity, kwargs=dict(
                             pMatrixName = matrices_name,
                             pMatricesList= matrices_name_list, 
                             pIndex = length_index[i], 
