@@ -246,37 +246,22 @@ def main(args=None):
         clusters_list.append(cluster_to_plot)
         cluster_size.append(len(cluster_to_plot))
 
+    np.savez('cluster_data.npz', np.array(clusters_list))
     cluster_size = np.array(cluster_size)
-    log.debug('cluster size {}'.format(cluster_size))
-    cluster_size = (cluster_size-min(cluster_size))/(max(cluster_size)-min(cluster_size))
-    log.debug('cluster size {}'.format(cluster_size))
+    # print(len(cluster_size))
+    cluster_size = (1.0 - 0.1) * (cluster_size-min(cluster_size))/(max(cluster_size)-min(cluster_size)) + (0.1)
+    # print(len(cluster_size))
     cluster_size = list(cluster_size)
-    cluster_size.append(0.08)
+
+    # print(len(cluster_size))
     f,axes = plt.subplots(rows, columns, 
             gridspec_kw={'width_ratios':cluster_size})
-    for i in range(1, len(axes)-1):
-        axes[0].get_shared_y_axes().join(axes[0],axes[i])
-    # ax1.get_shared_y_axes().join(ax2,ax3)
     for i, cluster in enumerate(clusters_list):
-        axes[i].imshow(np.log10(np.array(cluster).T), cmap='hot', interpolation='nearest')
-        # plt.invert_yaxis()
-        # plt.xaxis.set_visible(False)
-        # if i % 2:
-        #     g.yaxis.set_visible(False)
-        # # plt.axes.Axes.set_xscale(1, 'linear')
-        # # plt.legend('Cluster {}'.format(i))
-
-        # plt.yscale('log')
-    # grid[0].yaxis.set_visible(True)
-
-    # grid[-1].yaxis.set_visible(True)
-    # grid.cbar_axes[0].colorbar(im)
-
-    # for cax in grid.cbar_axes:
-    #     cax.toggle_label(False)
-    # log.debug('cluster_array {}'.format(cluster_array))
-    # for i in cluster_to_plot:
-    # log.debug('clusters {}'.format(cluster_to_plot))
-
-    # plt.imshow(np.log10(cluster_to_plot).T, cmap='hot', interpolation='nearest')
+        axes[i].imshow(np.log2(np.array(cluster)).T, cmap='hot', interpolation='nearest')
+        axes[i].set_yscale('log')
+        axes[i].invert_yaxis()
+        axes[i].get_xaxis().set_ticks([])
+        if i > 0:
+            axes[i].yaxis.set_visible(False)
+        axes[i].set_xlabel(str(i))
     plt.savefig('density_plot.png', dpi=300)
