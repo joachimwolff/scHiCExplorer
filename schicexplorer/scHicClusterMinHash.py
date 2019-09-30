@@ -76,7 +76,10 @@ def parse_arguments(args=None):
                            required=False,
                            default=2000,
                            type=int)
-
+    parserRequired.add_argument('--outFileName', '-o',
+                                help='File name to save the resulting clusters',
+                                required=True,
+                                default='clusters.txt')
     parserRequired.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
@@ -102,8 +105,8 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pQueu
         instances += features
         features = None
         neighborhood_matrix[pIndex+i, instances] = _matrix.data
-        if i % 20 == 0:
-            log.debug('pIndex + i {} {}'.format(pIndex, i))
+        # if i % 20 == 0:
+        #     log.debug('pIndex + i {} {}'.format(pIndex, i))
     
     pQueue.put(neighborhood_matrix)
 
@@ -185,7 +188,7 @@ def main(args=None):
     log.debug('create label matrix assoziation')
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
-    np.savetxt('matrices_cluster.txt', matrices_cluster, fmt="%s")
+    np.savetxt(args.outFileName, matrices_cluster, fmt="%s")
     # log.debug('create dense matrix')
 
     # clf = TruncatedSVD(n_components=3)
