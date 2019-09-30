@@ -5,23 +5,13 @@ import gzip
 import shutil
 from multiprocessing import Process, Queue
 import time
-import warnings
-warnings.simplefilter(action="ignore", category=RuntimeWarning)
-warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-# warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-# 
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('cooler').setLevel(logging.WARNING)
-logging.getLogger('hicmatrix').setLevel(logging.WARNING)
-
-
 log = logging.getLogger(__name__)
 
 import cooler
 
-from hicmatrix import HiCMatrix
+from hicmatrix import HiCMatrix as hm
 from schicexplorer.utilities import opener
 from hicmatrix.lib import MatrixFileHandler
 
@@ -76,7 +66,7 @@ def parse_arguments(args=None):
 
 
 
-def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pDistance, pQueue):
+def create_svl_data(pMatrixName, pMatricesList, pIndex, pXDimension, pDistance, pQueue):
     svl_matrix = None
     for i, matrix in enumerate(pMatricesList):
         # matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName+ '::' +matrix)
@@ -87,6 +77,9 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pDist
         for chromosome in chromosomes_list:
             hic_matrix_obj = hm.hiCMatrix(
                 pMatrixFile=pMatrixName+ '::' +matrix, pChrnameList=[chromosome])
+            if hic_matrix_obj.matrix.shape[0] < 5:
+                svl_relations.append(0)
+                continue
             max_distance = pDistance / hic_matrix_obj.getBinSize()
             hic_matrix = hic_matrix_obj.matrix
 
@@ -143,11 +136,12 @@ def main(args=None):
                 matrices_name_list = matrices_list[i * matricesPerThread:]
 
             queue[i] = Queue()
-            process[i] = Process(target=open_and_store_matrix, kwargs=dict(
+            process[i] = Process(target=create_svl_data, kwargs=dict(
                                 pMatrixName = matrices_name,
                                 pMatricesList= matrices_name_list, 
                                 pIndex = length_index[i], 
                                 pXDimension=len(matrices_list),
+                                pDistance = args.distance,
                                 pQueue=queue[i]
                 )
             )
@@ -181,9 +175,11 @@ def main(args=None):
         svl_matrix = scipy.sparse.load_npz(args.matrixNpz)
         matrices_list = cooler.fileops.list_coolers(args.matrix)
 
+    log.debug('SVL matrix created, start clustering')
+    log.debug('len(svl_matrix) {}'.format(svl_matrix.shape))
+    # log.debug('len(svl_matrix[0]) {}'.format(len(svl_matrix[0])))
 
-    
-    spectral_clustering = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads)
+    spectral_clustering = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads)
     labels_clustering = spectral_clustering.fit_predict(svl_matrix)
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
