@@ -57,11 +57,7 @@ def parse_arguments(args=None):
                                 help='The single cell Hi-C interaction matrices to investigate for QC. Needs to be in mcool format',
                                 metavar='mcool scHi-C matrix',
                                 required=True)
-    parserRequired.add_argument('--createMatrix', '-cm',
-                                help='If set to, the matrix for the clustering is created out of the single cell mcool matrix. If not, the binary npz matrix of a former creation is loaded.',
-                                # metavar='Create npz matrix or load it.',
-                                # required=True,
-                                action='store_true')
+
     parserRequired.add_argument('--outputMcool', '-o',
                                 help='Mcool matrix which contains only the filtered matrices',
                                 

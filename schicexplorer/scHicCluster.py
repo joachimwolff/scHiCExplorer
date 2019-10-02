@@ -186,7 +186,7 @@ def main(args=None):
     elif args.clusterMethod == 'kmeans':
         log.debug('start kmeans')
 
-        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads)
+        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
 
         labels_clustering = kmeans_object.fit_predict(neighborhood_matrix)
 
