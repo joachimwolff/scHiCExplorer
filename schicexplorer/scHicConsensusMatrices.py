@@ -1,49 +1,14 @@
-# read all matrices
-## get non-zeros and flatten it (x*length) + y
-# make number of instacnes * dim**2 csr matrix
-
 import argparse
-import os
-import gzip
-import shutil
 from multiprocessing import Process, Queue
 import time
-import warnings
-warnings.simplefilter(action="ignore", category=RuntimeWarning)
-warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-# warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-# 
-
 import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
-logging.getLogger('cooler').setLevel(logging.WARNING)
-logging.getLogger('hicmatrix').setLevel(logging.WARNING)
-
-
 log = logging.getLogger(__name__)
 
 import cooler
-from sparse_neighbors_search import MinHash
-from sparse_neighbors_search import MinHashDBSCAN
-from sparse_neighbors_search import MinHashSpectralClustering
-from sparse_neighbors_search import MinHashClustering
+import numpy as np
 
 from hicmatrix import HiCMatrix
-from schicexplorer.utilities import opener
 from hicmatrix.lib import MatrixFileHandler
-
-import numpy as np
-import pandas as pd
-from scipy.sparse import csr_matrix
-from sklearn.decomposition import TruncatedSVD
-
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from multiprocessing import Process, Queue
-import scipy.sparse
-from mpl_toolkits.axes_grid1 import AxesGrid
 
 def parse_arguments(args=None):
 
@@ -66,14 +31,13 @@ def parse_arguments(args=None):
                                 help='File name of the consensus mcool matrix.',
                                 required=True)
 
-    parserRequired.add_argument('--threads',
+    parserRequired.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
                            default=4,
                            type=int)
 
     return parser
-
 
 
 def compute_consensus_matrix(pMatrixName, pMatricesList, pAppend, pCounter, pQueue):
@@ -97,8 +61,6 @@ def compute_consensus_matrix(pMatrixName, pMatricesList, pAppend, pCounter, pQue
 
     matrixFileHandlerOutput.set_matrix_variables(consensus_matrix, cut_intervals, nan_bins,
                                                     correction_factors, distance_counts)
-    # matrixFileHandlerOutput.save(
-    #     pOutFileName + '::/' + pConsensusMatrixName, pSymmetric=True, pApplyCorrection=False)
     pQueue.put([matrixFileHandlerOutput, pCounter])
 
 def main(args=None):
@@ -127,7 +89,6 @@ def main(args=None):
 
     process = [None] * args.threads
     all_data_processed = False
-    # hic_matrix = coo_matrix((matrix_size, matrix_size), dtype='uint32')
     queue = [None] * args.threads
 
     all_threads_done = False
@@ -147,14 +108,11 @@ def main(args=None):
                     process[i] = Process(target=compute_consensus_matrix, kwargs=dict(
                                         pMatrixName = matrices_name,
                                         pMatricesList= cluster_list[count_call_of_read_input], 
-                                        # pOutFileName=args.outFileName,
-                                        # pConsensusMatrixName = 'consensus_matrix_cluster' + str(count_call_of_read_input), 
                                         pAppend = i > 0, 
                                         pCounter = count_call_of_read_input,
                                         pQueue=queue[i]
                         )
                     )
-
                     process[i].start()
                     thread_done[i] = False
                 else:
@@ -180,7 +138,31 @@ def main(args=None):
                 if not thread:
                     all_threads_done = False
 
+    sum_of_all = []
+    for i, matrixFileHandler in enumerate(matrixFileHandlerObjects_list):
+        sum_of_all.append(matrixFileHandler.matrixFile.matrix.sum())
+
+    argmin = np.argmin(sum_of_all)
 
     for i, matrixFileHandler in enumerate(matrixFileHandlerObjects_list):
-        matrixFileHandler.save(
-            args.outFileName + '::/' + 'consensus_matrix_cluster_' + str(i), pSymmetric=True, pApplyCorrection=False)
+        # for i, hic_matrix in enumerate(hic_matrix_list):
+        matrixFileHandler.matrixFile.matrix.data = matrixFileHandler.matrixFile.matrix.data.astype(np.float32)
+        if i != argmin:
+            mask = np.isnan(matrixFileHandler.matrixFile.matrix.data)
+            matrixFileHandler.matrixFile.matrix.data[mask] = 0
+
+            mask = np.isinf(matrixFileHandler.matrixFile.matrix.data)
+            matrixFileHandler.matrixFile.matrix.data[mask] = 0
+            adjust_factor = sum_of_all[i] / sum_of_all[argmin]
+            matrixFileHandler.matrixFile.matrix.data /= adjust_factor
+            mask = np.isnan(matrixFileHandler.matrixFile.matrix.data)
+
+        mask = np.isnan(matrixFileHandler.matrixFile.matrix.data)
+        matrixFileHandler.matrixFile.matrix.data[mask] = 0
+
+        mask = np.isinf(matrixFileHandler.matrixFile.matrix.data)
+        matrixFileHandler.matrixFile.matrix.data[mask] = 0
+        matrixFileHandler.matrixFile.matrix.eliminate_zeros()
+        matrixFileHandler.save(args.outFileName + '::/' + 'consensus_matrix_cluster_' + str(i), pSymmetric=True, pApplyCorrection=False)
+    # for i, matrixFileHandler in enumerate(matrixFileHandlerObjects_list):
+        

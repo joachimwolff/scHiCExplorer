@@ -8,35 +8,14 @@ import gzip
 import shutil
 from multiprocessing import Process, Queue
 import time
-import warnings
-warnings.simplefilter(action="ignore", category=RuntimeWarning)
-warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-# warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-# 
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
-logging.getLogger('cooler').setLevel(logging.WARNING)
-logging.getLogger('hicmatrix').setLevel(logging.WARNING)
-
-
 log = logging.getLogger(__name__)
 
 import cooler
-from sparse_neighbors_search import MinHash
-from sparse_neighbors_search import MinHashDBSCAN
-from sparse_neighbors_search import MinHashSpectralClustering
-from sparse_neighbors_search import MinHashClustering
-
-from hicmatrix import HiCMatrix
-from schicexplorer.utilities import opener
-from hicmatrix.lib import MatrixFileHandler
+from hicmatrix import HiCMatrix as hm
 
 import numpy as np
-import pandas as pd
-from scipy.sparse import csr_matrix
-from sklearn.decomposition import TruncatedSVD
 
 import matplotlib
 matplotlib.use('Agg')
@@ -60,9 +39,30 @@ def parse_arguments(args=None):
 
     parserRequired.add_argument('--outputMcool', '-o',
                                 help='Mcool matrix which contains only the filtered matrices',
-                                
-                                default='clusters')
-
+                                default='filtered_matrices.mcool')
+    parserRequired.add_argument('--minimumReadCoverage',
+                           help='Remove all samples with a lower read coverage as this value.',
+                           required=False,
+                           default=1000000,
+                           type=int)
+    parserRequired.add_argument('--minimumDensity',
+                           help='Remove all samples with a lower read coverage as this value.',
+                           required=False,
+                           default=0.001,
+                           type=float)
+    parserRequired.add_argument('--maximumRegionToConsider',
+                           help='To compute the density, consider only this genomic distance around the diagonal.',
+                           required=False,
+                           default=30000000,
+                           type=int)                      
+    parserRequired.add_argument('--outFileNameSparsity', '-os',
+                                help='File name of the sparsity histogram',
+                                required=False,
+                                default='sparsity.png')
+    parserRequired.add_argument('--outFileNameReadCoverage', '-or',
+                                help='File name of the read coverage',
+                                required=False,
+                                default='readCoverage.png')
     parserRequired.add_argument('--threads',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
@@ -73,18 +73,27 @@ def parse_arguments(args=None):
 
 
 
-def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pIndex, pXDimension, pQueue):
+def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pIndex, pXDimension, pMaximumRegionToConsider, pQueue):
     read_coverage = []
     sparsity = []
     for i, matrix in enumerate(pMatricesList):
-        matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName+ '::' +matrix)
-        _matrix, _, _, _, _ = matrixFileHandlerInput.load()
+        hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName+ '::' +matrix)
 
+        # matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName+ '::' +matrix)
+        # _matrix, _, _, _, _ = matrixFileHandlerInput.load()
+        _matrix = hic_ma.matrix
+        max_distance = pMaximumRegionToConsider // hic_ma.getBinSize()
         # if neighborhood_matrix is None:
         #     neighborhood_matrix = csr_matrix((pXDimension, _matrix.shape[0] * _matrix.shape[1]), dtype=np.float)
 
         read_coverage.append(_matrix.data.sum())
-        sparsity.append(_matrix.nnz / (_matrix.shape[0] * _matrix.shape[1]))
+
+        instances, features = _matrix.nonzero()
+        distances = np.absolute(instances - features)
+        mask = distances >= max_distance
+        sparsity_length = len(_matrix.data[mask])
+
+        sparsity.append(sparsity_length / (_matrix.shape[0] * max_distance))
 
         # instances, features = _matrix.nonzero()
 
@@ -132,6 +141,7 @@ def main(args=None):
                             pMatricesList= matrices_name_list, 
                             pIndex = length_index[i], 
                             pXDimension=len(matrices_list),
+                            pMaximumRegionToConsider=args.maximumRegionToConsider,
                             pQueue=queue[i]
             )
         )
@@ -165,41 +175,52 @@ def main(args=None):
     sparsity = np.array([item for sublist in sparsity for item in sublist])
    
 
-    magnitudes = np.log10(read_coverage)
-    average_magnitude = np.int(np.average(magnitudes))
+    # magnitudes = np.log10(read_coverage)
+    # average_magnitude = np.int(np.average(magnitudes))
 
-    magnitudes_sparsity = np.log10(sparsity)
-    sparsity_average_magnitude = np.int(np.average(magnitudes_sparsity))
+    # magnitudes_sparsity = np.log10(sparsity)
+    # sparsity_average_magnitude = np.int(np.average(magnitudes_sparsity))
     
-    y = [0] * len(read_coverage)
-    # for i in range(len(args.matrices)):
-    #     y[i] = [i] * len(sparsity)
-    plt.axvline(x=average_magnitude, color='r')
-    plt.plot(np.log10(read_coverage), y,  'o', alpha=0.5, markersize=0.3)
-    plt.savefig('read_coverage_distribution.png', dpi=300)
+    plt.hist(read_coverage, bins=100)
+    plt.savefig(args.outFileNameReadCoverage, dpi=300)
     plt.close()
-    plt.plot(sparsity, y,  'o', alpha=0.5, markersize=0.3)
+    plt.hist(sparsity, bins=100)
+    plt.savefig(args.outFileNameSparsity, dpi=300)
+    plt.close()
+    # y = [0] * len(read_coverage)
+    # # for i in range(len(args.matrices)):
+    # #     y[i] = [i] * len(sparsity)
+    # plt.axvline(x=average_magnitude, color='r')
+    # plt.plot(np.log10(read_coverage), y,  'o', alpha=0.5, markersize=0.3)
+    # plt.savefig('read_coverage_distribution.png', dpi=300)
+    # plt.close()
+    # plt.plot(sparsity, y,  'o', alpha=0.5, markersize=0.3)
+    # # plt.plot(np.log10(read_coverage), y,  'o', alpha=0.5, markersize=0.3)
+
+    # plt.savefig('sparsity_distribution.png', dpi=300)
+    # plt.close()
+    # plt.axvline(x=sparsity_average_magnitude, color='r')
+
+    # plt.plot(np.log10(sparsity), y,  'o', alpha=0.5, markersize=0.3)
     # plt.plot(np.log10(read_coverage), y,  'o', alpha=0.5, markersize=0.3)
 
-    plt.savefig('sparsity_distribution.png', dpi=300)
-    plt.close()
-    plt.axvline(x=sparsity_average_magnitude, color='r')
-
-    plt.plot(np.log10(sparsity), y,  'o', alpha=0.5, markersize=0.3)
-    # plt.plot(np.log10(read_coverage), y,  'o', alpha=0.5, markersize=0.3)
-
-    plt.savefig('sparsity_log10_distribution.png', dpi=300)
-    plt.close()
+    # plt.savefig('sparsity_log10_distribution.png', dpi=300)
+    # plt.close()
 
     # scipy.sparse.save_npz(args.matrix + 'binary.npz', neighborhood_matrix)
     # else:
     #     neighborhood_matrix = scipy.sparse.load_npz(args.matrix)
 
-    mask_average_magnitude = magnitudes >= average_magnitude
-    mask_average_sparsity = magnitudes_sparsity >= sparsity_average_magnitude
-    mask = np.logical_or(mask_average_magnitude, mask_average_sparsity)
-    # read_coverage_filtered = read_coverage[mask]
+    # mask_average_magnitude = magnitudes >= average_magnitude
+    # mask_average_sparsity = magnitudes_sparsity >= sparsity_average_magnitude
+    # mask = np.logical_or(mask_average_magnitude, mask_average_sparsity)
+    # # read_coverage_filtered = read_coverage[mask]
+    mask_read_coverage = read_coverage >= args.minimumReadCoverage
+
+    mask_sparsity = sparsity >= args.minimumDensity
+    mask = np.logical_or(mask_read_coverage, mask_sparsity)
     matrices_list_filtered = np.array(matrices_list)[mask]
+
     log.debug('len(matrices_list_filtered) {}'.format(len(matrices_list_filtered)))
     log.debug('matrices_list_filtered {}'.format(matrices_list_filtered))
     np.savetxt('accepted_matrices.txt', matrices_list_filtered,  fmt="%s")

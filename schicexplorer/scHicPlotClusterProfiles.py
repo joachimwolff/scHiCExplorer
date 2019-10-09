@@ -87,7 +87,6 @@ def compute_read_distribution(pMatrixName, pMatricesList, pMaximalDistance, pChr
     read_coverage = []
     sparsity = []
     read_distribution = []
-    # binSize = 1000000
     length_old = 50
     for i, matrix in enumerate(pMatricesList):
         if pChromosomes is not None and len(pChromosomes) == 1:
@@ -116,7 +115,6 @@ def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-    # if args.loadFromNpz:
 
     matrices_name = args.matrix
     threads = args.threads
@@ -177,6 +175,7 @@ def main(args=None):
     read_distributions = np.array(read_distributions)
 
     clusters = {}
+    clusters_svl = {}
     with open(args.clusters, 'r') as cluster_file:
 
         for i, line in enumerate(cluster_file.readlines()):
@@ -185,8 +184,19 @@ def main(args=None):
 
             if int(line_) in clusters:
                 clusters[int(line_)].append(read_distributions[i])
+                clusters_svl[int(line_)].append(np.sum(read_distributions[i][:20]) / np.sum(read_distributions[i][20:]))
             else:
                 clusters[int(line_)] = [read_distributions[i]]
+                clusters_svl[int(line_)] = [np.sum(read_distributions[i][:20]) / np.sum(read_distributions[i][20:])]
+
+    for i, cluster_key in enumerate(clusters.keys()):
+        clusters[cluster_key] = np.array(clusters[cluster_key])
+        clusters_svl[cluster_key] = np.array(clusters_svl[cluster_key])
+        sorted_indices = np.argsort(clusters_svl[cluster_key])
+        clusters[cluster_key] = clusters[cluster_key][sorted_indices]
+
+
+
 
     cluster_to_plot = []
 

@@ -1,15 +1,31 @@
+# read all matrices
+## get non-zeros and flatten it (x*length) + y
+# make number of instacnes * dim**2 csr matrix
+
 import argparse
 import os
 import gzip
 import shutil
 from multiprocessing import Process, Queue
 import time
+import warnings
+warnings.simplefilter(action="ignore", category=RuntimeWarning)
+warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
+# warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
+# 
 
 import logging
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+logging.getLogger('cooler').setLevel(logging.WARNING)
+logging.getLogger('hicmatrix').setLevel(logging.WARNING)
+
+
 log = logging.getLogger(__name__)
 
 import cooler
 from sparse_neighbors_search import MinHash
+from sparse_neighbors_search import MinHashDBSCAN
 from sparse_neighbors_search import MinHashSpectralClustering
 from sparse_neighbors_search import MinHashClustering
 
@@ -22,10 +38,15 @@ from hicmatrix.lib import MatrixFileHandler
 import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix
+from sklearn.decomposition import TruncatedSVD
 
-
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from multiprocessing import Process, Queue
 import scipy.sparse
+
+import networkx as nx
 
 def parse_arguments(args=None):
 
@@ -75,7 +96,9 @@ def parse_arguments(args=None):
                            required=False,
                            default=4,
                            type=int)
+
     return parser
+
 
 
 def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pQueue):
@@ -87,6 +110,8 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
             hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName+ '::' +matrix)
             if pChromosomes:
                 hic_ma.keepOnlyTheseChr(pChromosomes)
+        # matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName+ '::' +matrix)
+        # _matrix, _, _, _, _ = matrixFileHandlerInput.load()
         _matrix = hic_ma.matrix
 
         if neighborhood_matrix is None:
@@ -98,6 +123,8 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
         instances += features
         features = None
         neighborhood_matrix[pIndex+i, instances] = _matrix.data
+        # if i % 20 == 0:
+        #     log.debug('pIndex + i {} {}'.format(pIndex, i))
     
     pQueue.put(neighborhood_matrix)
 
@@ -170,25 +197,49 @@ def main(args=None):
     #     neighborhood_matrix = scipy.sparse.load_npz(args.matrixNpz)
     #     matrices_list = cooler.fileops.list_coolers(args.matrix)
 
-    if args.clusterMethod == 'spectral':
-        log.debug('spectral clustering')
-        minHashSpectralClustering = MinHashSpectralClustering(n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                                            shingle_size=4, fast=args.fastModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
-        log.debug('spectral clustering fit predict')
+    minhash = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+                        shingle_size=4, fast=args.fastModeMinHash, n_neighbors=args.numberOfNeighbors)
+    
+    minhash.fit(neighborhood_matrix)
+    graph = minhash.kneighbors()
+    log.debug('graph {}'.format(graph))
+    # np.savetxt(args.outFileName, graph, fmt="%s")
+    G=nx.Graph()
+    for i, node in enumerate(graph[1]):
+        for j, edge in enumerate(node):
+            G.add_edge(i, edge, weight=graph[0][i][j])
+    
+    nx.draw(G, node_size=10)
+    plt.savefig(args.outFileName, dpi=300)
+    plt.close()
+    nx.draw_random(G, node_size=10)
+    plt.savefig('random_'+args.outFileName, dpi=300)
+    plt.close()
+    nx.draw_circular(G, node_size=10)
+    plt.savefig('circular_'+args.outFileName, dpi=300)
+    plt.close()
+    nx.draw_spectral(G, node_size=10)
+    plt.savefig('spectral_'+args.outFileName, dpi=300)
+    plt.close()
+    # if args.clusterMethod == 'spectral':
+    #     log.debug('spectral clustering')
+    #     minHashSpectralClustering = MinHashSpectralClustering(n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+    #                                                         shingle_size=4, fast=args.fastModeMinHash, n_neighbors=args.numberOfNeighbors)
+    #     log.debug('spectral clustering fit predict')
 
-        labels_clustering = minHashSpectralClustering.fit_predict(neighborhood_matrix)
-        log.debug('create label matrix assoziation')
-    elif args.clusterMethod == 'kmeans':
-        log.debug('kmeans clustering')
-        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads)
-        minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                                            shingle_size=4, fast=args.fastModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
-        # (n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                                            # shingle_size=4, fast=args.fastModeMinHash, n_neighbors=args.numberOfNeighbors)
-        minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=kmeans_object)
-        log.debug('kmeans clustering fit predict')
+    #     labels_clustering = minHashSpectralClustering.fit_predict(neighborhood_matrix)
+    #     log.debug('create label matrix assoziation')
+    # elif args.clusterMethod == 'kmeans':
+    #     log.debug('spectral clustering')
+    #     kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads)
+    #     minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+    #                                                         shingle_size=4, fast=args.fastModeMinHash, n_neighbors=args.numberOfNeighbors)
+    #     # (n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+    #                                                         # shingle_size=4, fast=args.fastModeMinHash, n_neighbors=args.numberOfNeighbors)
+    #     minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=kmeans_object)
+    #     log.debug('spectral clustering fit predict')
 
-        labels_clustering = minHashClustering.fit_predict(neighborhood_matrix)
+    #     labels_clustering = minHashClustering.fit_predict(neighborhood_matrix)
 
-    matrices_cluster = list(zip(matrices_list, labels_clustering))
-    np.savetxt(args.outFileName, matrices_cluster, fmt="%s")
+    # matrices_cluster = list(zip(matrices_list, labels_clustering))
+    # np.savetxt(args.outFileName, matrices_cluster, fmt="%s")

@@ -107,7 +107,7 @@ setup(
     scripts=['bin/scHicDemultiplex', 'bin/scHicClusterMinHash', 'bin/scHicClusterSVL', 'bin/scHicClusterCompartments', 
                 'bin/scHicMergeToMCool', 'bin/scHicQualityControl',
                 'bin/scHicPlotClusterProfiles', 'bin/scHicPlotConsensusMatrices', 'bin/scHicConsensusMatrices',
-                'bin/scHicMergeMatrixBins', 'bin/scHicCluster'
+                'bin/scHicMergeMatrixBins', 'bin/scHicCluster', 'bin/scHicNeighborGraph', 'bin/scHicAdjustMatrix', 'bin/scHicNormalize'
              ],
     include_package_data=True,
     package_dir={'schicexplorer': 'schicexplorer'},
