@@ -39,7 +39,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
 from multiprocessing import Process, Queue
-
+from matplotlib import colors
 
 def parse_arguments(args=None):
 
@@ -66,6 +66,11 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=50000000,
                                 type=int)
+    parserRequired.add_argument('--shortRange', '-sr',
+                                help='Distance to split short and long range contacts to sort the samples per cluster.',
+                                required=False,
+                                default=20000000,
+                                type=int)
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting cluster profile.',
                                 required=False,
@@ -88,6 +93,7 @@ def compute_read_distribution(pMatrixName, pMatricesList, pMaximalDistance, pChr
     sparsity = []
     read_distribution = []
     length_old = 50
+    resolution = 0
     for i, matrix in enumerate(pMatricesList):
         if pChromosomes is not None and len(pChromosomes) == 1:
             hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes)
@@ -96,19 +102,22 @@ def compute_read_distribution(pMatrixName, pMatricesList, pMaximalDistance, pChr
             if pChromosomes:
                 hic_ma.keepOnlyTheseChr(pChromosomes)
         _matrix = hic_ma.matrix
-        maximalDistance = pMaximalDistance // hic_ma.getBinSize()
+        resolution = hic_ma.getBinSize()
+        maximalDistance = pMaximalDistance // resolution
 
         instances, features = _matrix.nonzero()
 
         relative_distance = np.absolute(instances - features)
         read_distribution_ = np.zeros(maximalDistance)
+        sum_of_matrix_within_maximalDistance = 0
         for j, relative_distance_ in enumerate(relative_distance):
             if relative_distance_ < maximalDistance:
                 read_distribution_[relative_distance_] += _matrix.data[j]
-        read_distribution_ /= np.sum(_matrix.data)
+                sum_of_matrix_within_maximalDistance += _matrix.data[j]
+        read_distribution_ /= sum_of_matrix_within_maximalDistance
         read_distribution.append(read_distribution_)
 
-    pQueue.put(read_distribution)
+    pQueue.put([read_distribution, resolution])
 
 
 def main(args=None):
@@ -153,7 +162,7 @@ def main(args=None):
     while not all_data_collected:
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
-                read_coverage[i] = queue[i].get()
+                read_coverage[i], resolution = queue[i].get()
 
                 queue[i] = None
                 process[i].join()
@@ -176,18 +185,19 @@ def main(args=None):
 
     clusters = {}
     clusters_svl = {}
+    # resolution = 
+    short_range_distance = args.shortRange // resolution
     with open(args.clusters, 'r') as cluster_file:
 
         for i, line in enumerate(cluster_file.readlines()):
             line = line.strip()
             line_ = line.split(' ')[1]
-
             if int(line_) in clusters:
                 clusters[int(line_)].append(read_distributions[i])
-                clusters_svl[int(line_)].append(np.sum(read_distributions[i][:20]) / np.sum(read_distributions[i][20:]))
+                clusters_svl[int(line_)].append(np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:]))
             else:
                 clusters[int(line_)] = [read_distributions[i]]
-                clusters_svl[int(line_)] = [np.sum(read_distributions[i][:20]) / np.sum(read_distributions[i][20:])]
+                clusters_svl[int(line_)] = [np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:])]
 
     for i, cluster_key in enumerate(clusters.keys()):
         clusters[cluster_key] = np.array(clusters[cluster_key])
@@ -195,13 +205,8 @@ def main(args=None):
         sorted_indices = np.argsort(clusters_svl[cluster_key])
         clusters[cluster_key] = clusters[cluster_key][sorted_indices]
 
-
-
-
     cluster_to_plot = []
 
-    # w=10
-    # h=100
     columns = len(clusters)
     rows = 1
     clusters_list = []
@@ -218,22 +223,48 @@ def main(args=None):
     cluster_size = (1.0 - 0.1) * (cluster_size - min(cluster_size)) / (max(cluster_size) - min(cluster_size)) + (0.1)
     cluster_size = list(cluster_size)
 
-    fig, axes = plt.subplots(rows, columns,
-                             gridspec_kw={'width_ratios': cluster_size})
+
+    all_data = None
+    index_clusters = []
+    cluster_ticks = []
+    ticks_position = []
     for i, cluster in enumerate(clusters_list):
-        try:
-            im = axes[i].imshow(cluster.T, cmap='RdYlBu_r', norm=LogNorm(), aspect="auto")
-            axes[i].invert_yaxis()
-            axes[i].get_xaxis().set_ticks([])
-            if i > 0:
-                axes[i].yaxis.set_visible(False)
-            axes[i].set_title('{}'.format(len(cluster)), fontsize=8)
-            axes[i].set_xlabel(str(i))
-        except Exception:
-            log.debug('Cluster {} failed. Elements: {}'.format(i, len(cluster)))
-    fig.subplots_adjust(right=0.8)
-    cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-    fig.colorbar(im, cax=cbar_ax)
+        if all_data is None:
+            all_data = cluster
+            index_clusters.append(len(cluster))
+            ticks_position.append(0 + len(cluster)//2)
+        else:
+            all_data = np.append(all_data, cluster, axis=0)
+            index_clusters.append(index_clusters[i-1]+len(cluster))
+            ticks_position.append(index_clusters[i-1] + len(cluster) //2)
+
+        cluster_ticks.append('Cluster {} ({} cells)'.format(i+1, len(cluster)))
+
+    fig = plt.figure(figsize=(10, 2))
+
+    plt.imshow(all_data.T, cmap='RdYlBu_r', norm=LogNorm(), aspect="auto")
+
+    for index in index_clusters[:-1]:
+        plt.axvline(index, color='black', linewidth=0.4)
+
+    y_ticks = []
+    y_labels = []
+    for i in range(0, args.maximalDistance // resolution, 1):
+        if i % 10 == 0:
+            y_ticks.append(i)
+            
+            y_labels.append(str(i) + 'MB')
+    plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=8)
+
+    plt.gca().invert_yaxis()
+    plt.xticks(ticks=ticks_position, labels=cluster_ticks, fontsize=4)
+    fig.autofmt_xdate()
+
+    cbar = plt.colorbar()
+    cbar.ax.set_ylabel('% contacts', rotation=270, fontsize=5)
+    cbar.ax.invert_yaxis()
+    cbar.ax.tick_params(labelsize=5)
+    plt.tight_layout()
     plt.savefig(args.outFileName, dpi=args.dpi)
 
     plt.close()
