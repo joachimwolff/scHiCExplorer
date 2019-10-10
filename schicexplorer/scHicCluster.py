@@ -179,8 +179,9 @@ def main(args=None):
         time.sleep(1)
 
     if args.clusterMethod == 'spectral':
+        log.debug('spectral start')
         spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
-                                                        n_neighbors=args.numberOfNeighbors)
+                                                        n_neighbors=neighborhood_matrix.shape[0], affinity='nearest_neighbors')
 
         labels_clustering = spectralClustering_object.fit_predict(neighborhood_matrix)
     elif args.clusterMethod == 'kmeans':
