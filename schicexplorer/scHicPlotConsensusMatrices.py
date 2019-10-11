@@ -54,7 +54,15 @@ def parse_arguments(args=None):
                                 metavar='mcool scHi-C matrix',
                                 required=True)
 
-
+    parserRequired.add_argument('--outFileName', '-o',
+                                help='File name to save the resulting cluster profile.',
+                                required=False,
+                                default='consensus_matrices.png')
+    parserRequired.add_argument('--dpi', '-d',
+                                help='The dpi of the plot.',
+                                required=False,
+                                default=300,
+                                type=int)
     parserRequired.add_argument('--threads',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
@@ -122,4 +130,4 @@ def main(args=None):
         # if i > 0:
         axes[i//4,  i%4].yaxis.set_visible(False)
         axes[i//4,  i%4].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
-    plt.savefig('consensus_plot.png', dpi=300)
+    plt.savefig(args.outFileName, dpi=args.dpi)
