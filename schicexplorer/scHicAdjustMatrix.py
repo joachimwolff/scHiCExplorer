@@ -9,8 +9,9 @@ log = logging.getLogger(__name__)
 
 import cooler
 
+from multiprocessing import Process, Queue
 
-from hicexplorer import hicAdjustMatrix
+from hicexplorer.hicAdjustMatrix import adjustMatrix
 from schicexplorer._version import __version__
 
 def parse_arguments(args=None):
@@ -46,30 +47,78 @@ def parse_arguments(args=None):
                            version='%(prog)s {}'.format(__version__))
     return parser
 
-def main(args=None):
-
-    args = parse_arguments().parse_args(args)
-    matrices_list = cooler.fileops.list_coolers(args.matrix)
-    
+def compute_adjust_matrix(pMatrixName, pMatricesList, pArgs, pQueue):
+    hicmatrices_adjusted_objects = []
     for i, matrix in enumerate(matrices_list):
-        appendMatrix = '--appendMatrix'
-        if i == 0:
-            appendMatrix = ''
-        args_adjust = "--matrix {} --outFileName {} --action {} {}".format(
-            args.matrix + '::' + matrix,
-            args.outFileName + '::' + matrix,
-            args.action,
-            appendMatrix
+        pArgs.matrix = pMatrixName + '::' + matrix
+        hic_ma_adjusted = adjustMatrix(pArgs)
+        hicmatrices_adjusted_objects.append(hic_ma_adjusted)
+    
+    pQueue.put(hicmatrices_adjusted_objects)
+    return
+
+def main(args=None):
+    # args_string
+    args = parse_arguments().parse_args(args)   
+    hicmatrix_adjusted_objects = []
+    matrices_name = args.matrix
+    threads = args.threads
+    matrices_list = cooler.fileops.list_coolers(matrices_name)
+    if threads > len(matrices_list):
+        threads = len(matrices_list)
+    compartments_matrix = None
+
+    all_data_collected = False
+    thread_done = [False] * threads
+    hicmatrix_adjusted_objects_threads = [None] * threads
+    length_index[0] = 0
+    matricesPerThread = len(matrices_list) // threads
+    queue = [None] * threads
+    process = [None] * threads
+    for i in range(threads):
+
+        if i < threads - 1:
+            matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
+            length_index[i + 1] = length_index[i] + len(matrices_name_list)
+        else:
+            matrices_name_list = matrices_list[i * matricesPerThread:]
+
+        queue[i] = Queue()
+        process[i] = Process(target=compute_adjust_matrix, kwargs=dict(
+            pMatrixName=matrices_name,
+            pMatricesList=matrices_name_list,
+            pArgs=args,
+            pQueue=queue[i]
+        )
         )
 
-        if args.chromosomes is not None:
-            chromosomes = ' '.join(args.chromosomes)
-            args_adjust += ' --chromosomes {}'.format(chromosomes)
-        elif args.regions is not None:
-            args_adjust += ' --regions {}'.format(args.regions)
-        elif args.maskBadRegions is not None:
-            args_adjust += ' --maskBadRegions {}'.format(args.maskBadRegions)
+        process[i].start()
 
-        args_adjust = args_adjust.split()
-        log.debug('args_adjust {}'.format(args_adjust))
-        hicAdjustMatrix.main(args_adjust)
+    while not all_data_collected:
+        for i in range(threads):
+            if queue[i] is not None and not queue[i].empty():
+                hicmatrix_adjusted_objects_threads[i] = queue[i].get()
+                queue[i] = None
+                process[i].join()
+                process[i].terminate()
+                process[i] = None
+                thread_done[i] = True
+        all_data_collected = True
+        for thread in thread_done:
+            if not thread:
+                all_data_collected = False
+        time.sleep(1)
+
+    hicmatrix_adjusted_objects = [item for sublist in hicmatrix_adjusted_objects_threads for item in sublist]
+
+
+
+    for i, matrixFileHandler in enumerate(matrixFileHandlerList):
+        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=pAppend, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
+
+        matrixFileHandlerOutput.set_matrix_variables(_matrix, cut_intervals, nan_bins,
+                                                    correction_factors, distance_counts)
+        # matrixFileHandler.set_matrix_variables(_matrix, cut_intervals, nan_bins,
+        #           
+        matrixFileHandler.save(args.outFileName + '::' + matrices_list[i] , pSymmetric=True, pApplyCorrection=False)
+        
