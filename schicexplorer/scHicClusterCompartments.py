@@ -63,10 +63,6 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=12,
                                 type=int)
-    parserRequired.add_argument('--distance', '-d',
-                                help='Distance which should be considered as short range. Default 2MB.',
-                                default=2000000,
-                                type=int)
     parserRequired.add_argument('--chromosomes',
                                 help='List of chromosomes to be included in the '
                                 'correlation.',
