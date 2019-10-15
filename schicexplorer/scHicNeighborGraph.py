@@ -47,6 +47,7 @@ from multiprocessing import Process, Queue
 import scipy.sparse
 
 import networkx as nx
+import networkx.algorithms.tournament as nat
 
 def parse_arguments(args=None):
 
@@ -59,38 +60,23 @@ def parse_arguments(args=None):
     # define the arguments
     parserRequired.add_argument('--matrix', '-m',
                                 help='The single cell Hi-C interaction matrices to cluster. Needs to be in mcool format',
-                                metavar='mcool scHi-C matrix',
+                                # metavar='mcool scHi-C matrix',
                                 required=True)
-    parserRequired.add_argument('--numberOfClusters', '-c',
-                           help='Number of to be computed clusters',
-                           required=False,
-                           default=12,
-                           type=int)
-    parserRequired.add_argument('--numberOfNeighbors', '-n',
-                           help='Number of neighbors of clustering',
-                           required=False,
-                           default=10,
-                           type=int)
-    parserRequired.add_argument('--fastModeMinHash', '-f',
-                                help='If set to, only the number of hash collisions is considered for nearest neighbors search.'
-                                'When not set, the number of collisions is only used for candidate set creation and the euclidean distance is considered too.',
-                                action='store_true')
-    parserRequired.add_argument('--numberOfHashFunctions', '-h',
-                           help='Number of to be used hash functions for minHash',
-                           required=False,
-                           default=2000,
-                           type=int)
+    parserRequired.add_argument('--consensusMatrix', '-cm',
+                                help='The single cell Hi-C interaction consensus matrices of the clusters. Needs to be in mcool format',
+                                # metavar='mcool consensus scHi-C matrix',
+                                required=True)
+    # parserRequired.add_argument('--clusterFile', '-cf',
+    #                             help='File containing the matrix and cluster associations.',
+    #                             required=True,
+    #                             default='clusters.txt')
     parserRequired.add_argument('--chromosomes',
                            help='List of to be plotted chromosomes',
                            nargs='+')
-    parserRequired.add_argument('--clusterMethod', '-cm',
-                           help='Algorithm to cluster the Hi-C matrices',
-                           choices=['spectral', 'kmeans'],
-                           default='spectral')
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting clusters',
                                 required=True,
-                                default='clusters.txt')
+                                default='clusters_graph.txt')
     parserRequired.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
@@ -101,32 +87,29 @@ def parse_arguments(args=None):
 
 
 
-def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pQueue):
-    neighborhood_matrix = None
-    for i, matrix in enumerate(pMatricesList):
+def compute_consensus_sample_difference(pMatrixName, pMatricesList, pMatrixNameConsensus, pMatrixNameConsensusList, pChromosomes, pQueue):
+    difference_sample_consensus_list_cluster = []
+    for matrixConsensus in pMatrixNameConsensusList:
+        difference_sample_consensus_list = []
         if pChromosomes is not None and len(pChromosomes) == 1:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName+ '::' +matrix, pChrnameList=pChromosomes)
+            hic_ma_consensus = hm.hiCMatrix(pMatrixFile=pMatrixNameConsensus + '::' + matrixConsensus, pChrnameList=pChromosomes)
         else:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName+ '::' +matrix)
+            hic_ma_consensus = hm.hiCMatrix(pMatrixFile=pMatrixNameConsensus + '::' + matrixConsensus)
             if pChromosomes:
-                hic_ma.keepOnlyTheseChr(pChromosomes)
-        # matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName+ '::' +matrix)
-        # _matrix, _, _, _, _ = matrixFileHandlerInput.load()
-        _matrix = hic_ma.matrix
+                hic_ma_consensus.keepOnlyTheseChr(pChromosomes)
 
-        if neighborhood_matrix is None:
-            neighborhood_matrix = csr_matrix((pXDimension, _matrix.shape[0] * _matrix.shape[1]), dtype=np.float)
-
-        instances, features = _matrix.nonzero()
-
-        instances *= _matrix.shape[1]
-        instances += features
-        features = None
-        neighborhood_matrix[pIndex+i, instances] = _matrix.data
-        # if i % 20 == 0:
-        #     log.debug('pIndex + i {} {}'.format(pIndex, i))
-    
-    pQueue.put(neighborhood_matrix)
+        for i, matrix in enumerate(pMatricesList):
+            if pChromosomes is not None and len(pChromosomes) == 1:
+                hic_ma_sample = hm.hiCMatrix(pMatrixFile=pMatrixName+ '::' +matrix, pChrnameList=pChromosomes)
+            else:
+                hic_ma_sample = hm.hiCMatrix(pMatrixFile=pMatrixName+ '::' +matrix)
+                if pChromosomes:
+                    hic_ma_sample.keepOnlyTheseChr(pChromosomes)
+            difference_sample_consensus = (hic_ma_sample.matrix - hic_ma_consensus.matrix).sum()
+            difference_sample_consensus_list.append(difference_sample_consensus)
+        difference_sample_consensus_list_cluster.append(difference_sample_consensus_list)
+    pQueue.put(difference_sample_consensus_list_cluster)
+    return
 
 def main(args=None):
 
@@ -136,33 +119,36 @@ def main(args=None):
 
     # if args.createMatrix:
         
-    matrices_name = args.matrix
+    # matrices_name_sample = 
+    matrices_list_sample = cooler.fileops.list_coolers(args.matrix)
+    matrices_list_consensus = cooler.fileops.list_coolers(args.consensusMatrix)
     threads = args.threads
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
-    neighborhood_matrix = None
+
+    differences_per_cluster_threads =[None] * threads
+
 
     all_data_collected = False
     thread_done = [False] * threads
     log.debug('matrix read, starting processing')
     length_index = [None] * threads
     length_index[0] = 0
-    matricesPerThread = len(matrices_list) // threads
+    matricesPerThread = len(matrices_list_sample) // threads
     queue = [None] * threads
     process = [None] * threads
     for i in range(threads):
 
         if i < threads - 1:
-            matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
-            length_index[i + 1] = length_index[i] + len(matrices_name_list)
+            matrices_name_list = matrices_list_sample[i * matricesPerThread:(i + 1) * matricesPerThread]
+            # length_index[i + 1] = length_index[i] + len(matrices_name_list)
         else:
-            matrices_name_list = matrices_list[i * matricesPerThread:]
+            matrices_name_list = matrices_list_sample[i * matricesPerThread:]
 
         queue[i] = Queue()
-        process[i] = Process(target=open_and_store_matrix, kwargs=dict(
-                            pMatrixName = matrices_name,
+        process[i] = Process(target=compute_consensus_sample_difference, kwargs=dict(
+                            pMatrixName = args.matrix,
                             pMatricesList= matrices_name_list, 
-                            pIndex = length_index[i], 
-                            pXDimension=len(matrices_list),
+                            pMatrixNameConsensus=args.consensusMatrix,
+                            pMatrixNameConsensusList=matrices_list_consensus,
                             pChromosomes=args.chromosomes,
                             pQueue=queue[i]
             )
@@ -173,14 +159,7 @@ def main(args=None):
     while not all_data_collected:
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
-                csr_matrix_worker = queue[i].get()
-                if neighborhood_matrix is None:
-                    neighborhood_matrix = csr_matrix_worker
-                    # log.debug('returned first csr i {}'.format(i))
-                else:
-                    neighborhood_matrix += csr_matrix_worker
-                    # log.debug('adding csr i {}'.format(i))
-
+                differences_per_cluster_threads[i] = queue[i].get()
                 queue[i] = None
                 process[i].join()
                 process[i].terminate()
@@ -191,36 +170,59 @@ def main(args=None):
             if not thread:
                 all_data_collected = False
         time.sleep(1)
-    # scipy.sparse.save_npz(args.matrix + '_binary.npz', neighborhood_matrix)
-    # else:
-    #     log.debug('read npz')
-    #     neighborhood_matrix = scipy.sparse.load_npz(args.matrixNpz)
-    #     matrices_list = cooler.fileops.list_coolers(args.matrix)
 
-    minhash = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                        shingle_size=4, fast=args.fastModeMinHash, n_neighbors=args.numberOfNeighbors)
-    
-    minhash.fit(neighborhood_matrix)
-    graph = minhash.kneighbors()
-    log.debug('graph {}'.format(graph))
-    # np.savetxt(args.outFileName, graph, fmt="%s")
-    G=nx.Graph()
-    for i, node in enumerate(graph[1]):
-        for j, edge in enumerate(node):
-            G.add_edge(i, edge, weight=graph[0][i][j])
-    
-    nx.draw(G, node_size=10)
-    plt.savefig(args.outFileName, dpi=300)
-    plt.close()
-    nx.draw_random(G, node_size=10)
-    plt.savefig('random_'+args.outFileName, dpi=300)
-    plt.close()
-    nx.draw_circular(G, node_size=10)
-    plt.savefig('circular_'+args.outFileName, dpi=300)
-    plt.close()
-    nx.draw_spectral(G, node_size=10)
-    plt.savefig('spectral_'+args.outFileName, dpi=300)
-    plt.close()
+    log.debug('len(differences_per_cluster_threads) {}'.format(len(differences_per_cluster_threads)))
+    log.debug('len(differences_per_cluster_threads[0]) {}'.format(len(differences_per_cluster_threads[0])))
+    # log.debug('len(computed_results_threads) {}'.format(len(computed_results_threads)))
+
+    differences_per_cluster = [None] * len(matrices_list_consensus) # --> number of clusters
+    for computed_results_threads in differences_per_cluster_threads:
+        for i, per_cluster in enumerate(computed_results_threads):
+            if differences_per_cluster[i] is None:
+                differences_per_cluster[i] = per_cluster
+            else:
+                differences_per_cluster[i] = np.concatenate((differences_per_cluster[i], per_cluster))
+    log.debug('differences_per_cluster {}'.format(len(differences_per_cluster)))
+    log.debug('differences_per_cluster[0] {}'.format(len(differences_per_cluster[0])))
+
+    edge_count_matrix = csr_matrix((len(matrices_list_sample), len(matrices_list_sample)), dtype=int)
+    edge_direction_matrix = csr_matrix((len(matrices_list_sample), len(matrices_list_sample)), dtype=int)
+
+    for i, cluster in enumerate(differences_per_cluster):
+        differences_per_cluster[i] = np.array(differences_per_cluster[i])
+        argssorted_cluster = np.argsort(differences_per_cluster[i])
+        j = 0
+        while j < len(argssorted_cluster) - 1:
+            edge_count_matrix[argssorted_cluster[j], argssorted_cluster[j+1]] += 1
+            edge_direction_matrix[argssorted_cluster[j], argssorted_cluster[j+1]] += np.sign(argssorted_cluster[j])
+            j += 1
+    log.debug('computed edges')
+    instances_edge_count, features_edge_count = edge_count_matrix.nonzero()
+    # instances_edge_direction, features_edge_direction = edge_direction_matrix.nonzero()
+
+    G=nx.DiGraph()
+    for i in range(len(instances_edge_count)):
+        if edge_direction_matrix.data[i] < 0:
+            G.add_edge(instances_edge_count[i], features_edge_count[i], weight=edge_count_matrix[i])
+        else:
+            G.add_edge(features_edge_count[i], instances_edge_count[i], weight=edge_count_matrix[i])
+    log.debug('computing hamiltonian path')
+    # hamiltonian_path_output = nat.hamiltonian_path(G)
+
+    # log.debug('hamiltonian_path {}'.format(hamiltonian_path_output))
+
+    # nx.draw(G, node_size=10)
+    # plt.savefig(args.outFileName, dpi=300)
+    # plt.close()
+    # nx.draw_random(G, node_size=10)
+    # plt.savefig('random_'+args.outFileName, dpi=300)
+    # plt.close()
+    # nx.draw_circular(G, node_size=10)
+    # plt.savefig('circular_'+args.outFileName, dpi=300)
+    # plt.close()
+    # nx.draw_spectral(G, node_size=10)
+    # plt.savefig('spectral_'+args.outFileName, dpi=300)
+    # plt.close()
     # if args.clusterMethod == 'spectral':
     #     log.debug('spectral clustering')
     #     minHashSpectralClustering = MinHashSpectralClustering(n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
