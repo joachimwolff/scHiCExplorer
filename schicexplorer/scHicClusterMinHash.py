@@ -22,8 +22,9 @@ from hicmatrix.lib import MatrixFileHandler
 import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix
-
-
+import skfuzzy
+from scipy.spatial.distance import cdist
+from sklearn.cluster import KMeans
 from multiprocessing import Process, Queue
 import scipy.sparse
 
@@ -64,7 +65,7 @@ def parse_arguments(args=None):
                            nargs='+')
     parserRequired.add_argument('--clusterMethod', '-cm',
                            help='Algorithm to cluster the Hi-C matrices',
-                           choices=['spectral', 'kmeans'],
+                           choices=['spectral', 'kmeans', 'fuzzy-cmeans'],
                            default='spectral')
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting clusters',
@@ -101,6 +102,46 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
     
     pQueue.put(neighborhood_matrix)
 
+def fcm(data, n_clusters=1, n_init=30, m=2, max_iter=300, tol=1e-16):
+    # Copied from https://codereview.stackexchange.com/questions/188455/fuzzy-c-means-in-python?rq=1
+    min_cost = np.inf
+    for iter_init in range(n_init):
+
+        # Randomly initialize centers
+        centers = data[np.random.choice(
+            data.shape[0], size=n_clusters, replace=False
+            ), :]
+
+        # Compute initial distances
+        # Zeros are replaced by eps to avoid division issues
+        dist = np.fmax(
+            cdist(centers, data, metric='sqeuclidean'),
+            np.finfo(np.float64).eps
+        )
+
+        for iter1 in range(max_iter):
+
+            # Compute memberships       
+            u = (1 / dist) ** (1 / (m-1))
+            um = (u / u.sum(axis=0))**m
+
+            # Recompute centers
+            prev_centers = centers
+            centers = um.dot(data) / um.sum(axis=1)[:, None]
+
+            dist = cdist(centers, data, metric='sqeuclidean')
+
+            if np.linalg.norm(centers - prev_centers) < tol:
+                break
+
+        # Compute cost
+        cost = np.sum(um * dist)
+        if cost < min_cost:
+            min_cost = cost
+            min_centers = centers
+            mem = um.argmax(axis=0)
+
+    return min_centers, mem
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
@@ -189,6 +230,26 @@ def main(args=None):
         log.debug('kmeans clustering fit predict')
 
         labels_clustering = minHashClustering.fit_predict(neighborhood_matrix)
+    elif args.clusterMethod == 'fuzzy-cmeans':
+        log.debug('start fuzzy cmeans')
+        
+        minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+                                                            shingle_size=4, fast=args.fastModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
+
+        minHash_object.fit(neighborhood_matrix)
+        precomputed_graph = minHash_object.kneighbors_graph(mode='distance')
+        log.debug('minhash done, start fuzzy clustering')       
+        # cntr, u, u0, d, jm, p, fpc = skfuzzy.cluster.cmeans(
+        # precomputed_graph, args.numberOfClusters, 2, error=0.005, maxiter=300, init=None)
+        # log.debug('cntr {} '.format(cntr))
+        min_centers, mem = fcm(data=precomputed_graph.toarray(), n_clusters=args.numberOfClusters)
+        log.debug('min_centers {}'.format(min_centers))
+        log.debug('min_centers {} {}'.format(len(min_centers), len(min_centers[0])))
+        log.debug('precomputed_graph {}'.format(precomputed_graph.shape))
+        labels_clustering = min_centers.T
+
+        log.debug('mem {}'.format(mem))
+
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
     np.savetxt(args.outFileName, matrices_cluster, fmt="%s")
