@@ -66,10 +66,10 @@ def parse_arguments(args=None):
                                 help='The single cell Hi-C interaction consensus matrices of the clusters. Needs to be in mcool format',
                                 # metavar='mcool consensus scHi-C matrix',
                                 required=True)
-    # parserRequired.add_argument('--clusterFile', '-cf',
-    #                             help='File containing the matrix and cluster associations.',
-    #                             required=True,
-    #                             default='clusters.txt')
+    parserRequired.add_argument('--clusterFile', '-cf',
+                                help='File containing the matrix and cluster associations.',
+                                required=True,
+                                default='clusters.txt')
     parserRequired.add_argument('--chromosomes',
                            help='List of to be plotted chromosomes',
                            nargs='+')
@@ -115,11 +115,6 @@ def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-    create_or_load_matrix = False
-
-    # if args.createMatrix:
-        
-    # matrices_name_sample = 
     matrices_list_sample = cooler.fileops.list_coolers(args.matrix)
     matrices_list_consensus = cooler.fileops.list_coolers(args.consensusMatrix)
     threads = args.threads
@@ -139,7 +134,6 @@ def main(args=None):
 
         if i < threads - 1:
             matrices_name_list = matrices_list_sample[i * matricesPerThread:(i + 1) * matricesPerThread]
-            # length_index[i + 1] = length_index[i] + len(matrices_name_list)
         else:
             matrices_name_list = matrices_list_sample[i * matricesPerThread:]
 
@@ -200,29 +194,146 @@ def main(args=None):
     instances_edge_count, features_edge_count = edge_count_matrix.nonzero()
     # instances_edge_direction, features_edge_direction = edge_direction_matrix.nonzero()
 
+    node_names = set()
     G=nx.DiGraph()
     for i in range(len(instances_edge_count)):
         if edge_direction_matrix.data[i] < 0:
-            G.add_edge(instances_edge_count[i], features_edge_count[i], weight=edge_count_matrix[i])
+            if G.has_edge(instances_edge_count[i], features_edge_count[i]):
+                G[instances_edge_count[i]][features_edge_count[i]]['weight'] += edge_count_matrix.data[i]
+            else:
+                G.add_edge(instances_edge_count[i], features_edge_count[i], weight=edge_count_matrix.data[i])
         else:
-            G.add_edge(features_edge_count[i], instances_edge_count[i], weight=edge_count_matrix[i])
-    log.debug('computing hamiltonian path')
+            if G.has_edge(features_edge_count[i], instances_edge_count[i]):
+                G[features_edge_count[i]][instances_edge_count[i]]['weight'] += edge_count_matrix.data[i]
+            else:
+                G.add_edge(features_edge_count[i], instances_edge_count[i], weight=edge_count_matrix.data[i])
+            # G.add_edge(features_edge_count[i], instances_edge_count[i], weight=edge_count_matrix.data[i])
+        node_names.add(instances_edge_count[i])
+        node_names.add(features_edge_count[i])
+
+    node_degrees = list(G.degree(list(node_names)))
+
+    edges_list =[e for e in G.edges]
+    # for e in G.edges:
+
+
+    degree_list = []
+    for node in node_degrees:
+        if node[1] == 1:
+            degree_list.append(node[0])
+    # log.debug('')
+
+
+    # get order of graph:
+    in_nodes = []
+    out_nodes = []
+
+    for node in degree_list:
+        in_nodes = G.in_edges(node)
+        if len(in_nodes) >= 0:
+             in_nodes.append(node)
+        # out_nodes = G.out_edges(node) 
+        # if len(in_nodes) >= 0:
+        #      in_nodes.append(node)
+
+    initial_node = in_nodes[0]
+    traverse = True
+    order_of_nodes = []
+    while traverse:
+        next_edges = G.edges(initial_node)
+        if len(next_edges[0]) == 0:
+            traverse = False
+            order_of_nodes.append(initial_node)
+            break
+        out_edge = G.out_edges(next_edges[0][1])
+        order_of_nodes.append(initial_node)
+        initial_node = out_edge
+
+    order_of_nodes = np.array(order_of_nodes)
+    # get one list with one cluster and one order
+    # get one list with original assoziated clusters
+
+    list_with_clusters = []
+    list_without_clusters = []
+
+    with open(args.clusters, 'r') as cluster_file:
+
+        for i, line in enumerate(cluster_file.readlines()):
+            line = line.strip()
+            line_ = line.split(' ')[0]
+            list_with_clusters.append(line)
+            list_without_clusters.append(line_ + ' 0')
+
+
+    list_with_clusters = np.array(list_with_clusters)
+    list_without_clusters = np.array(list_without_clusters)
+
+    list_with_clusters = list_with_clusters[order_of_nodes]
+    list_without_clusters = list_without_clusters[order_of_nodes]
+
+    np.savetxt('list_with_clusters.txt', list_with_clusters)
+    np.savetxt('list_without_clusters.txt', list_without_clusters)
+
+    # np.savetxt('edges_list.txt', edges_list)
+    # set with key --> matrix name and its cluster
+    # set with key --> matrix name and order
+    # use order to re-order the clusters by traversing the graph
+
+    # name_cluster = {}
+    # name_index_pos = {}
+    # # resolution = 
+    # # short_range_distance = args.shortRange // resolution
+    # with open(args.clusters, 'r') as cluster_file:
+
+    #     for i, line in enumerate(cluster_file.readlines()):
+    #         line = line.strip()
+    #         line_ = line.split(' ')[1]
+    #         if int(line_) in name_cluster:
+    #             name_cluster[int(line_)].append(read_distributions[i])
+    #             # clusters_svl[int(line_)].append(np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:]))
+    #         else:
+    #             name_cluster[int(line_)] = [read_distributions[i]]
+    #             # clusters_svl[int(line_)] = [np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:])]
+    #         name_index_pos[]
+    # for i, cluster_key in enumerate(clusters.keys()):
+    #     clusters[cluster_key] = np.array(clusters[cluster_key])
+    #     # clusters_svl[cluster_key] = np.array(clusters_svl[cluster_key])
+    #     sorted_indices = np.argsort(clusters_svl[cluster_key])
+    #     clusters[cluster_key] = clusters[cluster_key][sorted_indices]
+
+
+    # np.savetxt('degree_list.txt', node_degrees)
+    # np.savetxt('edges_list.txt', edges_list)
+
+    plt.hist(degree_list)
+    plt.savefig('histrogram.png', dpi=300)
+    plt.close()
+
+    # log.debug('computing hamiltonian path')
     # hamiltonian_path_output = nat.hamiltonian_path(G)
 
     # log.debug('hamiltonian_path {}'.format(hamiltonian_path_output))
+    log.debug("compute edges done")
+    nx.draw(G, node_size=3, )
+    plt.savefig(args.outFileName, dpi=300)
+    plt.close()
+    log.debug("plot I")
 
-    # nx.draw(G, node_size=10)
-    # plt.savefig(args.outFileName, dpi=300)
-    # plt.close()
-    # nx.draw_random(G, node_size=10)
-    # plt.savefig('random_'+args.outFileName, dpi=300)
-    # plt.close()
-    # nx.draw_circular(G, node_size=10)
-    # plt.savefig('circular_'+args.outFileName, dpi=300)
-    # plt.close()
-    # nx.draw_spectral(G, node_size=10)
-    # plt.savefig('spectral_'+args.outFileName, dpi=300)
-    # plt.close()
+    nx.draw_random(G, node_size=10)
+    plt.savefig('random_'+args.outFileName, dpi=300)
+    plt.close()
+    log.debug("plot II")
+
+    nx.draw_circular(G, node_size=10)
+    plt.savefig('circular_'+args.outFileName, dpi=300)
+    plt.close()
+    log.debug("plot III")
+
+    nx.draw_spectral(G, node_size=10)
+    plt.savefig('spectral_'+args.outFileName, dpi=300)
+    plt.close()
+    log.debug("plot IV")
+
     # if args.clusterMethod == 'spectral':
     #     log.debug('spectral clustering')
     #     minHashSpectralClustering = MinHashSpectralClustering(n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
