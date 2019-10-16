@@ -71,6 +71,10 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=20000000,
                                 type=int)
+    parserRequired.add_argument('--orderBy', '-ob',
+                                help='Algorithm to cluster the Hi-C matrices',
+                                choices=['svl', 'orderByFile'],
+                                default='spectral')
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting cluster profile.',
                                 required=False,
@@ -198,12 +202,12 @@ def main(args=None):
             else:
                 clusters[int(line_)] = [read_distributions[i]]
                 clusters_svl[int(line_)] = [np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:])]
-
-    for i, cluster_key in enumerate(clusters.keys()):
-        clusters[cluster_key] = np.array(clusters[cluster_key])
-        clusters_svl[cluster_key] = np.array(clusters_svl[cluster_key])
-        sorted_indices = np.argsort(clusters_svl[cluster_key])
-        clusters[cluster_key] = clusters[cluster_key][sorted_indices]
+    if args.orderBy == 'svl':
+        for i, cluster_key in enumerate(clusters.keys()):
+            clusters[cluster_key] = np.array(clusters[cluster_key])
+            clusters_svl[cluster_key] = np.array(clusters_svl[cluster_key])
+            sorted_indices = np.argsort(clusters_svl[cluster_key])
+            clusters[cluster_key] = clusters[cluster_key][sorted_indices]
 
     cluster_to_plot = []
 
