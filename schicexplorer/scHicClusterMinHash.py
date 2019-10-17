@@ -65,7 +65,7 @@ def parse_arguments(args=None):
                            nargs='+')
     parserRequired.add_argument('--clusterMethod', '-cm',
                            help='Algorithm to cluster the Hi-C matrices',
-                           choices=['spectral', 'kmeans', 'fuzzy-cmeans'],
+                           choices=['spectral', 'kmeans', 'fuzzy-cmeans', 'mst'],
                            default='spectral')
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting clusters',
@@ -249,6 +249,42 @@ def main(args=None):
         labels_clustering = min_centers.T
 
         log.debug('mem {}'.format(mem))
+    elif args.clusterMethod == 'mst':
+        minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+                                                            shingle_size=4, fast=args.fastModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
+
+        minHash_object.fit(neighborhood_matrix)
+        precomputed_graph = minHash_object.kneighbors_graph(mode='distance')
+
+        import networkx 
+        import matplotlib.pyplot as plt
+        graph = networkx.convert_matrix.from_numpy_array(precomputed_graph.toarray())
+        T = networkx.minimum_spanning_tree(graph)
+
+        pos = networkx.spring_layout(T, iterations=100)
+        # plt.subplot(211)
+        # nx.draw(H, pos, with_labels=False, node_size=10)
+
+        networkx.draw(T, pos, node_size=2)
+        plt.savefig('mst.png', dpi=300)
+        plt.close()
+
+        networkx.draw_random(T, node_size=2)
+        plt.savefig('random.png', dpi=300)
+        plt.close()
+        log.debug("plot II")
+
+        networkx.draw_circular(T, node_size=2)
+        plt.savefig('circular.png', dpi=300)
+        plt.close()
+        log.debug("plot III")
+
+        networkx.draw_spectral(T, node_size=2)
+        plt.savefig('spectral.png', dpi=300)
+        plt.close()
+        log.debug("plot IV")
+
+
 
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
