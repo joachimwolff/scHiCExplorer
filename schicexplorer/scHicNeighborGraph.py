@@ -66,7 +66,7 @@ def parse_arguments(args=None):
                                 help='The single cell Hi-C interaction consensus matrices of the clusters. Needs to be in mcool format',
                                 # metavar='mcool consensus scHi-C matrix',
                                 required=True)
-    parserRequired.add_argument('--clusterFile', '-cf',
+    parserRequired.add_argument('--clusters', '-c',
                                 help='File containing the matrix and cluster associations.',
                                 required=True,
                                 default='clusters.txt')
@@ -97,7 +97,7 @@ def compute_consensus_sample_difference(pMatrixName, pMatricesList, pMatrixNameC
             hic_ma_consensus = hm.hiCMatrix(pMatrixFile=pMatrixNameConsensus + '::' + matrixConsensus)
             if pChromosomes:
                 hic_ma_consensus.keepOnlyTheseChr(pChromosomes)
-
+        hic_ma_consensus.matrix.data[:] = 1
         for i, matrix in enumerate(pMatricesList):
             if pChromosomes is not None and len(pChromosomes) == 1:
                 hic_ma_sample = hm.hiCMatrix(pMatrixFile=pMatrixName+ '::' +matrix, pChrnameList=pChromosomes)
@@ -105,6 +105,7 @@ def compute_consensus_sample_difference(pMatrixName, pMatricesList, pMatrixNameC
                 hic_ma_sample = hm.hiCMatrix(pMatrixFile=pMatrixName+ '::' +matrix)
                 if pChromosomes:
                     hic_ma_sample.keepOnlyTheseChr(pChromosomes)
+            hic_ma_sample.matrix.data[:] = 1
             difference_sample_consensus = (hic_ma_sample.matrix - hic_ma_consensus.matrix).sum()
             difference_sample_consensus_list.append(difference_sample_consensus)
         difference_sample_consensus_list_cluster.append(difference_sample_consensus_list)
@@ -168,7 +169,6 @@ def main(args=None):
     log.debug('len(differences_per_cluster_threads) {}'.format(len(differences_per_cluster_threads)))
     log.debug('len(differences_per_cluster_threads[0]) {}'.format(len(differences_per_cluster_threads[0])))
     # log.debug('len(computed_results_threads) {}'.format(len(computed_results_threads)))
-
     differences_per_cluster = [None] * len(matrices_list_consensus) # --> number of clusters
     for computed_results_threads in differences_per_cluster_threads:
         for i, per_cluster in enumerate(computed_results_threads):
@@ -176,20 +176,38 @@ def main(args=None):
                 differences_per_cluster[i] = per_cluster
             else:
                 differences_per_cluster[i] = np.concatenate((differences_per_cluster[i], per_cluster))
+    
     log.debug('differences_per_cluster {}'.format(len(differences_per_cluster)))
     log.debug('differences_per_cluster[0] {}'.format(len(differences_per_cluster[0])))
+    np.savetxt('computed_differences.txt', differences_per_cluster)
+    np.savetxt('computed_differences_II.txt', np.array(differences_per_cluster).T)
+
 
     edge_count_matrix = csr_matrix((len(matrices_list_sample), len(matrices_list_sample)), dtype=int)
     edge_direction_matrix = csr_matrix((len(matrices_list_sample), len(matrices_list_sample)), dtype=int)
+    argssorted_cluster_list = []
+    sorted_cluster_list = []
 
     for i, cluster in enumerate(differences_per_cluster):
-        differences_per_cluster[i] = np.array(differences_per_cluster[i])
-        argssorted_cluster = np.argsort(differences_per_cluster[i])
+        differences_per_cluster_tmp = np.array(cluster)
+        argssorted_cluster = np.argsort(differences_per_cluster_tmp)
+        log.debug('argssorted_cluster [:10] {}'.format(argssorted_cluster[:10]))
+        sorted_list = np.sort(differences_per_cluster_tmp)
+        argssorted_cluster_list.append(argssorted_cluster)
+        sorted_cluster_list.append(sorted_list)
+        # np.savetxt('argsorted_{}.txt'.format(i), argssorted_cluster.T)
+    
         j = 0
         while j < len(argssorted_cluster) - 1:
             edge_count_matrix[argssorted_cluster[j], argssorted_cluster[j+1]] += 1
             edge_direction_matrix[argssorted_cluster[j], argssorted_cluster[j+1]] += np.sign(argssorted_cluster[j])
             j += 1
+    
+    argssorted_cluster_list = np.array(argssorted_cluster_list)
+    np.savetxt('argsorted.txt', argssorted_cluster_list.T)
+    np.savetxt('sorted.txt', np.array(sorted_cluster_list).T)
+
+
     log.debug('computed edges')
     instances_edge_count, features_edge_count = edge_count_matrix.nonzero()
     # instances_edge_direction, features_edge_direction = edge_direction_matrix.nonzero()
@@ -225,30 +243,46 @@ def main(args=None):
 
 
     # get order of graph:
-    in_nodes = []
-    out_nodes = []
+    in_nodes_list = []
+    out_nodes_list = []
 
     for node in degree_list:
+        out_nodes = G.out_edges(node)
         in_nodes = G.in_edges(node)
-        if len(in_nodes) >= 0:
-             in_nodes.append(node)
+        log.debug('nodes {}'.format(node))
+
+        log.debug('out_nodes {}'.format(out_nodes))
+        log.debug('in_nodes {}'.format(in_nodes))
+
+        if len(out_nodes) > 0:
+             out_nodes_list.append(node)
         # out_nodes = G.out_edges(node) 
         # if len(in_nodes) >= 0:
         #      in_nodes.append(node)
 
-    initial_node = in_nodes[0]
+    initial_node = out_nodes_list[0]
     traverse = True
     order_of_nodes = []
+    log.debug('inital node: {}'.format(initial_node))
     while traverse:
-        next_edges = G.edges(initial_node)
-        if len(next_edges[0]) == 0:
+        next_edges = list(G.edges(initial_node))
+        log.debug('next_edges {}'.format(next_edges))
+        # log.debug('next_edges {}'.format(next_edges))
+
+        if len(next_edges) == 0:
             traverse = False
             order_of_nodes.append(initial_node)
             break
-        out_edge = G.out_edges(next_edges[0][1])
-        order_of_nodes.append(initial_node)
-        initial_node = out_edge
+        log.debug('next_edges[0] {}'.format(next_edges[0]))
+        # log.debug('next_edges[0] {}'.format(next_edges[0]))
 
+        # out_edge = list(G.out_edges(next_edges[0][1]))
+        order_of_nodes.append(int(initial_node))
+        log.debug('initial_node END {}'.format(next_edges[0][1]))
+
+        initial_node = int(next_edges[0][1])
+
+    log.debug('order_of_nodes {}'.format(order_of_nodes))
     order_of_nodes = np.array(order_of_nodes)
     # get one list with one cluster and one order
     # get one list with original assoziated clusters
@@ -271,9 +305,9 @@ def main(args=None):
     list_with_clusters = list_with_clusters[order_of_nodes]
     list_without_clusters = list_without_clusters[order_of_nodes]
 
-    np.savetxt('list_with_clusters.txt', list_with_clusters)
-    np.savetxt('list_without_clusters.txt', list_without_clusters)
-
+    np.savetxt('list_with_clusters.txt', list_with_clusters, fmt="%s")
+    np.savetxt('list_without_clusters.txt', list_without_clusters, fmt="%s")
+    # np.savetxt(args.outFileName, matrices_cluster, fmt="%s")
     # np.savetxt('edges_list.txt', edges_list)
     # set with key --> matrix name and its cluster
     # set with key --> matrix name and order
