@@ -14,6 +14,8 @@ from sparse_neighbors_search import MinHashSpectralClustering
 from sparse_neighbors_search import MinHashClustering
 
 from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, SpectralClustering
+
 
 from hicmatrix import HiCMatrix as hm
 from schicexplorer.utilities import opener
@@ -259,9 +261,28 @@ def main(args=None):
         import networkx 
         import matplotlib.pyplot as plt
         graph = networkx.convert_matrix.from_numpy_array(precomputed_graph.toarray())
-        T = networkx.minimum_spanning_tree(graph)
+        T = networkx.minimum_spanning_tree(graph, weight='weight')
 
-        pos = networkx.spring_layout(T, iterations=100)
+
+        # spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
+        #                                                 n_neighbors=neighborhood_matrix.shape[0], affinity='nearest_neighbors')
+
+        # labels_clustering = spectralClustering_object.fit_predict(networkx.convert_matrix.to_numpy_array(T))
+
+
+        shortest_path_graph = dict(networkx.all_pairs_dijkstra(T))
+        # log.debug('shortest_path_graph {}'.format(shortest_path_graph))
+        shortest_path_csr = csr_matrix((neighborhood_matrix.shape[0], neighborhood_matrix.shape[0]), dtype=float)
+
+        for node_id, (dist, path) in shortest_path_graph:
+            # log.debug('dist {}'.format(dist))
+            for target_id in dist:
+                    shortest_path_csr[node_id, target_id] = dist[target_id]
+        log.debug("compute kmenas")
+        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
+
+        labels_clustering = kmeans_object.fit_predict(shortest_path_csr.toarray())
+        pos = networkx.spring_layout(T, iterations=1000)
         # plt.subplot(211)
         # nx.draw(H, pos, with_labels=False, node_size=10)
 
@@ -269,15 +290,15 @@ def main(args=None):
         plt.savefig('mst.png', dpi=300)
         plt.close()
 
-        networkx.draw_random(T, node_size=2)
-        plt.savefig('random.png', dpi=300)
-        plt.close()
-        log.debug("plot II")
+        # networkx.draw_random(T, node_size=2)
+        # plt.savefig('random.png', dpi=300)
+        # plt.close()
+        # log.debug("plot II")
 
-        networkx.draw_circular(T, node_size=2)
-        plt.savefig('circular.png', dpi=300)
-        plt.close()
-        log.debug("plot III")
+        # networkx.draw_circular(T, node_size=2)
+        # plt.savefig('circular.png', dpi=300)
+        # plt.close()
+        # log.debug("plot III")
 
         networkx.draw_spectral(T, node_size=2)
         plt.savefig('spectral.png', dpi=300)
