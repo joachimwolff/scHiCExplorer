@@ -50,11 +50,7 @@ def parse_arguments(args=None):
                                 help='The single cell Hi-C interaction matrices to cluster. Needs to be in mcool format',
                                 metavar='mcool scHi-C matrix',
                                 required=True)
-    parserRequired.add_argument('--numberOfClusters', '-c',
-                           help='Number of to be computed clusters',
-                           required=False,
-                           default=12,
-                           type=int)
+
     parserRequired.add_argument('--numberOfNeighbors', '-n',
                            help='Number of neighbors of clustering',
                            required=False,
@@ -72,10 +68,7 @@ def parse_arguments(args=None):
     parserRequired.add_argument('--chromosomes',
                            help='List of to be plotted chromosomes',
                            nargs='+')
-    parserRequired.add_argument('--clusterMethod', '-cm',
-                           help='Algorithm to cluster the Hi-C matrices',
-                           choices=['spectral', 'kmeans'],
-                           default='spectral')
+    
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting clusters',
                                 required=True,
@@ -111,67 +104,6 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
     
     pQueue.put(neighborhood_matrix)
 
-def fcm(data, n_clusters=1, n_init=30, m=2, max_iter=300, tol=1e-16):
-    # Copied from https://codereview.stackexchange.com/questions/188455/fuzzy-c-means-in-python?rq=1
-    min_cost = np.inf
-    for iter_init in range(n_init):
-
-        # Randomly initialize centers
-        centers = data[np.random.choice(
-            data.shape[0], size=n_clusters, replace=False
-            ), :]
-
-        # Compute initial distances
-        # Zeros are replaced by eps to avoid division issues
-        dist = np.fmax(
-            cdist(centers, data, metric='sqeuclidean'),
-            np.finfo(np.float64).eps
-        )
-
-        for iter1 in range(max_iter):
-
-            # Compute memberships       
-            u = (1 / dist) ** (1 / (m-1))
-            um = (u / u.sum(axis=0))**m
-
-            # Recompute centers
-            prev_centers = centers
-            centers = um.dot(data) / um.sum(axis=1)[:, None]
-
-            dist = cdist(centers, data, metric='sqeuclidean')
-
-            if np.linalg.norm(centers - prev_centers) < tol:
-                break
-
-        # Compute cost
-        cost = np.sum(um * dist)
-        if cost < min_cost:
-            min_cost = cost
-            min_centers = centers
-            mem = um.argmax(axis=0)
-
-    return min_centers, mem
-
-
-def create_hc(G):
-    """Creates hierarchical cluster of graph G from distance matrix"""
-    path_length = nx.all_pairs_shortest_path_length(G)
-    distances = np.zeros((len(G), len(G)))
-    for u, p in path_length:
-        for v, d in p.items():
-            distances[u][v] = d
-    # Create hierarchical cluster
-    Y = distance.squareform(distances)
-    Z = hierarchy.complete(Y)  # Creates HC using farthest point linkage
-    # This partition selection is arbitrary, for illustrive purposes
-    membership = list(hierarchy.fcluster(Z, t=1.15))
-    # Create collection of lists for blockmodel
-    partition = defaultdict(list)
-    for n, p in zip(list(range(len(G))), membership):
-        partition[p].append(n)
-    return list(partition.values())
-
-
 
 def main(args=None):
 
@@ -179,8 +111,6 @@ def main(args=None):
 
     create_or_load_matrix = False
 
-    # if args.createMatrix:
-        
     matrices_name = args.matrix
     threads = args.threads
     matrices_list = cooler.fileops.list_coolers(matrices_name)
@@ -221,10 +151,8 @@ def main(args=None):
                 csr_matrix_worker = queue[i].get()
                 if neighborhood_matrix is None:
                     neighborhood_matrix = csr_matrix_worker
-                    # log.debug('returned first csr i {}'.format(i))
                 else:
                     neighborhood_matrix += csr_matrix_worker
-                    # log.debug('adding csr i {}'.format(i))
 
                 queue[i] = None
                 process[i].join()
@@ -236,32 +164,69 @@ def main(args=None):
             if not thread:
                 all_data_collected = False
         time.sleep(1)
-    # scipy.sparse.save_npz(args.matrix + '_binary.npz', neighborhood_matrix)
-    # else:
-    #     log.debug('read npz')
-    #     neighborhood_matrix = scipy.sparse.load_npz(args.matrixNpz)
-    #     matrices_list = cooler.fileops.list_coolers(args.matrix)
 
-    if args.clusterMethod == 'spectral':
-        log.debug('spectral clustering')
-        minHashSpectralClustering = MinHashSpectralClustering(n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                                            shingle_size=4, fast=args.fastModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
-        log.debug('spectral clustering fit predict')
+    minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+                                                        shingle_size=4, fast=True, n_neighbors=args.numberOfNeighbors)
 
-        labels_clustering = minHashSpectralClustering.fit_predict(neighborhood_matrix)
-        log.debug('create label matrix assoziation')
-    elif args.clusterMethod == 'kmeans':
-        log.debug('kmeans clustering')
-        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads)
-        minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                                            shingle_size=4, fast=args.fastModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
-        # (n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                                            # shingle_size=4, fast=args.fastModeMinHash, n_neighbors=args.numberOfNeighbors)
-        minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=kmeans_object)
-        log.debug('kmeans clustering fit predict')
+    minHash_object.fit(neighborhood_matrix)
+    precomputed_graph = minHash_object.kneighbors_graph(mode='distance')
 
-        labels_clustering = minHashClustering.fit_predict(neighborhood_matrix)
-  
+    # np.save('precomputed_graph.npy', precomputed_graph.toarray())
+    graph = nx.convert_matrix.from_numpy_array(precomputed_graph.toarray())
+    G = nx.minimum_spanning_tree(graph, weight='weight')
+    highest_degree = sorted(list(G.degree()), key = lambda x: int(x[1]), reverse=True)[:1]
+
+    from copy import deepcopy
+    circles = []
+
+
+    # for i in range(len(precomputed_graph)):
+    i = highest_degree[0][0]
+    edge_list_bfs = list(nx.dfs_edges(graph, source=i, depth_limit=precomputed_graph.shape[0]))
+    edge_long_list = []
+    key = i
+    # first_key = i
+    for edge in edge_list_bfs:
+        if edge[0] == key:
+            edge_long_list.append([edge[0], edge[1]])
+        else:
+            new_append = None
+            for edge_list in edge_long_list:
+                if edge[0] == edge_list[-1] and edge[1] not in edge_list:
+                    new_append = deepcopy(edge_list)
+                    break
+    #             elif edge[0] == edge_list[-1] and edge[1] in edge_list:
+    #                 edge_list.append(edge[1])
+    #                 circles.append(edge_list)
+            if new_append is not None:
+                new_append.append(edge[1])
+                edge_long_list.append(new_append)
+
+    for found_paths in edge_long_list:
+        if found_paths[-1] in graph[key]:
+            # found_paths.append(key)
+            circles.append(found_paths)
+
+    max_path = None
+    max_length = 0
+    for path in circles:
+        if max_length < len(path):
+            max_length = len(path)
+            max_path = path
+    
+    matrices_list_cycle = list(np.array(matrices_list)[max_path])
+    cluster_cycle = [0] * len(matrices_list_cycle)
+    non_cycle = list(range(precomputed_graph.shape[0]))
+    for node in max_path:
+        if node in non_cycle:
+            non_cycle.remove(node)
+
+    matrices_list_non_cycle = list(np.array(matrices_list)[non_cycle])
+    cluster_non_cycle = [1] * len(matrices_list_non_cycle)
+    matrices_list_cycle.extend(matrices_list_non_cycle)
+    cluster_cycle.extend(cluster_non_cycle)
+    matrices_list = matrices_list_cycle
+    labels_clustering = cluster_cycle
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
     np.savetxt(args.outFileName, matrices_cluster, fmt="%s")
