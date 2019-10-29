@@ -112,6 +112,25 @@ def compute_consensus_sample_difference(pMatrixName, pMatricesList, pMatrixNameC
     pQueue.put(difference_sample_consensus_list_cluster)
     return
 
+
+def create_hc(G):
+    """Creates hierarchical cluster of graph G from distance matrix"""
+    path_length = nx.all_pairs_shortest_path_length(G)
+    distances = numpy.zeros((len(G), len(G)))
+    for u, p in path_length:
+        for v, d in p.items():
+            distances[u][v] = d
+    # Create hierarchical cluster
+    Y = distance.squareform(distances)
+    Z = hierarchy.complete(Y)  # Creates HC using farthest point linkage
+    # This partition selection is arbitrary, for illustrive purposes
+    membership = list(hierarchy.fcluster(Z, t=1.15))
+    # Create collection of lists for blockmodel
+    partition = defaultdict(list)
+    for n, p in zip(list(range(len(G))), membership):
+        partition[p].append(n)
+    return list(partition.values())
+
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
@@ -213,7 +232,7 @@ def main(args=None):
     # instances_edge_direction, features_edge_direction = edge_direction_matrix.nonzero()
 
     node_names = set()
-    G=nx.DiGraph()
+    G=nx.Graph()
     for i in range(len(instances_edge_count)):
         if edge_direction_matrix.data[i] < 0:
             if G.has_edge(instances_edge_count[i], features_edge_count[i]):
@@ -229,84 +248,86 @@ def main(args=None):
         node_names.add(instances_edge_count[i])
         node_names.add(features_edge_count[i])
 
-    node_degrees = list(G.degree(list(node_names)))
 
-    edges_list =[e for e in G.edges]
-    # for e in G.edges:
+  
+    # node_degrees = list(G.degree(list(node_names)))
 
-
-    degree_list = []
-    for node in node_degrees:
-        if node[1] == 1:
-            degree_list.append(node[0])
-    # log.debug('')
+    # edges_list =[e for e in G.edges]
+    # # for e in G.edges:
 
 
-    # get order of graph:
-    in_nodes_list = []
-    out_nodes_list = []
+    # degree_list = []
+    # for node in node_degrees:
+    #     if node[1] == 1:
+    #         degree_list.append(node[0])
+    # # log.debug('')
 
-    for node in degree_list:
-        out_nodes = G.out_edges(node)
-        in_nodes = G.in_edges(node)
-        log.debug('nodes {}'.format(node))
 
-        log.debug('out_nodes {}'.format(out_nodes))
-        log.debug('in_nodes {}'.format(in_nodes))
+    # # get order of graph:
+    # in_nodes_list = []
+    # out_nodes_list = []
 
-        if len(out_nodes) > 0:
-             out_nodes_list.append(node)
-        # out_nodes = G.out_edges(node) 
+    # for node in degree_list:
+    #     out_nodes = G.out_edges(node)
+    #     in_nodes = G.in_edges(node)
+    #     log.debug('nodes {}'.format(node))
+
+    #     log.debug('out_nodes {}'.format(out_nodes))
+    #     log.debug('in_nodes {}'.format(in_nodes))
+
+    #     if len(out_nodes) > 0:
+    #          out_nodes_list.append(node)
+    #     # out_nodes = G.out_edges(node) 
         # if len(in_nodes) >= 0:
         #      in_nodes.append(node)
 
-    initial_node = out_nodes_list[0]
-    traverse = True
-    order_of_nodes = []
-    log.debug('inital node: {}'.format(initial_node))
-    while traverse:
-        next_edges = list(G.edges(initial_node))
-        log.debug('next_edges {}'.format(next_edges))
-        # log.debug('next_edges {}'.format(next_edges))
+    # initial_node = out_nodes_list[0]
+    # traverse = True
+    # order_of_nodes = []
+    # log.debug('inital node: {}'.format(initial_node))
+    # while traverse:
+    #     next_edges = list(G.edges(initial_node))
+    #     log.debug('next_edges {}'.format(next_edges))
+    #     # log.debug('next_edges {}'.format(next_edges))
 
-        if len(next_edges) == 0:
-            traverse = False
-            order_of_nodes.append(initial_node)
-            break
-        log.debug('next_edges[0] {}'.format(next_edges[0]))
-        # log.debug('next_edges[0] {}'.format(next_edges[0]))
+    #     if len(next_edges) == 0:
+    #         traverse = False
+    #         order_of_nodes.append(initial_node)
+    #         break
+    #     log.debug('next_edges[0] {}'.format(next_edges[0]))
+    #     # log.debug('next_edges[0] {}'.format(next_edges[0]))
 
-        # out_edge = list(G.out_edges(next_edges[0][1]))
-        order_of_nodes.append(int(initial_node))
-        log.debug('initial_node END {}'.format(next_edges[0][1]))
+    #     # out_edge = list(G.out_edges(next_edges[0][1]))
+    #     order_of_nodes.append(int(initial_node))
+    #     log.debug('initial_node END {}'.format(next_edges[0][1]))
 
-        initial_node = int(next_edges[0][1])
+    #     initial_node = int(next_edges[0][1])
 
-    log.debug('order_of_nodes {}'.format(order_of_nodes))
-    order_of_nodes = np.array(order_of_nodes)
-    # get one list with one cluster and one order
-    # get one list with original assoziated clusters
+    # log.debug('order_of_nodes {}'.format(order_of_nodes))
+    # order_of_nodes = np.array(order_of_nodes)
+    # # get one list with one cluster and one order
+    # # get one list with original assoziated clusters
 
-    list_with_clusters = []
-    list_without_clusters = []
+    # list_with_clusters = []
+    # list_without_clusters = []
 
-    with open(args.clusters, 'r') as cluster_file:
+    # with open(args.clusters, 'r') as cluster_file:
 
-        for i, line in enumerate(cluster_file.readlines()):
-            line = line.strip()
-            line_ = line.split(' ')[0]
-            list_with_clusters.append(line)
-            list_without_clusters.append(line_ + ' 0')
+    #     for i, line in enumerate(cluster_file.readlines()):
+    #         line = line.strip()
+    #         line_ = line.split(' ')[0]
+    #         list_with_clusters.append(line)
+    #         list_without_clusters.append(line_ + ' 0')
 
 
-    list_with_clusters = np.array(list_with_clusters)
-    list_without_clusters = np.array(list_without_clusters)
+    # list_with_clusters = np.array(list_with_clusters)
+    # list_without_clusters = np.array(list_without_clusters)
 
-    list_with_clusters = list_with_clusters[order_of_nodes]
-    list_without_clusters = list_without_clusters[order_of_nodes]
+    # list_with_clusters = list_with_clusters[order_of_nodes]
+    # list_without_clusters = list_without_clusters[order_of_nodes]
 
-    np.savetxt('list_with_clusters.txt', list_with_clusters, fmt="%s")
-    np.savetxt('list_without_clusters.txt', list_without_clusters, fmt="%s")
+    # np.savetxt('list_with_clusters.txt', list_with_clusters, fmt="%s")
+    # np.savetxt('list_without_clusters.txt', list_without_clusters, fmt="%s")
     # np.savetxt(args.outFileName, matrices_cluster, fmt="%s")
     # np.savetxt('edges_list.txt', edges_list)
     # set with key --> matrix name and its cluster
@@ -348,7 +369,7 @@ def main(args=None):
 
     # log.debug('hamiltonian_path {}'.format(hamiltonian_path_output))
     log.debug("compute edges done")
-    nx.draw(G, node_size=3, )
+    nx.draw(G, node_size=3 )
     plt.savefig(args.outFileName, dpi=300)
     plt.close()
     log.debug("plot I")
