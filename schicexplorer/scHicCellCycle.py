@@ -15,6 +15,7 @@ from sparse_neighbors_search import MinHashClustering
 
 from sklearn.cluster import KMeans
 from sklearn.cluster import KMeans, SpectralClustering
+from sklearn.neighbors import NearestNeighbors
 
 
 from hicmatrix import HiCMatrix as hm
@@ -178,7 +179,7 @@ def main(args=None):
 
     from copy import deepcopy
     circles = []
-
+    circles_weight = []
 
     # for i in range(len(precomputed_graph)):
     i = highest_degree[0][0]
@@ -205,14 +206,25 @@ def main(args=None):
     for found_paths in edge_long_list:
         if found_paths[-1] in graph[key]:
             # found_paths.append(key)
-            circles.append(found_paths)
+            weight = 0
+            i = 0
+            while i < len(found_paths) - 1:
+                weight += graph.edges[found_paths[i], found_paths[i + 1]]['weight']
+                i += 1
+            weight += graph.edges[found_paths[-1], key]['weight']
+            weight /= (len(found_paths)+1)
+            if len(found_paths) > precomputed_graph.shape[0] * 0.66:
+                circles_weight.append(weight)
+                circles.append(found_paths)
 
-    max_path = None
-    max_length = 0
-    for path in circles:
-        if max_length < len(path):
-            max_length = len(path)
-            max_path = path
+
+    # max_path = None
+    # max_length = 0
+    # for path in circles:
+    #     if max_length < len(path):
+    #         max_length = len(path)
+    #         max_path = path
+    max_path = circles[np.argmin(circles_weight)]
     
     matrices_list_cycle = list(np.array(matrices_list)[max_path])
     cluster_cycle = [0] * len(matrices_list_cycle)
@@ -221,12 +233,34 @@ def main(args=None):
         if node in non_cycle:
             non_cycle.remove(node)
 
-    matrices_list_non_cycle = list(np.array(matrices_list)[non_cycle])
-    cluster_non_cycle = [1] * len(matrices_list_non_cycle)
-    matrices_list_cycle.extend(matrices_list_non_cycle)
-    cluster_cycle.extend(cluster_non_cycle)
-    matrices_list = matrices_list_cycle
-    labels_clustering = cluster_cycle
+    precomputed_graph = precomputed_graph.toarray()
+    nbrs = NearestNeighbors(n_neighbors=10, algorithm='ball_tree').fit(precomputed_graph)
+    non_inserted = []
+    for node in non_cycle:
+        distances, indices = nbrs.kneighbors([precomputed_graph[node]])
+        count = 0
+        for neighbor in indices[0]:
+            if neighbor in max_path:
+    #             max_path.index(neighbor)
+                max_path.insert(max_path.index(neighbor)+1, node)
+                break
+            else:
+                count += 1
+        if count == 5:
+            non_inserted.append(node)
+
+    if len(non_inserted) > 0:
+        matrices_list_non_cycle = list(np.array(matrices_list)[non_cycle])
+        cluster_non_cycle = [1] * len(matrices_list_non_cycle)
+        matrices_list_cycle.extend(matrices_list_non_cycle)
+        cluster_cycle.extend(cluster_non_cycle)
+        matrices_list = matrices_list_cycle
+        labels_clustering = cluster_cycle
+    else:
+        matrices_list = list(np.array(matrices_list)[max_path])
+        labels_clustering = cluster_cycle
+    
+    
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
     np.savetxt(args.outFileName, matrices_cluster, fmt="%s")
