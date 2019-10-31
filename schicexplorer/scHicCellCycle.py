@@ -250,15 +250,18 @@ def main(args=None):
             non_inserted.append(node)
 
     if len(non_inserted) > 0:
-        matrices_list_non_cycle = list(np.array(matrices_list)[non_cycle])
+        log.debug('non_inserted elements')
+        matrices_list_non_cycle = list(np.array(matrices_list)[non_inserted])
         cluster_non_cycle = [1] * len(matrices_list_non_cycle)
         matrices_list_cycle.extend(matrices_list_non_cycle)
         cluster_cycle.extend(cluster_non_cycle)
         matrices_list = matrices_list_cycle
         labels_clustering = cluster_cycle
     else:
+        log.debug('full list')
+
         matrices_list = list(np.array(matrices_list)[max_path])
-        labels_clustering = cluster_cycle
+        labels_clustering = [0] * len(max_path)
     
     
 
