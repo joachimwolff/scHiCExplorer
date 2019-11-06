@@ -1,26 +1,10 @@
-# read all matrices
-## get non-zeros and flatten it (x*length) + y
-# make number of instacnes * dim**2 csr matrix
-
 import argparse
 import os
-import gzip
-import shutil
 from multiprocessing import Process, Queue
 import time
-import warnings
-warnings.simplefilter(action="ignore", category=RuntimeWarning)
-warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-# warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-# 
+
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
-logging.getLogger('cooler').setLevel(logging.WARNING)
-logging.getLogger('hicmatrix').setLevel(logging.WARNING)
-
-
 log = logging.getLogger(__name__)
 
 import cooler
@@ -29,18 +13,10 @@ from sklearn.cluster import KMeans, SpectralClustering
 
 from hicmatrix import HiCMatrix as hm
 from schicexplorer.utilities import opener
-from hicmatrix.lib import MatrixFileHandler
 
 import numpy as np
-import pandas as pd
 from scipy.sparse import csr_matrix
-from sklearn.decomposition import TruncatedSVD
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from multiprocessing import Process, Queue
-import scipy.sparse
 
 def parse_arguments(args=None):
 
@@ -56,48 +32,46 @@ def parse_arguments(args=None):
                                 metavar='mcool scHi-C matrix',
                                 required=True)
     parserRequired.add_argument('--numberOfClusters', '-c',
-                           help='Number of to be computed clusters',
-                           required=False,
-                           default=12,
-                           type=int)
+                                help='Number of to be computed clusters',
+                                required=False,
+                                default=12,
+                                type=int)
     parserRequired.add_argument('--numberOfNeighbors', '-n',
-                           help='Number of neighbors of clustering',
-                           required=False,
-                           default=10,
-                           type=int)
+                                help='Number of neighbors of clustering',
+                                required=False,
+                                default=10,
+                                type=int)
 
     parserRequired.add_argument('--chromosomes',
-                           help='List of to be plotted chromosomes',
-                           nargs='+')
+                                help='List of to be plotted chromosomes',
+                                nargs='+')
     parserRequired.add_argument('--clusterMethod', '-cm',
-                           help='Algorithm to cluster the Hi-C matrices',
-                           choices=['spectral', 'kmeans'],
-                           default='spectral')
+                                help='Algorithm to cluster the Hi-C matrices',
+                                choices=['spectral', 'kmeans'],
+                                default='spectral')
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting clusters',
                                 required=True,
                                 default='clusters.txt')
     parserRequired.add_argument('--threads', '-t',
-                           help='Number of threads. Using the python multiprocessing module.',
-                           required=False,
-                           default=4,
-                           type=int)
+                                help='Number of threads. Using the python multiprocessing module.',
+                                required=False,
+                                default=4,
+                                type=int)
 
     return parser
-
 
 
 def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pQueue):
     neighborhood_matrix = None
     for i, matrix in enumerate(pMatricesList):
         if pChromosomes is not None and len(pChromosomes) == 1:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName+ '::' +matrix, pChrnameList=pChromosomes)
+            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes)
         else:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName+ '::' +matrix)
+            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix)
             if pChromosomes:
                 hic_ma.keepOnlyTheseChr(pChromosomes)
-        # matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName+ '::' +matrix)
-        # _matrix, _, _, _, _ = matrixFileHandlerInput.load()
+
         _matrix = hic_ma.matrix
 
         if neighborhood_matrix is None:
@@ -108,20 +82,15 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
         instances *= _matrix.shape[1]
         instances += features
         features = None
-        neighborhood_matrix[pIndex+i, instances] = _matrix.data
-        # if i % 20 == 0:
-        #     log.debug('pIndex + i {} {}'.format(pIndex, i))
-    
+        neighborhood_matrix[pIndex + i, instances] = _matrix.data
+
     pQueue.put(neighborhood_matrix)
+
 
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-    create_or_load_matrix = False
-
-    # if args.createMatrix:
-        
     matrices_name = args.matrix
     threads = args.threads
     matrices_list = cooler.fileops.list_coolers(matrices_name)
@@ -145,13 +114,13 @@ def main(args=None):
 
         queue[i] = Queue()
         process[i] = Process(target=open_and_store_matrix, kwargs=dict(
-                            pMatrixName = matrices_name,
-                            pMatricesList= matrices_name_list, 
-                            pIndex = length_index[i], 
-                            pXDimension=len(matrices_list),
-                            pChromosomes=args.chromosomes,
-                            pQueue=queue[i]
-            )
+            pMatrixName=matrices_name,
+            pMatricesList=matrices_name_list,
+            pIndex=length_index[i],
+            pXDimension=len(matrices_list),
+            pChromosomes=args.chromosomes,
+            pQueue=queue[i]
+        )
         )
 
         process[i].start()
@@ -162,10 +131,8 @@ def main(args=None):
                 csr_matrix_worker = queue[i].get()
                 if neighborhood_matrix is None:
                     neighborhood_matrix = csr_matrix_worker
-                    # log.debug('returned first csr i {}'.format(i))
                 else:
                     neighborhood_matrix += csr_matrix_worker
-                    # log.debug('adding csr i {}'.format(i))
 
                 queue[i] = None
                 process[i].join()
@@ -181,7 +148,7 @@ def main(args=None):
     if args.clusterMethod == 'spectral':
         log.debug('spectral start')
         spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
-                                                        n_neighbors=neighborhood_matrix.shape[0], affinity='nearest_neighbors')
+                                                       n_neighbors=neighborhood_matrix.shape[0], affinity='nearest_neighbors')
 
         labels_clustering = spectralClustering_object.fit_predict(neighborhood_matrix)
     elif args.clusterMethod == 'kmeans':

@@ -5,6 +5,7 @@ import argparse
 import logging
 log = logging.getLogger(__name__)
 
+
 def parse_arguments(args=None):
     """
     get command line arguments
@@ -16,7 +17,6 @@ def parse_arguments(args=None):
 
     parserRequired = parser.add_argument_group('Required arguments')
 
-    # define the arguments
     parserRequired.add_argument('--matrices', '-m',
                                 help='input file(s).',
                                 nargs='+',
@@ -26,6 +26,7 @@ def parse_arguments(args=None):
                                 help='File name to save the exported matrix.',
                                 required=True)
     return parser
+
 
 def main(args=None):
     args = parse_arguments().parse_args(args)
@@ -43,11 +44,10 @@ def main(args=None):
         matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append)
 
         matrixFileHandlerOutput.set_matrix_variables(_matrix,
-                                                    cut_intervals,
-                                                        nan_bins,
-                                                        correction_factors,
-                                                        distance_counts)
+                                                     cut_intervals,
+                                                     nan_bins,
+                                                     correction_factors,
+                                                     distance_counts)
 
         path_name = ''.join(matrix.split('/')[-1].split('.')[:-1])
-        log.debug('path_name {}'.format(path_name))                                           
         matrixFileHandlerOutput.save(args.outFileName + '::/' + path_name, pApplyCorrection=True, pSymmetric=True)

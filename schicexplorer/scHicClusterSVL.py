@@ -12,17 +12,11 @@ log = logging.getLogger(__name__)
 import cooler
 
 from hicmatrix import HiCMatrix as hm
-from schicexplorer.utilities import opener
-from hicmatrix.lib import MatrixFileHandler
 
 import numpy as np
-import pandas as pd
 from scipy.sparse import csr_matrix
 from sklearn.cluster import SpectralClustering, KMeans
 
-
-from multiprocessing import Process, Queue
-import scipy.sparse
 
 def parse_arguments(args=None):
 
@@ -39,53 +33,58 @@ def parse_arguments(args=None):
                                 required=True)
 
     parserRequired.add_argument('--numberOfClusters', '-c',
-                           help='Number of to be computed clusters',
-                           required=False,
-                           default=12,
-                           type=int)
+                                help='Number of to be computed clusters',
+                                required=False,
+                                default=12,
+                                type=int)
     parserRequired.add_argument('--distance', '-d',
-                           help='Distance which should be considered as short range. Default 2MB.',
-                           default=2000000,
-                           type=int)
+                                help='Distance which should be considered as short range. Default 2MB.',
+                                default=2000000,
+                                type=int)
     parserRequired.add_argument('--clusterMethod', '-cm',
-                           help='Algorithm to cluster the Hi-C matrices',
-                           choices=['spectral', 'kmeans'],
-                           default='spectral')
+                                help='Algorithm to cluster the Hi-C matrices',
+                                choices=['spectral', 'kmeans'],
+                                default='spectral')
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting clusters',
                                 required=True,
                                 default='clusters.txt')
     parserRequired.add_argument('--threads', '-t',
-                           help='Number of threads. Using the python multiprocessing module.',
-                           required=False,
-                           default=4,
-                           type=int)
+                                help='Number of threads. Using the python multiprocessing module.',
+                                required=False,
+                                default=4,
+                                type=int)
 
     return parser
-
 
 
 def create_svl_data(pMatrixName, pMatricesList, pIndex, pXDimension, pDistance, pQueue):
     svl_matrix = None
     for i, matrix in enumerate(pMatricesList):
-        chromosomes_list = cooler.Cooler(pMatrixName+ '::' +matrix).chromnames
+        chromosomes_list = cooler.Cooler(pMatrixName + '::' + matrix).chromnames
         svl_relations = []
 
         for chromosome in chromosomes_list:
             hic_matrix_obj = hm.hiCMatrix(
-                pMatrixFile=pMatrixName+ '::' +matrix, pChrnameList=[chromosome])
+                pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=[chromosome])
             if hic_matrix_obj.matrix.shape[0] < 5:
                 svl_relations.append(0)
                 continue
             max_distance = pDistance / hic_matrix_obj.getBinSize()
+            mitotic_distance = 12000000 / hic_matrix_obj.getBinSize()
+
             hic_matrix = hic_matrix_obj.matrix
 
             instances, features = hic_matrix.nonzero()
             distances = np.absolute(instances - features)
             mask = distances <= max_distance
+            mask_mitotic_0 = distances > max_distance
+            mask_mitotic_1 = mitotic_distance <= distances
+
+            mask_mitotic = np.logical_and(mask_mitotic_0, mask_mitotic_1)
 
             sum_smaller_max_distance = np.sum(hic_matrix.data[mask])
-            sum_greater_max_distance = np.sum(hic_matrix.data[~mask])
+            sum_greater_max_distance = np.sum(hic_matrix.data[mask_mitotic])
             svl_relation = sum_smaller_max_distance / sum_greater_max_distance
             if np.isinf(svl_relation) or np.isnan(svl_relation):
                 svl_relations.append(0)
@@ -95,19 +94,17 @@ def create_svl_data(pMatrixName, pMatricesList, pIndex, pXDimension, pDistance, 
         if svl_matrix is None:
             svl_matrix = csr_matrix((pXDimension, len(chromosomes_list)), dtype=np.float)
 
-        svl_matrix[pIndex+i, :] = np.array(svl_relations)
-    
+        svl_matrix[pIndex + i, :] = np.array(svl_relations)
+
     pQueue.put(svl_matrix)
 
     return
+
 
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-    create_or_load_matrix = False
-
-        
     matrices_name = args.matrix
     threads = args.threads
     matrices_list = cooler.fileops.list_coolers(matrices_name)
@@ -130,13 +127,13 @@ def main(args=None):
 
         queue[i] = Queue()
         process[i] = Process(target=create_svl_data, kwargs=dict(
-                            pMatrixName = matrices_name,
-                            pMatricesList= matrices_name_list, 
-                            pIndex = length_index[i], 
-                            pXDimension=len(matrices_list),
-                            pDistance = args.distance,
-                            pQueue=queue[i]
-            )
+            pMatrixName=matrices_name,
+            pMatricesList=matrices_name_list,
+            pIndex=length_index[i],
+            pXDimension=len(matrices_list),
+            pDistance=args.distance,
+            pQueue=queue[i]
+        )
         )
 
         process[i].start()
@@ -172,8 +169,6 @@ def main(args=None):
 
         kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
         labels_clustering = kmeans_object.fit_predict(svl_matrix)
-    # log.debug('SVL matrix created, start clustering')
-    # log.debug('len(svl_matrix) {}'.format(svl_matrix.shape))
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
     np.savetxt(args.outFileName, matrices_cluster, fmt="%s")

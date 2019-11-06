@@ -1,29 +1,14 @@
-
 import argparse
 import os
-import gzip
-import shutil
 from multiprocessing import Process, Queue
 import time
-import warnings
-warnings.simplefilter(action="ignore", category=RuntimeWarning)
-warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-# warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-#
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('cooler').setLevel(logging.WARNING)
-logging.getLogger('hicmatrix').setLevel(logging.WARNING)
-
-
 log = logging.getLogger(__name__)
 
 import cooler
 
 from hicmatrix import HiCMatrix as hm
-from schicexplorer.utilities import opener
-from hicmatrix.lib import MatrixFileHandler
 from hicexplorer.utilities import obs_exp_matrix_lieberman, obs_exp_matrix_norm, convertInfsToZeros_ArrayFloat
 from hicexplorer.hicPCA import correlateEigenvectorWithGeneTrack, correlateEigenvectorWithHistonMarkTrack
 from hicexplorer.utilities import convertNansToZeros, convertInfsToZeros
@@ -31,16 +16,11 @@ from sklearn.cluster import KMeans, SpectralClustering
 
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix
-from sklearn.cluster import SpectralClustering
-
 from scipy.sparse import csr_matrix, lil_matrix
 from scipy import linalg
 from scipy.stats import pearsonr
-import numpy as np
 import pyBigWig
 
-from multiprocessing import Process, Queue
 import scipy.sparse
 
 
@@ -190,8 +170,6 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
-
-    create_or_load_matrix = False
 
     matrices_name = args.matrix
     threads = args.threads

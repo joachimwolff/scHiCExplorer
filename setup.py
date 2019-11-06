@@ -31,15 +31,15 @@ def update_version_py():
         print("unable to run git, leaving hicexplorer/_version.py alone")
         return
     ver = stdout.strip()
-    f = open("hicexplorer/_version.py", "w")
+    f = open("schicexplorer/_version.py", "w")
     f.write(VERSION_PY % ver)
     f.close()
-    print("set hicexplorer/_version.py to '%s'" % ver)
+    print("set schicexplorer/_version.py to '%s'" % ver)
 
 
 def get_version():
     try:
-        f = open("hicexplorer/_version.py")
+        f = open("schicexplorer/_version.py")
     except EnvironmentError:
         return None
     for line in f.readlines():
@@ -92,29 +92,29 @@ class install(_install):
 
 
 install_requires_py = [
-                       "pysam >= 0.14",
-                       "cooler >= 0.8.3",
-                       "sparse_neighbors_search >=0.4"
-                       ]
+    "pysam >= 0.14",
+    "cooler >= 0.8.3",
+    "sparse_neighbors_search >=0.4"
+]
 
 
 setup(
-    name='HiCExplorer',
+    name='scHiCExplorer',
     version=get_version(),
     author='Joachim Wolff',
     author_email='wolffj@informatik.uni-freiburg.de',
     packages=find_packages(),
-    scripts=['bin/scHicDemultiplex', 'bin/scHicClusterMinHash', 'bin/scHicClusterSVL', 'bin/scHicClusterCompartments', 
-                'bin/scHicMergeToMCool', 'bin/scHicQualityControl',
-                'bin/scHicPlotClusterProfiles', 'bin/scHicPlotConsensusMatrices', 'bin/scHicConsensusMatrices',
-                'bin/scHicMergeMatrixBins', 'bin/scHicCluster', 'bin/scHicCellCycle', 'bin/scHicAdjustMatrix', 'bin/scHicNormalize'
+    scripts=['bin/scHicDemultiplex', 'bin/scHicClusterMinHash', 'bin/scHicClusterSVL', 'bin/scHicClusterCompartments',
+             'bin/scHicMergeToMCool', 'bin/scHicQualityControl',
+             'bin/scHicPlotClusterProfiles', 'bin/scHicPlotConsensusMatrices', 'bin/scHicConsensusMatrices',
+             'bin/scHicMergeMatrixBins', 'bin/scHicCluster', 'bin/scHicCellCycle', 'bin/scHicAdjustMatrix', 'bin/scHicNormalize'
              ],
     include_package_data=True,
     package_dir={'schicexplorer': 'schicexplorer'},
     # package_data={'hicexplorer': ['qc_template.html']},
     # url='http://hicexplorer.readthedocs.io',
     license='LICENSE.txt',
-    description='Set of programs to preprocess scHi-C data',
+    description='Set of programs to preprocess single-cell Hi-C data',
     long_description=open('README.md').read(),
     classifiers=[
         'Intended Audience :: Science/Research',

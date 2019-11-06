@@ -1,26 +1,9 @@
-# read all matrices
-# get non-zeros and flatten it (x*length) + y
-# make number of instacnes * dim**2 csr matrix
-
 import argparse
 import os
-import gzip
-import shutil
 from multiprocessing import Process, Queue
 import time
-import warnings
-warnings.simplefilter(action="ignore", category=RuntimeWarning)
-warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-# warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
-#
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
-logging.getLogger('cooler').setLevel(logging.WARNING)
-logging.getLogger('hicmatrix').setLevel(logging.ERROR)
-
-
 log = logging.getLogger(__name__)
 
 import cooler
@@ -29,8 +12,6 @@ from hicmatrix import HiCMatrix as hm
 from hicmatrix.lib import MatrixFileHandler
 
 import numpy as np
-import pandas as pd
-from scipy.sparse import csr_matrix
 
 
 import matplotlib
@@ -38,8 +19,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-from multiprocessing import Process, Queue
-from matplotlib import colors
 
 def parse_arguments(args=None):
 
@@ -93,10 +72,7 @@ def parse_arguments(args=None):
 
 
 def compute_read_distribution(pMatrixName, pMatricesList, pMaximalDistance, pChromosomes, pQueue):
-    read_coverage = []
-    sparsity = []
     read_distribution = []
-    length_old = 50
     resolution = 0
     for i, matrix in enumerate(pMatricesList):
         if pChromosomes is not None and len(pChromosomes) == 1:
@@ -128,12 +104,10 @@ def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-
     matrices_name = args.matrix
     threads = args.threads
     matrices_list = cooler.fileops.list_coolers(matrices_name)
     read_coverage = [None] * threads
-    sparsity = [None] * threads
 
     all_data_collected = False
     thread_done = [False] * threads
@@ -142,7 +116,6 @@ def main(args=None):
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
     process = [None] * threads
-    max_length = 0
     for i in range(threads):
 
         if i < threads - 1:
@@ -180,7 +153,6 @@ def main(args=None):
         time.sleep(1)
 
     read_distributions = []
-    length_old = len(read_coverage[0][0])
     for thread_data in read_coverage:
         for matrix_data in thread_data:
             read_distributions.append(matrix_data)
@@ -189,8 +161,10 @@ def main(args=None):
 
     clusters = {}
     clusters_svl = {}
-    # resolution = 
+    # resolution =
     short_range_distance = args.shortRange // resolution
+    mitotic_range_distance = 12000000 // resolution
+
     with open(args.clusters, 'r') as cluster_file:
 
         for i, line in enumerate(cluster_file.readlines()):
@@ -198,10 +172,10 @@ def main(args=None):
             line_ = line.split(' ')[1]
             if int(line_) in clusters:
                 clusters[int(line_)].append(read_distributions[i])
-                clusters_svl[int(line_)].append(np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:]))
+                clusters_svl[int(line_)].append(np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:mitotic_range_distance]))
             else:
                 clusters[int(line_)] = [read_distributions[i]]
-                clusters_svl[int(line_)] = [np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:])]
+                clusters_svl[int(line_)] = [np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:mitotic_range_distance])]
     if args.orderBy == 'svl':
         for i, cluster_key in enumerate(clusters.keys()):
             clusters[cluster_key] = np.array(clusters[cluster_key])
@@ -211,8 +185,6 @@ def main(args=None):
 
     cluster_to_plot = []
 
-    columns = len(clusters)
-    rows = 1
     clusters_list = []
     cluster_size = []
     for i, key in enumerate(clusters):
@@ -227,7 +199,6 @@ def main(args=None):
     cluster_size = (1.0 - 0.1) * (cluster_size - min(cluster_size)) / (max(cluster_size) - min(cluster_size)) + (0.1)
     cluster_size = list(cluster_size)
 
-
     all_data = None
     index_clusters = []
     cluster_ticks = []
@@ -236,13 +207,13 @@ def main(args=None):
         if all_data is None:
             all_data = cluster
             index_clusters.append(len(cluster))
-            ticks_position.append(0 + len(cluster)//2)
+            ticks_position.append(0 + len(cluster) // 2)
         else:
             all_data = np.append(all_data, cluster, axis=0)
-            index_clusters.append(index_clusters[i-1]+len(cluster))
-            ticks_position.append(index_clusters[i-1] + len(cluster) //2)
+            index_clusters.append(index_clusters[i - 1] + len(cluster))
+            ticks_position.append(index_clusters[i - 1] + len(cluster) // 2)
 
-        cluster_ticks.append('Cluster {} ({} cells)'.format(i+1, len(cluster)))
+        cluster_ticks.append('Cluster {} ({} cells)'.format(i + 1, len(cluster)))
 
     fig = plt.figure(figsize=(10, 2))
 
@@ -256,7 +227,7 @@ def main(args=None):
     for i in range(0, args.maximalDistance // resolution, 1):
         if i % 10 == 0:
             y_ticks.append(i)
-            
+
             y_labels.append(str(i) + 'MB')
     plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=8)
 

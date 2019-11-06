@@ -1,10 +1,5 @@
-
-import warnings
-warnings.simplefilter(action="ignore", category=RuntimeWarning)
-warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
 import argparse
 import numpy as np
-from past.builtins import zip
 import cooler
 
 import logging
@@ -14,8 +9,9 @@ import time
 
 from hicmatrix import HiCMatrix as hm
 from hicexplorer.hicMergeMatrixBins import running_window_merge, merge_bins
-from hicexplorer._version import __version__
+from schicexplorer._version import __version__
 from hicmatrix.lib import MatrixFileHandler
+
 
 def parse_arguments(args=None):
 
@@ -87,6 +83,7 @@ def compute_merge(pMatrixName, pMatrixList, pRunningWindow, pNumBins, pQueue):
     pQueue.put(out_queue_list)
     return
 
+
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
@@ -98,13 +95,11 @@ def main(args=None):
         threads = len(matrices_list)
     all_data_collected = False
     thread_done = [False] * threads
-    log.debug('matrix read, starting processing')
     length_index = [None] * threads
     length_index[0] = 0
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
     process = [None] * threads
-    max_length = 0
     for i in range(threads):
 
         if i < threads - 1:
@@ -115,12 +110,12 @@ def main(args=None):
 
         queue[i] = Queue()
         process[i] = Process(target=compute_merge, kwargs=dict(
-                            pMatrixName = args.matrix,
-                            pMatrixList= matrices_name_list, 
-                            pRunningWindow=args.runningWindow,
-                            pNumBins=args.numBins,
-                            pQueue=queue[i]
-            )
+            pMatrixName=args.matrix,
+            pMatrixList=matrices_name_list,
+            pRunningWindow=args.runningWindow,
+            pNumBins=args.numBins,
+            pQueue=queue[i]
+        )
         )
 
         process[i].start()
@@ -142,18 +137,14 @@ def main(args=None):
             time.sleep(1)
 
     merged_matrices = [item for sublist in merged_matrices for item in sublist]
-    log.debug('len(merged_matrices) {}'.format(len(merged_matrices)))
-    log.debug('len(matrices_list) {}'.format(len(matrices_list)))
 
     for i, hic_matrix in enumerate(merged_matrices):
         append = False
         if i > 0:
             append = True
         matrixFileHandlerOutput = MatrixFileHandler(
-                        pFileType='cool', pAppend=append, pFileWasH5=False)
+            pFileType='cool', pAppend=append, pFileWasH5=False)
 
         matrixFileHandlerOutput.set_matrix_variables(hic_matrix.matrix, hic_matrix.cut_intervals, hic_matrix.nan_bins,
-                                                        hic_matrix.correction_factors, hic_matrix.distance_counts)
-        matrixFileHandlerOutput.save(args.outFileName + '::' +matrices_list[i], pSymmetric=True, pApplyCorrection=False)
-        # matrix.save(args.outFileName + '::' +matrices_list[i])
-
+                                                     hic_matrix.correction_factors, hic_matrix.distance_counts)
+        matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)

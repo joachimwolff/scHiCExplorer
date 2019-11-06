@@ -1,10 +1,5 @@
-
-import warnings
-warnings.simplefilter(action="ignore", category=RuntimeWarning)
-warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
 import argparse
 import numpy as np
-from past.builtins import zip
 import cooler
 
 import logging
@@ -17,6 +12,7 @@ from krbalancing import *
 from hicmatrix import HiCMatrix as hm
 from hicexplorer._version import __version__
 from hicmatrix.lib import MatrixFileHandler
+
 
 def parse_arguments(args=None):
 
@@ -60,8 +56,8 @@ def compute_merge(pMatrixName, pMatrixList, pQueue):
         hic = hm.hiCMatrix(pMatrixName + '::' + matrix)
 
         kr = kr_balancing(hic.matrix.shape[0], hic.matrix.shape[1],
-                              hic.matrix.count_nonzero(), hic.matrix.indptr.astype(np.int64, copy=False),
-                              hic.matrix.indices.astype(np.int64, copy=False), hic.matrix.data.astype(np.float64, copy=False))
+                          hic.matrix.count_nonzero(), hic.matrix.indptr.astype(np.int64, copy=False),
+                          hic.matrix.indices.astype(np.int64, copy=False), hic.matrix.data.astype(np.float64, copy=False))
         kr.computeKR()
         correction_factors = kr.get_normalisation_vector(False).todense()
         hic.setCorrectionFactors(correction_factors)
@@ -69,6 +65,7 @@ def compute_merge(pMatrixName, pMatrixList, pQueue):
 
     pQueue.put(out_queue_list)
     return
+
 
 def main(args=None):
 
@@ -87,7 +84,6 @@ def main(args=None):
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
     process = [None] * threads
-    max_length = 0
     for i in range(threads):
 
         if i < threads - 1:
@@ -98,10 +94,10 @@ def main(args=None):
 
         queue[i] = Queue()
         process[i] = Process(target=compute_merge, kwargs=dict(
-                            pMatrixName = args.matrix,
-                            pMatrixList= matrices_name_list,
-                            pQueue=queue[i]
-            )
+            pMatrixName=args.matrix,
+            pMatrixList=matrices_name_list,
+            pQueue=queue[i]
+        )
         )
 
         process[i].start()
@@ -131,10 +127,8 @@ def main(args=None):
         if i > 0:
             append = True
         matrixFileHandlerOutput = MatrixFileHandler(
-                        pFileType='cool', pAppend=append, pFileWasH5=False)
+            pFileType='cool', pAppend=append, pFileWasH5=False)
 
         matrixFileHandlerOutput.set_matrix_variables(hic_matrix.matrix, hic_matrix.cut_intervals, hic_matrix.nan_bins,
-                                                        hic_matrix.correction_factors, hic_matrix.distance_counts)
-        matrixFileHandlerOutput.save(args.outFileName + '::' +matrices_list[i], pSymmetric=True, pApplyCorrection=False)
-        # matrix.save(args.outFileName + '::' +matrices_list[i])
-
+                                                     hic_matrix.correction_factors, hic_matrix.distance_counts)
+        matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
