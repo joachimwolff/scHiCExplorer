@@ -2,6 +2,6 @@ python >=3.6
 pysam
 cooler
 hicmatrix
-sparse_neighbors_search >=0.4
+sparse-neighbors-search >=0.4
 networkx
 hicexplorer >=3.3
