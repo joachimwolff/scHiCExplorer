@@ -45,10 +45,13 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=50000000,
                                 type=int)
-    parserRequired.add_argument('--shortRange', '-sr',
-                                help='Distance to split short and long range contacts to sort the samples per cluster.',
-                                required=False,
-                                default=20000000,
+    parserRequired.add_argument('--distanceShortRange', '-ds',
+                                help='Distance which should be considered as short range. Default 2MB.',
+                                default=2000000,
+                                type=int)
+    parserRequired.add_argument('--distanceLongRange', '-dl',
+                                help='Distance which should be considered as short range. Default 12MB.',
+                                default=12000000,
                                 type=int)
     parserRequired.add_argument('--orderBy', '-ob',
                                 help='Algorithm to cluster the Hi-C matrices',
@@ -161,9 +164,8 @@ def main(args=None):
 
     clusters = {}
     clusters_svl = {}
-    # resolution =
-    short_range_distance = args.shortRange // resolution
-    mitotic_range_distance = 12000000 // resolution
+    short_range_distance = args.distanceShortRange // resolution
+    long_range_distance = args.distanceLongRange  // resolution
 
     with open(args.clusters, 'r') as cluster_file:
 
@@ -172,10 +174,10 @@ def main(args=None):
             line_ = line.split(' ')[1]
             if int(line_) in clusters:
                 clusters[int(line_)].append(read_distributions[i])
-                clusters_svl[int(line_)].append(np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:mitotic_range_distance]))
+                clusters_svl[int(line_)].append(np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:long_range_distance]))
             else:
                 clusters[int(line_)] = [read_distributions[i]]
-                clusters_svl[int(line_)] = [np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:mitotic_range_distance])]
+                clusters_svl[int(line_)] = [np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:long_range_distance])]
     if args.orderBy == 'svl':
         for i, cluster_key in enumerate(clusters.keys()):
             clusters[cluster_key] = np.array(clusters[cluster_key])

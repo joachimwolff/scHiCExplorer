@@ -37,9 +37,13 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=12,
                                 type=int)
-    parserRequired.add_argument('--distance', '-d',
+    parserRequired.add_argument('--distanceShortRange', '-ds',
                                 help='Distance which should be considered as short range. Default 2MB.',
                                 default=2000000,
+                                type=int)
+    parserRequired.add_argument('--distanceLongRange', '-dl',
+                                help='Distance which should be considered as short range. Default 12MB.',
+                                default=12000000,
                                 type=int)
     parserRequired.add_argument('--clusterMethod', '-cm',
                                 help='Algorithm to cluster the Hi-C matrices',
@@ -58,7 +62,7 @@ def parse_arguments(args=None):
     return parser
 
 
-def create_svl_data(pMatrixName, pMatricesList, pIndex, pXDimension, pDistance, pQueue):
+def create_svl_data(pMatrixName, pMatricesList, pIndex, pXDimension, pDistanceMin, pDistanceMax, pQueue):
     svl_matrix = None
     for i, matrix in enumerate(pMatricesList):
         chromosomes_list = cooler.Cooler(pMatrixName + '::' + matrix).chromnames
@@ -70,16 +74,16 @@ def create_svl_data(pMatrixName, pMatricesList, pIndex, pXDimension, pDistance, 
             if hic_matrix_obj.matrix.shape[0] < 5:
                 svl_relations.append(0)
                 continue
-            max_distance = pDistance / hic_matrix_obj.getBinSize()
-            mitotic_distance = 12000000 / hic_matrix_obj.getBinSize()
+            min_distance = pDistanceMin / hic_matrix_obj.getBinSize()
+            max_distance = pDistanceMax / hic_matrix_obj.getBinSize()
 
             hic_matrix = hic_matrix_obj.matrix
 
             instances, features = hic_matrix.nonzero()
             distances = np.absolute(instances - features)
-            mask = distances <= max_distance
-            mask_mitotic_0 = distances > max_distance
-            mask_mitotic_1 = mitotic_distance <= distances
+            mask = distances <= min_distance
+            mask_mitotic_0 = distances > min_distance
+            mask_mitotic_1 = max_distance <= distances
 
             mask_mitotic = np.logical_and(mask_mitotic_0, mask_mitotic_1)
 
@@ -131,7 +135,8 @@ def main(args=None):
             pMatricesList=matrices_name_list,
             pIndex=length_index[i],
             pXDimension=len(matrices_list),
-            pDistance=args.distance,
+            pDistanceMin=args.distanceShortRange,
+            pDistanceMax=args.distanceLongRange,
             pQueue=queue[i]
         )
         )
