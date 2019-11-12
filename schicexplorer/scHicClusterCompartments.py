@@ -53,7 +53,7 @@ def parse_arguments(args=None):
                                 'Homer software.',
                                 action='store_true')
     parserRequired.add_argument('--binarization',
-                                help='Set all positive values of eigenvetor to 1 and all negative ones to 0.',
+                                help='Set all positive values of eigenvector to 1 and all negative ones to 0.',
                                 action='store_true')
     parserRequired.add_argument('--extraTrack',
                                 help='Either a gene track or a histon mark coverage'

@@ -36,11 +36,6 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=12,
                                 type=int)
-    parserRequired.add_argument('--numberOfNeighbors', '-n',
-                                help='Number of neighbors of clustering',
-                                required=False,
-                                default=10,
-                                type=int)
 
     parserRequired.add_argument('--chromosomes',
                                 help='List of to be plotted chromosomes',

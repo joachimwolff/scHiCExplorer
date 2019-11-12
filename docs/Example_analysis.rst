@@ -4,10 +4,10 @@ Analysis of single-cell Hi-C data
 =================================
 
 The analysis of single-cell Hi-C data deals is partially similar to regular Hi-C data analysis, the pre-processing of data i.e. mapping and the creation
-of a Hi-C interaction matrix and the correction of the data works can be adapted from a Hi-C data anlysis. However, single-cell Hi-C deals
-with different issues as the be mentioned the pre-processing of the fastq files (demultiplexing) to assoziate the reads to one sample (to one cell). 
-Everything that applies to Hi-C also applies to single-cell Hi-C exepct in single-cell the work is done with a few thousand cells and not one. Additonal, the read coverage
-in single-cell Hi-C is not in the hundereds of millions but on the used data form Nagano 2017 on average 1.5 million. This leads to other necessary treatments in the quality 
+of a Hi-C interaction matrix and the correction of the data works can be adapted from a Hi-C data analysis. However, single-cell Hi-C deals
+with different issues as the be mentioned the pre-processing of the fastq files (demultiplexing) to associate the reads to one sample (to one cell). 
+Everything that applies to Hi-C also applies to single-cell Hi-C expect in single-cell the work is done with a few thousand cells and not one. Additional, the read coverage
+in single-cell Hi-C is not in the hundreds of millions but on the used data form Nagano 2017 on average 1.5 million. This leads to other necessary treatments in the quality 
 control of the samples and a need for a normalization to a equal read coverage for all cells.
 
 
@@ -21,9 +21,9 @@ Furthermore, please consider the data needs to be demultiplexed and mapped which
 If you do not want to download, demultiplex, map and build the matrices on your own, a precomputed mcool matrix is provided #TODO: here.
 
 Download of the fastq files
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------
 
-As the very first step the raw, non-demultiplexed fastq files need to be downloaded. Please downloade the files directly from NCBI GEO and not e.g. from EMBL ENA, we 
+As the very first step the raw, non-demultiplexed fastq files need to be downloaded. Please download the files directly from NCBI GEO and not e.g. from EMBL ENA, we 
 have seen that these files miss the barcode information.
 
 To download the fastq files the SRR sample number must be known, for not all samples only one SRR number was given, these samples were therefore not included in this tutorial.
@@ -73,7 +73,7 @@ Alternatively, download all with one command:
 
 
 Demultiplexing
-^^^^^^^^^^^^^^
+--------------
 
 Each downloaded file needs to be demultiplexed. To do so the barcodes per sample (https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE94489&format=file&file=GSE94489%5FREADME%2Etxt) and the SRR to sample mapping needs to be provided:
 
@@ -83,7 +83,7 @@ Each downloaded file needs to be demultiplexed. To do so the barcodes per sample
     $ scHicDemultiplex -f "FASTQ_FILE" --srrToSampleFile samples.txt --barcodeFile GSE94489_README.txt --threads 20
 
 
-scHicDemultiplex creates a folder 'demultiplexed' containing the demultiplexed fastq files splitted as forward and reverse reads and follows the scheme:
+scHicDemultiplex creates a folder 'demultiplexed' containing the demultiplexed fastq files split as forward and reverse reads and follows the scheme:
 
 .. code-block::
 
@@ -100,9 +100,9 @@ Please consider that the time to demultiplex the file SRR5229025, which itself i
 
 
 Mapping
-^^^^^^^
+-------
 
-After demultiplexing, each forward and reverse strand file needs to be mapped as usual in Hi-C as single-paired files. Foe this tutorial we use bowtie2 and the mm10 index:
+After demultiplexing, each forward and reverse strand file needs to be mapped as usual in Hi-C as single-paired files. Foe this tutorial we use bwa mem and the mm10 index:
 
 .. code-block:: bash
 
@@ -112,13 +112,13 @@ After demultiplexing, each forward and reverse strand file needs to be mapped as
 
 .. code-block:: bash
 
-    $ bowtie2 -x mm10/mm10 --threads 8 -U ../original_data/SRR1956527_1.fastq.gz --reorder | samtools view -Shb - > SRR1956527_1.bam
-    $ ls demultiplexed |  xargs -n1 -P 5 -I {} sh -c "bowtie2 -x mm10/mm10 --threads 5 -U demultiplexed/{} --reorder | samtools view -Shb - > {}.bam"
+    $ bwa mem -A 1 -B 4 -E 50 -L 0 -t 8 bwa/mm10_index Diploid_15_AGGCAGAA_CTCTCTAT_R1.fastq.gz | samtools view -Shb - > Diploid_15_AGGCAGAA_CTCTCTAT_R1.bam
+    $ ls demultiplexed |  xargs -n1 -P 5 -I {} sh -c "bwa mem -A 1 -B 4 -E 50 -L 0 -t 8 bwa/mm10_index demultiplexed/{} | samtools view -Shb - > {}.bam"
 
 
 
 Creation of Hi-C interaction matrices
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------------------
 
 As a last step, the matrices for each cell need to be created, we use the tool 'hicBuildMatrix' from HiCExplorer:
 
@@ -138,25 +138,38 @@ After the Hi-C interaction matrices for each cell is created, the matrices are p
 
 .. code-block:: bash
 
-    $ scHicMergeMatrixBins --matrices matrices/* --outFileName nagano2017_raw.mcool
+    $ scHicMergeToMCool --matrices matrices/* --outFileName nagano2017_raw.mcool
+
+
+Call scHicInfo to get an information about the used mcool file:
+
+.. code-block:: bash
+
+    $ scHicInfo --matrix nagano2017_raw.mcool
+
+
+.. code-block:: bash
+
+    Filename: nagano2017_raw.mcool
+    Contains 3882 single-cell matrices
 
 
 Quality control
-^^^^^^^^^^^^^^^
+---------------
 
-Quality control is the crucuial step in preprocessing of all HTS related data. For single-cell experiements the read covarage 
-per sample needs to be on a minmal level, and all matrices needs to be not broken and contain all the same chromosomes. Especially the last two issues are 
+Quality control is the crucial step in preprocessing of all HTS related data. For single-cell experiments the read coverage 
+per sample needs to be on a minimal level, and all matrices needs to be not broken and contain all the same chromosomes. Especially the last two issues are 
 likely to rise in single-cell Hi-C data because the read coverage is with around 1 million reads, in contrast to regular Hi-C with a few 
-hundert million, quite low and therefore it is more likley that simply no data for small chromosomes is present. 
+hundred million, quite low and therefore it is more likely that simply no data for small chromosomes is present. 
 To guarantee these requirements the quality control works in three steps: 
 
 1. Only matrices which contain all listed chromosomes are accepted
 2. Only matrices which have a minimum read coverage are accepted
-3. The matrix must have a minum denisity of recorded data points close to the main diagonal.
+3. The matrix must have a minium density of recorded data points close to the main diagonal.
 
 .. code-block:: bash
 
-    $ scHicQualityControl --matrix nagano2017_raw.mcool --outputMcool nagano2017_qc.mcool --minimumReadCoverage 1000000 --minimumDensity 0.001 --maximumRegionToConsider 30000000 --outFileNameReadCoverage read_coverage.png --outFileNameSparsity sparsity.png --chromosomes chr1 chr2 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19
+    $ scHicQualityControl --matrix nagano2017_raw.mcool --outputMcool nagano2017_qc.mcool --minimumReadCoverage 1000000 --minimumDensity 0.001 --maximumRegionToConsider 30000000 --outFileNameReadCoverage read_coverage.png --outFileNameSparsity sparsity.png --threads 20 --chromosomes chr1 chr2 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19
 
 For this tutorial a minimum read coverage of 1 million and a density of 0.1% is used in range of 30MB around the main diagonal. The above command creates certain files:
 
@@ -167,17 +180,42 @@ For this tutorial a minimum read coverage of 1 million and a density of 0.1% is 
 5. An HTML report given additional quality control information.
 
 
+.. image:: images/sparsity.png
+
+.. image:: images/read_coverage.png
+
+
+These QC settings removes XXX matrices:
+
+.. code-block:: bash
+
+    $ scHicInfo --matrix nagano2017_qc.mcool
+
+
+.. code-block:: bash
+
+    Filename: nagano2017_raw.mcool
+    Contains 3882 single-cell matrices
+
+
+
+Correction
+----------
+
+
+
+
 Analysis
-^^^^^^^^
+--------
 
 The analysis of single-cell Hi-C data investigates the chromatin folding changes during the cell cycle. 
 To compute this, the clustering of the cells and a correct ordering within a cluster is the key step for this analysis.
 
 scHiCExplorer uses a flatting approach to create out of the two dimensional 2D interaction matrices a one dimensional vector to have in the end 
-a numer of samples times number of bins^2 matrix. For example: Nagano 2017 has around 3000 cells and using a 1MB binning approach results for the mouse genome in
+a number of samples times number of bins^2 matrix. For example: Nagano 2017 has around 3000 cells and using a 1MB binning approach results for the mouse genome in
 2600 times 2600 matrix. After flattening, the matrix which is used to operate on is 3000 * (2600 * 2600) = 3000 * 6760000. 
 
-Two aproaches to apply clustering are now possible: 
+Two approaches to apply clustering are now possible: 
 
 1. Compute the clustering directly on the matrix.
 2. Reduce the dimensions first and apply clustering.
@@ -188,8 +226,117 @@ To work on such many features would be problematic in terms of computational tim
 To overcome this, a dimension reduction is necessary. To reduce the number of dimensions scHiCExplorer provides three approaches: MinHash, SVL and Compartments.
 
 The first approach uses a local sensitive hashing approach to compute the nearest neighbors, with it, it reduces the number of dimensions to the number of samples where each entry represents how close the samples are. 
-Approach two, SVL for short vs long distances, computes per chromosome the ratio of the sum of short range contancts vs. the sum of long range contacts, the number of dimensions is therefore reduced to the number of to be considered chromosomes. 
+Approach two, SVL for short vs long distances, computes per chromosome the ratio of the sum of short range contacts vs. the sum of long range contacts, the number of dimensions is therefore reduced to the number of to be considered chromosomes. 
 Approach number three, compartments, computes the A/B compartments per chromosome and reduces the number of dimensions to the square root.
 
-In the following, all four approaches are shown.
+In Nagano 2017 a k-means approach is used to cluster the cells, however, the computed clusters with spectral clustering are of better quality.
+
+
+Clustering on raw data
+^^^^^^^^^^^^^^^^^^^^^^
+
+The first approach clusters the data on the raw data using first, kmeans and second, spectral clustering. Warning: the runtime of kmeans is multiple hours (on a XEON with 10 cores / 10 threads, around 8 h).
+
+.. code-block:: bash
+
+    $ scHicCluster -m nagano2017_qc.mcool --numberOfClusters 7 --clusterMethod kmeans -o clusters_raw_kmeans.txt --threads 20
+
+.. code-block:: bash
+
+    $ scHicCluster -m nagano2017_qc.mcool --numberOfClusters 7 --clusterMethod spectral -o clusters_raw_spectral.txt --threads 20
+    
+
+To visualize the results run:
+
+.. code-block:: bash
+
+    $ scHicPlotClusterProfiles -m nagano2017_qc.mcool --clusters clusters_raw_kmeans.txt -o clusters_raw_kmeans.png --dpi 300 
+
+.. code-block:: bash
+
+    $ scHicPlotClusterProfiles -m nagano2017_qc.mcool --clusters clusters_raw_spectral.txt -o clusters_raw_spectral.png --dpi 300 
+
+
+Clustering with dimensional reduction by local sensitive hashing
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: bash
+
+    $ scHicClusterMinHash -m nagano2017_qc.mcool --numberOfHashFunctions 1200  --numberOfClusters 7 --clusterMethod kmeans -o clusters_minhash_kmeans.txt --threads 20
+
+.. code-block:: bash
+
+    $ scHicClusterMinHash -m nagano2017_qc.mcool --numberOfHashFunctions 1200 --numberOfClusters 7 --clusterMethod spectral -o clusters_minhash_spectral.txt --threads 20
+    
+
+To visualize the results run:
+
+.. code-block:: bash
+
+    $ scHicPlotClusterProfiles -m nagano2017_qc.mcool --clusters clusters_minhash_kmeans.txt -o clusters_minhash_kmeans.png --dpi 300 
+
+.. code-block:: bash
+
+    $ scHicPlotClusterProfiles -m nagano2017_qc.mcool --clusters clusters_minhash_spectral.txt -o clusters_minhash_spectral.png --dpi 300 
+
+
+Clustering with dimensional reduction by short range vs. long range contact ratios
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: bash
+
+    $ scHicClusterSVL -m nagano2017_qc.mcool --distanceShortRange 2000000 --distanceLongRange 12000000 --numberOfClusters 7 --clusterMethod kmeans -o clusters_svl_kmeans.txt --threads 20
+
+.. code-block:: bash
+
+    $ scHicClusterSVL -m nagano2017_qc.mcool --distanceShortRange 2000000 --distanceLongRange 12000000 --numberOfClusters 7 --clusterMethod spectral -o clusters_svl_spectral.txt --threads 20
+    
+
+To visualize the results run:
+
+.. code-block:: bash
+
+    $ scHicPlotClusterProfiles -m nagano2017_qc.mcool --clusters clusters_svl_kmeans.txt -o clusters_svl_kmeans.png --dpi 300 
+
+.. code-block:: bash
+
+    $ scHicPlotClusterProfiles -m nagano2017_qc.mcool --clusters clusters_svl_spectral.txt -o clusters_svl_spectral.png --dpi 300 
+
+
+Clustering with dimensional reduction by A/B compartments
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: bash
+
+    $ scHicClusterCompartments -m nagano2017_qc.mcool --binarization --numberOfClusters 7 --clusterMethod kmeans -o clusters_compartments_kmeans.txt --threads 20
+
+.. code-block:: bash
+
+    $ scHicClusterCompartments -m nagano2017_qc.mcool --binarization --numberOfClusters 7 --clusterMethod spectral -o clusters_compartments_spectral.txt --threads 20
+    
+
+To visualize the results run:
+
+.. code-block:: bash
+
+    $ scHicPlotClusterProfiles -m nagano2017_qc.mcool --clusters clusters_compartments_kmeans.txt -o clusters_compartments_kmeans.png --dpi 300 
+
+.. code-block:: bash
+
+    $ scHicPlotClusterProfiles -m nagano2017_qc.mcool --clusters clusters_compartments_spectral.txt -o clusters_compartments_spectral.png --dpi 300 
+
+
+Consensus matrices
+^^^^^^^^^^^^^^^^^^
+
+The folding pattern of chromatin can be visualized by merging all Hi-C interaction matrices of one cluster together to one consensus matrix. First, the consensus matrices needs to be computed and in a second step be plotted.
+
+.. code-block:: bash
+
+    $ scHicConsensusMatrices -m nagano2017_qc.mcool --clusters clusters_minhash_kmeans.txt -o consensus_matrix_minhash_kmeans.mcool
+
+.. code-block:: bash
+
+    $ scHicPlotClusterProfiles -m nagano2017_qc.mcool ---clusters clusters_minhash_spectral.txt -o consensus_matrix_minhash_spectral.mcool
+
 
