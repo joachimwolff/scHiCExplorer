@@ -56,7 +56,7 @@ def parse_arguments(args=None):
     parserRequired.add_argument('--orderBy', '-ob',
                                 help='Algorithm to cluster the Hi-C matrices',
                                 choices=['svl', 'orderByFile'],
-                                default='spectral')
+                                default='svl')
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting cluster profile.',
                                 required=False,
@@ -226,7 +226,7 @@ def main(args=None):
 
     y_ticks = []
     y_labels = []
-    for i in range(0, args.maximalDistance // resolution, 1):
+    for i in range(0, (args.maximalDistance // resolution) + 1, 1):
         if i % 10 == 0:
             y_ticks.append(i)
 

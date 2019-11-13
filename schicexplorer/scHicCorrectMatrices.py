@@ -49,7 +49,7 @@ def parse_arguments(args=None):
     return parser
 
 
-def compute_merge(pMatrixName, pMatrixList, pQueue):
+def compute_correction(pMatrixName, pMatrixList, pQueue):
 
     out_queue_list = []
     for matrix in pMatrixList:
@@ -63,6 +63,7 @@ def compute_merge(pMatrixName, pMatrixList, pQueue):
         hic.setCorrectionFactors(correction_factors)
         out_queue_list.append(hic)
 
+    log.debug('parallel done')
     pQueue.put(out_queue_list)
     return
 
@@ -74,7 +75,7 @@ def main(args=None):
     threads = args.threads
     merged_matrices = [None] * threads
     matrices_list = cooler.fileops.list_coolers(args.matrix)
-    if len(matrices_list) > threads:
+    if len(matrices_list) < threads:
         threads = len(matrices_list)
     all_data_collected = False
     thread_done = [False] * threads
@@ -93,7 +94,7 @@ def main(args=None):
             matrices_name_list = matrices_list[i * matricesPerThread:]
 
         queue[i] = Queue()
-        process[i] = Process(target=compute_merge, kwargs=dict(
+        process[i] = Process(target=compute_correction, kwargs=dict(
             pMatrixName=args.matrix,
             pMatrixList=matrices_name_list,
             pQueue=queue[i]
@@ -101,6 +102,7 @@ def main(args=None):
         )
 
         process[i].start()
+    log.debug('wait for parallel')
 
     while not all_data_collected:
         for i in range(threads):
@@ -116,7 +118,8 @@ def main(args=None):
         for thread in thread_done:
             if not thread:
                 all_data_collected = False
-            time.sleep(1)
+        time.sleep(1)
+    log.debug('merge it')
 
     merged_matrices = [item for sublist in merged_matrices for item in sublist]
     log.debug('len(merged_matrices) {}'.format(len(merged_matrices)))

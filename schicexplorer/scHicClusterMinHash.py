@@ -39,15 +39,9 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=12,
                                 type=int)
-    parserRequired.add_argument('--numberOfNeighbors', '-n',
-                                help='Number of neighbors of clustering',
-                                required=False,
-                                default=10,
-                                type=int)
-    parserRequired.add_argument('--fastModeMinHash', '-f',
-                                help='If set to, only the number of hash collisions is considered for nearest neighbors search.'
-                                'When not set, the number of collisions is only used for candidate set creation and the euclidean distance is considered too.',
-                                action='store_true')
+    parserRequired.add_argument('--exactModeMinHash', '-em',
+                                help='This option increases the runtime significantly, from a few minutes to XXX. If set, the number of hash collisions is only used for candidate set creation and the euclidean distance is considered too.',
+                                action='store_false')
     parserRequired.add_argument('--numberOfHashFunctions', '-h',
                                 help='Number of to be used hash functions for minHash',
                                 required=False,
@@ -157,7 +151,7 @@ def main(args=None):
     if args.clusterMethod == 'spectral':
         log.debug('spectral clustering')
         minHashSpectralClustering = MinHashSpectralClustering(n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                                              shingle_size=4, fast=args.fastModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
+                                                              shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
         log.debug('spectral clustering fit predict')
 
         labels_clustering = minHashSpectralClustering.fit_predict(neighborhood_matrix)
@@ -166,7 +160,7 @@ def main(args=None):
         log.debug('kmeans clustering')
         kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads)
         minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                 shingle_size=4, fast=args.fastModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
+                                 shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
         minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=kmeans_object)
         log.debug('kmeans clustering fit predict')
 

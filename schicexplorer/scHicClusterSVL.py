@@ -149,10 +149,8 @@ def main(args=None):
                 csr_matrix_worker = queue[i].get()
                 if svl_matrix is None:
                     svl_matrix = csr_matrix_worker
-                    log.debug('returned first csr i {}'.format(i))
                 else:
                     svl_matrix += csr_matrix_worker
-                    log.debug('adding csr i {}'.format(i))
 
                 queue[i] = None
                 process[i].join()

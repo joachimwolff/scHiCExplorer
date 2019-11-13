@@ -105,7 +105,7 @@ setup(
     author_email='wolffj@informatik.uni-freiburg.de',
     packages=find_packages(),
     scripts=['bin/scHicDemultiplex', 'bin/scHicClusterMinHash', 'bin/scHicClusterSVL', 'bin/scHicClusterCompartments',
-             'bin/scHicMergeToMCool', 'bin/scHicQualityControl',
+             'bin/scHicMergeToMCool', 'bin/scHicQualityControl', 'bin/scHicCorrectMatrices',
              'bin/scHicPlotClusterProfiles', 'bin/scHicPlotConsensusMatrices', 'bin/scHicConsensusMatrices',
              'bin/scHicMergeMatrixBins', 'bin/scHicCluster', 'bin/scHicCellCycle', 'bin/scHicAdjustMatrix', 'bin/scHicNormalize',
              'bin/scHicInfo'
