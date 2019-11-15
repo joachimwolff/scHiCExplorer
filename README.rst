@@ -4,8 +4,7 @@ scHiCExplorer
 The scHiCExplorer is a software to demultiplex, process, correct, normalize, manipulate, analyse and visualize single-cell Hi-C data. scHiCExplorer supports the mcool file format and stores per cell one Hi-C interaction matrix in it.
 
 
-.. image:: .docs/images/scHi-C_workflow.png
-
+.. image:: ./docs/images/scHi-C_workflow.png
 
 Availability
 ------------
