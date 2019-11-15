@@ -24,11 +24,11 @@ def update_version_py():
                               "--tags", "--always"],
                              stdout=subprocess.PIPE)
     except EnvironmentError:
-        print("unable to run git, leaving hicexplorer/_version.py alone")
+        print("unable to run git, leaving schicexplorer/_version.py alone")
         return
     stdout = p.communicate()[0]
     if p.returncode != 0:
-        print("unable to run git, leaving hicexplorer/_version.py alone")
+        print("unable to run git, leaving schicexplorer/_version.py alone")
         return
     ver = stdout.strip()
     f = open("schicexplorer/_version.py", "w")

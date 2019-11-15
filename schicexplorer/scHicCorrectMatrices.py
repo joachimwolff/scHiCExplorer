@@ -4,6 +4,8 @@ import cooler
 
 import logging
 log = logging.getLogger(__name__)
+logging.getLogger('hicmatrix').setLevel(logging.ERROR)
+
 from multiprocessing import Process, Queue
 import time
 
@@ -29,9 +31,7 @@ def parse_arguments(args=None):
                                 required=True)
 
     parserRequired.add_argument('--outFileName', '-o',
-                                help='File name to save the resulting matrix. '
-                                'The output is also a .h5 file. But don\'t add '
-                                'the suffix.',
+                                help='File name to save the resulting matrix, please add the mcool prefix.',
                                 required=True)
     # parserRequired.a
     parserOpt = parser.add_argument_group('Optional arguments')
@@ -63,7 +63,6 @@ def compute_correction(pMatrixName, pMatrixList, pQueue):
         hic.setCorrectionFactors(correction_factors)
         out_queue_list.append(hic)
 
-    log.debug('parallel done')
     pQueue.put(out_queue_list)
     return
 
@@ -79,7 +78,6 @@ def main(args=None):
         threads = len(matrices_list)
     all_data_collected = False
     thread_done = [False] * threads
-    log.debug('matrix read, starting processing')
     length_index = [None] * threads
     length_index[0] = 0
     matricesPerThread = len(matrices_list) // threads
@@ -102,7 +100,6 @@ def main(args=None):
         )
 
         process[i].start()
-    log.debug('wait for parallel')
 
     while not all_data_collected:
         for i in range(threads):

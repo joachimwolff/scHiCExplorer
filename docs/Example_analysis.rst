@@ -55,6 +55,7 @@ To download the fastq files the SRR sample number must be known, for not all sam
     SRR5507554	GSM2598389	Diploid_32_33
     SRR5507555	GSM2598390	Diploid_34_35
 
+
 Excluded: GSM2598386 / Diploid_27
 
 
@@ -388,6 +389,9 @@ The results of the clustering with the SVL dimension reduction technique:
 Clustering with dimensional reduction by A/B compartments
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Clustering and dimension reduction based on A/B compartments will compute for each sample and each chromosome the A/B compartments,
+reducing the dimensions to the square root of the number of features i.e. in our example from 6.7 million to 2600.
+
 .. code-block:: bash
 
     $ scHicClusterCompartments -m nagano2017_corrected.mcool --binarization --numberOfClusters 7 --clusterMethod kmeans -o clusters_compartments_kmeans.txt --threads 20
@@ -396,6 +400,7 @@ Clustering with dimensional reduction by A/B compartments
 
     $ scHicClusterCompartments -m nagano2017_corrected.mcool --binarization --numberOfClusters 7 --clusterMethod spectral -o clusters_compartments_spectral.txt --threads 20
     
+
 
 To visualize the results run:
 
@@ -406,6 +411,7 @@ To visualize the results run:
 .. code-block:: bash
 
     $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --clusters clusters_compartments_spectral.txt -o clusters_compartments_spectral.png --dpi 300 --threads 20 
+
 
 
 Consensus matrices
