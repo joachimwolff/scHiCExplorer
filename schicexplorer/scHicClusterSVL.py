@@ -170,7 +170,7 @@ def main(args=None):
     elif args.clusterMethod == 'kmeans':
         log.debug('SVL matrix created, start clustering kmeans')
 
-        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
+        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=False)
         labels_clustering = kmeans_object.fit_predict(svl_matrix)
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))

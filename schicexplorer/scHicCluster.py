@@ -6,16 +6,17 @@ import time
 
 import logging
 log = logging.getLogger(__name__)
-
+from scipy.sparse import linalg
 import cooler
 
 from sklearn.cluster import KMeans, SpectralClustering
-
+from sklearn.neighbors import NearestNeighbors
 from hicmatrix import HiCMatrix as hm
 from schicexplorer.utilities import opener
 
 import numpy as np
 from scipy.sparse import csr_matrix
+
 
 
 def parse_arguments(args=None):
@@ -44,6 +45,10 @@ def parse_arguments(args=None):
                                 help='Algorithm to cluster the Hi-C matrices',
                                 choices=['spectral', 'kmeans'],
                                 default='spectral')
+    parserRequired.add_argument('--dimensionReductionMethod', '-drm',
+                                help='Dimension reduction methods, knn with euclidean distance, pca',
+                                choices=['none','knn', 'pca'],
+                                default='none')
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting clusters',
                                 required=True,
@@ -140,16 +145,29 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
+    reduce_to_dimension = neighborhood_matrix.shape[0] - 1
+    precomputed_data = False
+    if args.dimensionReductionMethod == 'knn':
+        precomputed_data = True
+        nbrs = NearestNeighbors(n_neighbors=reduce_to_dimension, algorithm='ball_tree', n_jobs=args.threads).fit(neighborhood_matrix)
+        neighborhood_matrix = nbrs.kneighbors_graph(mode='distance')
+    elif args.dimensionReductionMethod == 'pca':
+        precomputed_data = True
+        corrmatrix = np.cov(neighborhood_matrix.todense())
+        evals, eigs = linalg.eig(corrmatrix)
+        neighborhood_matrix = eigs[:, :reduce_to_dimension].transpose()
+
     if args.clusterMethod == 'spectral':
         log.debug('spectral start')
         spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
-                                                       n_neighbors=neighborhood_matrix.shape[0], affinity='nearest_neighbors')
+                                                       n_neighbors=reduce_to_dimension, affinity='nearest_neighbors')
 
         labels_clustering = spectralClustering_object.fit_predict(neighborhood_matrix)
     elif args.clusterMethod == 'kmeans':
         log.debug('start kmeans')
 
-        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
+        
+        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=precomputed_data)
 
         labels_clustering = kmeans_object.fit_predict(neighborhood_matrix)
 

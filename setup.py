@@ -116,7 +116,7 @@ setup(
     # url='http://hicexplorer.readthedocs.io',
     license='LICENSE.txt',
     description='Set of programs to preprocess single-cell Hi-C data',
-    long_description=open('README.md').read(),
+    long_description=open('README.rst').read(),
     classifiers=[
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering :: Bioinformatics'],
