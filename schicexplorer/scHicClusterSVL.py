@@ -165,12 +165,12 @@ def main(args=None):
 
     if args.clusterMethod == 'spectral':
         log.debug('SVL matrix created, start clustering spectral')
-        spectral_clustering = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads)
+        spectral_clustering = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads, random_state=0)
         labels_clustering = spectral_clustering.fit_predict(svl_matrix)
     elif args.clusterMethod == 'kmeans':
         log.debug('SVL matrix created, start clustering kmeans')
 
-        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=False)
+        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
         labels_clustering = kmeans_object.fit_predict(svl_matrix)
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))

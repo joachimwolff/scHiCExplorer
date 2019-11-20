@@ -11,10 +11,9 @@ import logging
 log = logging.getLogger(__name__)
 
 import cooler
-from sklearn.cluster import KMeans
+from sklearn.cluster import SpectralClustering, KMeans
 
 from sparse_neighbors_search import MinHash
-from sparse_neighbors_search import MinHashSpectralClustering
 from sparse_neighbors_search import MinHashClustering
 
 
@@ -150,15 +149,20 @@ def main(args=None):
 
     if args.clusterMethod == 'spectral':
         log.debug('spectral clustering')
-        minHashSpectralClustering = MinHashSpectralClustering(n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                                              shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
+        # minHashSpectralClustering = MinHashSpectralClustering(n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+        #                                                       shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
+        spectral_object = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads, random_state=0)
         log.debug('spectral clustering fit predict')
+        minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+                                 shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
+        minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=spectral_object)
+        # log.debug('kmeans clustering fit predict')
 
-        labels_clustering = minHashSpectralClustering.fit_predict(neighborhood_matrix)
+        labels_clustering = minHashClustering.fit_predict(neighborhood_matrix)
         log.debug('create label matrix assoziation')
     elif args.clusterMethod == 'kmeans':
         log.debug('kmeans clustering')
-        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads)
+        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
         minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
                                  shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
         minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=kmeans_object)

@@ -231,10 +231,10 @@ def main(args=None):
         time.sleep(1)
 
     if args.clusterMethod == 'spectral':
-        spectral_clustering = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads)
+        spectral_clustering = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,random_state=0)
         labels_clustering = spectral_clustering.fit_predict(compartments_matrix)
     elif args.clusterMethod == 'kmeans':
-        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=False)
+        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
         labels_clustering = kmeans_object.fit_predict(compartments_matrix)
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))

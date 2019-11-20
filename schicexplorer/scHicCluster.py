@@ -6,7 +6,7 @@ import time
 
 import logging
 log = logging.getLogger(__name__)
-from scipy.sparse import linalg
+from scipy import linalg
 import cooler
 
 from sklearn.cluster import KMeans, SpectralClustering
@@ -148,26 +148,33 @@ def main(args=None):
     reduce_to_dimension = neighborhood_matrix.shape[0] - 1
     precomputed_data = False
     if args.dimensionReductionMethod == 'knn':
+        log.debug('precompute knn')
         precomputed_data = True
         nbrs = NearestNeighbors(n_neighbors=reduce_to_dimension, algorithm='ball_tree', n_jobs=args.threads).fit(neighborhood_matrix)
         neighborhood_matrix = nbrs.kneighbors_graph(mode='distance')
+        log.debug('precompute knn DONE')
+
     elif args.dimensionReductionMethod == 'pca':
+        log.debug('precompute pca')
+
         precomputed_data = True
         corrmatrix = np.cov(neighborhood_matrix.todense())
         evals, eigs = linalg.eig(corrmatrix)
         neighborhood_matrix = eigs[:, :reduce_to_dimension].transpose()
+        log.debug('precompute pca DONE')
+
 
     if args.clusterMethod == 'spectral':
         log.debug('spectral start')
         spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
-                                                       n_neighbors=reduce_to_dimension, affinity='nearest_neighbors')
+                                                       n_neighbors=reduce_to_dimension, affinity='nearest_neighbors', random_state=0)
 
         labels_clustering = spectralClustering_object.fit_predict(neighborhood_matrix)
     elif args.clusterMethod == 'kmeans':
         log.debug('start kmeans')
-
+        log.debug('size: neighborhood_matrix {}'.format(neighborhood_matrix.shape))
         
-        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=precomputed_data)
+        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
 
         labels_clustering = kmeans_object.fit_predict(neighborhood_matrix)
 

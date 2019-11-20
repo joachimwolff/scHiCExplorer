@@ -153,6 +153,22 @@ Call scHicInfo to get an information about the used mcool file:
 
     Filename: nagano2017_raw.mcool
     Contains 3882 single-cell matrices
+    The information stored via cooler.info of the first cell is: 
+
+    bin-size 1000000
+    bin-type fixed
+    creation-date 2019-05-16T11:46:31.826214
+    format HDF5::Cooler
+    format-url https://github.com/mirnylab/cooler
+    format-version 3
+    generated-by cooler-0.8.3
+    genome-assembly unknown
+    metadata {}
+    nbins 2744
+    nchroms 35
+    nnz 55498
+    storage-mode symmetric-upper
+    sum 486056
 
 
 Quality control
@@ -197,6 +213,35 @@ These QC settings removes XXX matrices:
 
     Filename: nagano2017_raw.mcool
     Contains 3491 single-cell matrices
+    The information stored via cooler.info of the first cell is: 
+
+    bin-size 1000000
+    bin-type fixed
+    creation-date 2019-05-16T11:46:31.826214
+    format HDF5::Cooler
+    format-url https://github.com/mirnylab/cooler
+    format-version 3
+    generated-by cooler-0.8.3
+    genome-assembly unknown
+    metadata {}
+    nbins 2744
+    nchroms 35
+    nnz 55498
+    storage-mode symmetric-upper
+    sum 486056
+
+Removal of chromosomes / contigs / scaffolds
+--------------------------------------------
+
+A call of scHicInfo shows that in the first matrix 35 chromosomes are stored. Based on the problematic nature of the low read coverage
+it is quite likely that over the 3882 cells not all will have data present for all these chromosomes / contigs or scaffolds. 
+It is now necessary to remove the contigs and scaffolds to achieve a good clustering results. The reason is, in clustering we operate directly on the matrices
+without the consideration of pixel to chromosome region relation. The assumption is that in cell 1 the i-th pixel is related to the same regions as in cell 1543. If some 
+samples contain contigs and scaffolds, this cannot be guaranteed. 
+
+.. code-block:: bash
+
+    $ scHicAdjustMatrix -m nagano2017_qc.mcool -o nagano2017_qc_adjusted.mcool --action keep --chromosomes chr1 chr2 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 
 
 
 Normalization
@@ -206,7 +251,7 @@ Working with a few thousand samples makes it even more crucial to normalize the 
 
 .. code-block:: bash
 
-    $ scHicNormalize -m nagano2017_qc.mcool -o nagano2017_normalized.mcool --threads 20
+    $ scHicNormalize -m nagano2017_qc_adjusted.mcool -o nagano2017_normalized.mcool --threads 20
 
 
 Correction

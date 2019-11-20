@@ -49,7 +49,7 @@ def parse_arguments(args=None):
                                 type=int)
     parserRequired.add_argument('--chromosomes', '-c',
                                 nargs='+',
-                                help='List of chromosomes to keep / remove')
+                                help='List of chromosomes that a cell needs to have to be not deleted. However, other chromosomes/contigs and scaffolds which may exist are not deleted. Use scHicAdjustMatrix for this.')
     parserRequired.add_argument('--outFileNameSparsity', '-os',
                                 help='File name of the sparsity histogram',
                                 required=False,
@@ -58,7 +58,7 @@ def parse_arguments(args=None):
                                 help='File name of the read coverage',
                                 required=False,
                                 default='readCoverage.png')
-    parserRequired.add_argument('--threads',
+    parserRequired.add_argument('--threads', '-t',
                                 help='Number of threads. Using the python multiprocessing module.',
                                 required=False,
                                 default=4,

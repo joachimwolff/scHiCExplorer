@@ -34,6 +34,11 @@ def main(args=None):
 
     print('Filename: {}'.format(args.matrix))
     print('Contains {} single-cell matrices'.format(len(matrices_list)))
+    print('The information stored via cooler.info of the first cell is: \n')
+    cooler_file = cooler.Cooler(args.matrix + '::' + matrices_list[0])
 
+    if cooler_file.info is not None:
+        for key, value in cooler_file.info.items():
+            print (key, value)
     
     
