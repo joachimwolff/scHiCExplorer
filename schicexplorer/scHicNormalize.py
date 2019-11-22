@@ -57,6 +57,10 @@ def compute_normalize(pMatrixName, pMatricesList, pArgminSum, pSumOfAll, pAppend
 
     matrixFileHandlerList = []
     for i, matrix in enumerate(pMatricesList):
+        if i == 0 and pAppend:
+            append = False
+        else:
+            append = True
         matrixFileHandler = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix)
         _matrix, cut_intervals, nan_bins, \
             distance_counts, correction_factors = matrixFileHandler.load()
@@ -77,7 +81,7 @@ def compute_normalize(pMatrixName, pMatricesList, pArgminSum, pSumOfAll, pAppend
         _matrix.data[mask] = 0
         _matrix.eliminate_zeros()
 
-        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=pAppend, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
+        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
 
         matrixFileHandlerOutput.set_matrix_variables(_matrix, cut_intervals, nan_bins,
                                                      correction_factors, distance_counts)
@@ -93,6 +97,7 @@ def main(args=None):
 
     matrices_name = args.matrix
     matrices_list = cooler.fileops.list_coolers(matrices_name)
+    # log.debug('size of matrices_list: {}'.format(len(matrices_list)))
 
     threads = args.threads
 
@@ -140,7 +145,7 @@ def main(args=None):
         time.sleep(1)
 
     sum_of_all = [item for sublist in sum_list_threads for item in sublist]
-
+    # log.debug('size of sum_all: {}'.format(len(sum_of_all)))
     argmin = np.argmin(sum_of_all)
     argminSum = sum_of_all[argmin]
 
@@ -167,7 +172,7 @@ def main(args=None):
             pMatricesList=matrices_name_list,
             pArgminSum=argminSum,
             pSumOfAll=sum_of_all_list,
-            pAppend=i > 0,
+            pAppend=i == 0,
             pQueue=queue[i]
         )
         )
