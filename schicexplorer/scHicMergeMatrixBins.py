@@ -52,7 +52,7 @@ def parse_arguments(args=None):
 
     parserOpt.add_argument('--runningWindow',
                            help='set to merge for using a running '
-                           'window of length --numBins.',
+                           'window of length --numBins. Must be an odd number.',
                            action='store_true')
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
@@ -91,7 +91,7 @@ def main(args=None):
     threads = args.threads
     merged_matrices = [None] * threads
     matrices_list = cooler.fileops.list_coolers(args.matrix)
-    if len(matrices_list) > threads:
+    if len(matrices_list) < threads:
         threads = len(matrices_list)
     all_data_collected = False
     thread_done = [False] * threads
@@ -123,6 +123,11 @@ def main(args=None):
     while not all_data_collected:
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
+                log.debug('i {}'.format(i))
+                log.debug('len(queue) {}'.format(len(queue)))
+                log.debug('len(merged_matrices) {}'.format(len(merged_matrices)))
+
+
                 merged_matrices[i] = queue[i].get()
 
                 queue[i] = None
