@@ -41,12 +41,12 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=300,
                                 type=int)
-    parserRequired.add_argument('--threads',
+    parserRequired.add_argument('--threads', '-t',
                                 help='Number of threads. Using the python multiprocessing module.',
                                 required=False,
                                 default=4,
                                 type=int)
-    parserRequired.add_argument('--chromosomes',
+    parserRequired.add_argument('--chromosomes', '-c',
                                 help='List of to be plotted chromosomes',
                                 nargs='+')
     return parser
@@ -56,8 +56,12 @@ def main(args=None):
 
     args = parse_arguments().parse_args(args)
     matrices_list = cooler.fileops.list_coolers(args.matrix)
-    rows = int(np.ceil(len(matrices_list) / 4))
     columns = 4
+    if len(matrices_list) < columns:
+        columns = len(matrices_list)
+    rows = int(np.ceil(len(matrices_list) / columns))
+    if rows < 1:
+        rows = 1
     f, axes = plt.subplots(rows, columns)
     for i, matrix in enumerate(matrices_list):
         if args.chromosomes is not None and len(args.chromosomes) == 1:
@@ -80,10 +84,22 @@ def main(args=None):
             matrix_data[mask_nan] = np.nanmin(matrix_data[mask_nan == False])
             matrix_data[mask_inf] = np.nanmin(matrix_data[mask_inf == False])
         matrix_data += 1
-        axes[i // 4, i % 4].imshow(matrix_data, cmap='RdYlBu_r', norm=LogNorm())
-        axes[i // 4, i % 4].get_xaxis().set_ticks([])
-        axes[i // 4, i % 4].get_yaxis().set_ticks([])
+        # log.debug('len(axes) {}'.format(len(axes)))
+        # log.debug('len(axes[0]) {}'.format(len(axes[0])))
+        log.debug('i {}, columns {}, i // columns {}, i \% columns {}'.format(i,columns,  i // columns, i % columns))
 
-        axes[i // 4, i % 4].yaxis.set_visible(False)
-        axes[i // 4, i % 4].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
+        if rows == 1:
+            axes[i % columns].imshow(matrix_data, cmap='RdYlBu_r', norm=LogNorm())
+            axes[i % columns].get_xaxis().set_ticks([])
+            axes[i % columns].get_yaxis().set_ticks([])
+
+            axes[i % columns].yaxis.set_visible(False)
+            axes[i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
+        else:
+            axes[i // columns, i % columns].imshow(matrix_data, cmap='RdYlBu_r', norm=LogNorm())
+            axes[i // columns, i % columns].get_xaxis().set_ticks([])
+            axes[i // columns, i % columns].get_yaxis().set_ticks([])
+
+            axes[i // columns, i % columns].yaxis.set_visible(False)
+            axes[i // columns, i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
     plt.savefig(args.outFileName, dpi=args.dpi)
