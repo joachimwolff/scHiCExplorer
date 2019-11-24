@@ -66,7 +66,7 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=300,
                                 type=int)
-    parserRequired.add_argument('--threads',
+    parserRequired.add_argument('--threads', '-t',
                                 help='Number of threads. Using the python multiprocessing module.',
                                 required=False,
                                 default=4,
