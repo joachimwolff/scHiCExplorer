@@ -8,10 +8,14 @@ import logging
 log = logging.getLogger(__name__)
 
 import cooler
+import numpy as np
 
-from hicexplorer.hicAdjustMatrix import adjustMatrix
+# from hicexplorer.hicAdjustMatrix import adjustMatrix
+from hicmatrix import HiCMatrix as hm
+
 from schicexplorer._version import __version__
 from hicmatrix.lib import MatrixFileHandler
+
 
 from copy import deepcopy
 
@@ -30,21 +34,16 @@ def parse_arguments(args=None):
                                 help='File name to save the adjusted matrix.',
                                 required=True)
     parserOpt = parser.add_argument_group('Optional arguments')
-    parserMutuallyExclusive = parser.add_mutually_exclusive_group()
-    parserMutuallyExclusive.add_argument('--chromosomes', '-c',
-                                         nargs='+',
-                                         help='List of chromosomes to keep / remove')
-    parserMutuallyExclusive.add_argument('--regions', '-r',
-                                         help='BED file which stores a list of regions to keep / remove')
-    parserMutuallyExclusive.add_argument('--maskBadRegions', '-mbr',
-                                         help='Bad regions are identified and masked.')
+    parserOpt.add_argument('--chromosomes', '-c',
+                            nargs='+',
+                            help='List of chromosomes to keep / remove')
     parserOpt.add_argument('--createSubmatrix', '-cs',
-                                         type=int,
-                                         help='Keep only first n matrices and remove the rest. Good for test data creation.')
+                            type=int,
+                            help='Keep only first n matrices and remove the rest. Good for test data creation.')
     parserOpt.add_argument('--action',
                            help='Keep, remove or mask the list of specified chromosomes / regions ',
                            default='keep',
-                           choices=['keep', 'remove', 'mask']
+                           choices=['keep', 'remove']
                            )
     parserOpt.add_argument('--threads', '-t',
                             help='Number of threads. Using the python multiprocessing module.',
@@ -58,15 +57,39 @@ def parse_arguments(args=None):
 
 
 def compute_adjust_matrix(pMatrixName, pMatricesList, pArgs, pQueue):
+    log.debug('compute adjust matrix')
     hicmatrices_adjusted_objects = []
-    pArgs_local = deepcopy(pArgs)
+    keep_matrices = []
+    # pArgs_local = deepcopy(pArgs)
     for i, matrix in enumerate(pMatricesList):
-        pArgs_local.matrix = pMatrixName + '::' + matrix
-        log.debug('pArgs.matrix {}'.format(pArgs_local.matrix))
-        hic_ma_adjusted = adjustMatrix(pArgs_local)
-        hicmatrices_adjusted_objects.append(hic_ma_adjusted)
-
-    pQueue.put(hicmatrices_adjusted_objects)
+        
+        hic_matrix = hm.hiCMatrix(pMatrixName + '::' + matrix)
+        
+        if pArgs.action == 'keep':
+            try:
+                hic_matrix.keepOnlyTheseChr(pArgs.chromosomes)
+                keep_matrices.append(1)
+                # hicmatrices_adjusted_objects.append(hic_matrix)
+            except Exception as e:
+                keep_matrices.append(0)
+                log.debug('exception: {}'.format(e))
+        else:
+            chromosomes_list = list(hic_matrix.chrBinBoundaries)
+            keep_list = []
+            for chromosome in chromosomes_list:
+                if chromosome in pArgs.chromosomes:
+                    continue
+                else:
+                    keep_list.append(chromosome)
+            try:
+                hic_matrix.keepOnlyTheseChr(keep_list)
+                keep_matrices.append(1)
+            except Exception as e:
+                keep_matrices.append(0)
+                log.debug('exception: {}'.format(e))
+        hicmatrices_adjusted_objects.append(hic_matrix)
+        
+    pQueue.put([hicmatrices_adjusted_objects, keep_matrices])
     return
 
 
@@ -81,14 +104,18 @@ def main(args=None):
         for matrix in matrices_list[:args.createSubmatrix]:
             cooler.fileops.cp(args.matrix + '::' + matrix, args.outFileName + '::' + matrix)
         exit(0)
-    log.debug('args.createSubmatrix {}, args.action {}, args.chromosomes {}'.format(args.createSubmatrix, args.action, args.chromosomes ))
-    exit()
+    
+    input_count_matrices = len(matrices_list)
+    # log.debug('args.createSubmatrix {}, args.action {}, args.chromosomes {}'.format(args.createSubmatrix, args.action, args.chromosomes ))
+    # exit()
     if threads > len(matrices_list):
         threads = len(matrices_list)
 
     all_data_collected = False
     thread_done = [False] * threads
     hicmatrix_adjusted_objects_threads = [None] * threads
+    keep_matrices_list_threads = [None] * threads
+
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
     process = [None] * threads
@@ -109,11 +136,12 @@ def main(args=None):
         )
 
         process[i].start()
-
+    log.debug("foo")
     while not all_data_collected:
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
-                hicmatrix_adjusted_objects_threads[i] = queue[i].get()
+                hicmatrix_adjusted_objects_threads[i], keep_matrices_list_threads[i]  = queue[i].get()
+                
                 queue[i] = None
                 process[i].join()
                 process[i].terminate()
@@ -127,15 +155,24 @@ def main(args=None):
 
     # TODO: implement this!
     hicmatrix_adjusted_objects = [item for sublist in hicmatrix_adjusted_objects_threads for item in sublist]
+    keep_matrices_list = [item for sublist in keep_matrices_list_threads for item in sublist]
 
+    log.debug('length out {}'.format(len(hicmatrix_adjusted_objects)))
     for i, hic_matrix in enumerate(hicmatrix_adjusted_objects):
         if args.createSubmatrix and i > args.createSubmatrix:
             break
         append = True
         if i == 0:
             append = False
+        
+        if keep_matrices_list[i] == 0:
+            continue
+
         matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
 
         matrixFileHandlerOutput.set_matrix_variables(hic_matrix.matrix, hic_matrix.cut_intervals, hic_matrix.nan_bins,
-                                                     hic_matrix.correction_factors, hic_matrix.distance_counts)
-        matrixFileHandler.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
+                                                    hic_matrix.correction_factors, hic_matrix.distance_counts)
+        matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
+
+    broken_count = input_count_matrices - np.sum(np.array(keep_matrices_list))
+    print('Out of {} matrices, {} were removed because they were broken.'.format(input_count_matrices, broken_count))
