@@ -85,9 +85,15 @@ def parse_arguments(args=None):
 
 def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pNorm, pExtraTrack, pHistonMarkType, pBinarization, pQueue):
     compartments_matrix = None
+
     for i, matrix in enumerate(pMatricesList):
+
         ma = hm.hiCMatrix(pMatrixName + '::' + matrix)
-        ma.maskBins(ma.nan_bins)
+
+        #### WARNING
+        #### DO NOT APPLY BIN MASKING, WILL LEAD TO DIFFERENT SIZES OF THE CHROMOSOMES
+        #### THIS IS CAUSING A FAIL OF THE COMPUTATION
+        # ma.maskBins(ma.nan_bins)
         k = 1
         if pChromosomes:
             ma.keepOnlyTheseChr(pChromosomes)
@@ -103,11 +109,13 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
         for chrname in ma.getChrNames():
             chr_range = ma.getChrBinRange(chrname)
             length_chromosome += chr_range[1] - chr_range[0]
+
+
         if pExtraTrack and (pExtraTrack.endswith('.bw') or pExtraTrack.endswith('.bigwig')):
             bwTrack = pyBigWig.open(pExtraTrack, 'r')
+        
         for chrname in ma.getChrNames():
             chr_range = ma.getChrBinRange(chrname)
-
             submatrix = ma.matrix[chr_range[0]:chr_range[1],
                                   chr_range[0]:chr_range[1]]
             if pNorm:
@@ -142,7 +150,6 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
                                                         pHistonMarkType)
 
             vecs_list += eigs[:, :k].tolist()
-
         if compartments_matrix is None:
             compartments_matrix = np.zeros([pXDimension, len(np.array(vecs_list).flatten())], dtype=np.float)
 
@@ -161,6 +168,7 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
             eigenvector[mask] = 1
 
         compartments_matrix[pIndex + i, :] = eigenvector
+
 
     pQueue.put(compartments_matrix)
 
