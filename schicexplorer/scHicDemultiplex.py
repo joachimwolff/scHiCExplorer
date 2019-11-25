@@ -39,7 +39,7 @@ def parse_arguments(args=None):
                                 metavar='FOLDER',
                                 required=False,
                                 default='demultiplexed')
-    parserRequired.add_argument('--threads',
+    parserRequired.add_argument('--threads', '-t',
                                 help='Number of threads. Using the python multiprocessing module.',
                                 required=False,
                                 default=4,
