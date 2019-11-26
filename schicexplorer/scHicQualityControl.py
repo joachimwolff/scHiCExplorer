@@ -1,7 +1,7 @@
 import argparse
 from multiprocessing import Process, Queue
 import time
-
+import os
 import logging
 log = logging.getLogger(__name__)
 
@@ -51,10 +51,10 @@ def parse_arguments(args=None):
     parserRequired.add_argument('--chromosomes', '-c',
                                 nargs='+',
                                 help='List of chromosomes that a cell needs to have to be not deleted. However, other chromosomes/contigs and scaffolds which may exist are not deleted. Use scHicAdjustMatrix for this.')
-    parserRequired.add_argument('--outFileNameSparsity', '-os',
-                                help='File name of the sparsity histogram',
+    parserRequired.add_argument('--outFileNameDensity', '-od',
+                                help='File name of the density histogram',
                                 required=False,
-                                default='sparsity.png')
+                                default='density.png')
     parserRequired.add_argument('--outFileNameReadCoverage', '-or',
                                 help='File name of the read coverage',
                                 required=False,
@@ -63,6 +63,11 @@ def parse_arguments(args=None):
                                 help='File name of the quality report',
                                 required=False,
                                 default='qc_report.txt')
+    parserRequired.add_argument('--dpi', '-d',
+                                help='The dpi of the plot.',
+                                required=False,
+                                default=300,
+                                type=int)
     parserRequired.add_argument('--threads', '-t',
                                 help='Number of threads. Using the python multiprocessing module.',
                                 required=False,
@@ -72,7 +77,7 @@ def parse_arguments(args=None):
     return parser
 
 
-def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pIndex, pXDimension, pMaximumRegionToConsider, pQueue):
+def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pXDimension, pMaximumRegionToConsider, pQueue):
     read_coverage = []
     sparsity = []
     for i, matrix in enumerate(pMatricesList):
@@ -93,13 +98,12 @@ def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pIndex, pXDimensi
     pQueue.put([read_coverage, sparsity])
 
 
-def compute_contains_all_chromosomes(pMatrixName, pMatricesList, pChromosomes, pIndex, pQueue):
+def compute_contains_all_chromosomes(pMatrixName, pMatricesList, pChromosomes, pQueue):
 
     keep_matrices_chromosome_names = []
     length_of_chromosomes = {}
     for i, matrix in enumerate(pMatricesList):
         ma = hm.hiCMatrix(pMatrixName + '::' + matrix)
-        # ma.maskBins(ma.nan_bins)
         if pChromosomes is None:
             pChromosomes = list(ma.chrBinBoundaries)
         try:
@@ -108,22 +112,7 @@ def compute_contains_all_chromosomes(pMatrixName, pMatricesList, pChromosomes, p
         except Exception:
             keep_matrices_chromosome_names.append(0)
         length_array = []
-        for chrname in ma.getChrNames():
-            chr_range = ma.getChrBinRange(chrname)
-
-            submatrix = ma.matrix[chr_range[0]:chr_range[1],
-                                  chr_range[0]:chr_range[1]]
-            # if pIndex + i in length_of_chromosomes:
-            #     # length_of_chromosomes[pIndex + i].append(chr_range[1] - chr_range[0])
-            #     length_of_chromosomes[pIndex + i].append(submatrix.shape[1])
-            
-            # else:
-            #     # length_of_chromosomes[pIndex + i] = [chr_range[1] - chr_range[0]]
-            #     length_of_chromosomes[pIndex + i] = [submatrix.shape[1]]
-            length_array.append(chr_range[1] - chr_range[0])
-        log.debug('length_array {}'.format(length_array))
-        log.debug('matrix : {}'.format(matrix))
-    pQueue.put([keep_matrices_chromosome_names, length_of_chromosomes])
+    pQueue.put(keep_matrices_chromosome_names)
 
 
 def main(args=None):
@@ -138,7 +127,6 @@ def main(args=None):
     #####################################################
     # Detect broken chromosomes and remove these matrices
     #####################################################
-    # if args.chromosomes:
     keep_matrices_thread = [None] * threads
     length_of_chromosomes_thread = [None] * threads
     all_data_collected = False
@@ -162,7 +150,6 @@ def main(args=None):
             pMatrixName=matrices_name,
             pMatricesList=matrices_name_list,
             pChromosomes=args.chromosomes,
-            pIndex=length_index[i],
             pQueue=queue[i]
         )
         )
@@ -173,7 +160,7 @@ def main(args=None):
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
                 worker_result = queue[i].get()
-                keep_matrices_thread[i], length_of_chromosomes_thread[i] = worker_result
+                keep_matrices_thread[i] = worker_result
                 queue[i] = None
                 process[i].join()
                 process[i].terminate()
@@ -186,36 +173,11 @@ def main(args=None):
         time.sleep(1)
 
     keep_matrices_chromosome_names = np.array([item for sublist in keep_matrices_thread for item in sublist], dtype=bool)
-    # keep_matrices_chromosome_names = np.array([item for sublist in keep_matrices_thread for item in sublist], dtype=bool)
-
-    ## compute the length of the chromosomes, and remove matrices which have a different length as the majority
-    chromosomes_length_dict = {}
-    for thread_data in length_of_chromosomes_thread:
-        for key, value in thread_data.items():
-            for i, length_chromosome in enumerate(value):
-                if i in chromosomes_length_dict:
-                    
-                    if length_chromosome in chromosomes_length_dict[i]:
-                        chromosomes_length_dict[i][length_chromosome] += 1
-                    else:
-                        chromosomes_length_dict[i][length_chromosome] = 1
-                else:
-                    chromosomes_length_dict[i] = {}
-                    chromosomes_length_dict[i][length_chromosome] = 1
-    
-    log.debug('chromosomes_length_dict {}'.format(chromosomes_length_dict))
-    log.debug('length_of_chromosomes_thread {}'.format(length_of_chromosomes_thread))
-
-
 
     matrices_name_chromosome_names = np.array(matrices_list)
     matrices_list = matrices_name_chromosome_names[keep_matrices_chromosome_names]
 
     matrices_remove = matrices_name_chromosome_names[~keep_matrices_chromosome_names]
-    np.savetxt('removed_matrices_chromsomes.txt', matrices_remove, fmt="%s")
-        # log.debug('matrices_remove {} '.format(len(matrices_remove)))
-        # log.debug('all matrices {} '.format(len(keep_matrices_chromosome_names)))
-        # log.debug('matrices_list {} '.format(len(matrices_list)))
 
     #######################################
 
@@ -224,7 +186,6 @@ def main(args=None):
 
     all_data_collected = False
     thread_done = [False] * threads
-    # log.debug('matrix read, starting processing')
     length_index = [None] * threads
     length_index[0] = 0
     matricesPerThread = len(matrices_list) // threads
@@ -242,7 +203,6 @@ def main(args=None):
         process[i] = Process(target=compute_read_coverage_sparsity, kwargs=dict(
             pMatrixName=matrices_name,
             pMatricesList=matrices_name_list,
-            pIndex=length_index[i],
             pXDimension=len(matrices_list),
             pMaximumRegionToConsider=args.maximumRegionToConsider,
             pQueue=queue[i]
@@ -273,10 +233,25 @@ def main(args=None):
     sparsity = np.array([item for sublist in sparsity for item in sublist])
 
     plt.hist(read_coverage, bins=100)
-    plt.savefig(args.outFileNameReadCoverage, dpi=300)
+    plt.suptitle('Read coverage of {}'.format(os.path.basename(args.matrix)), fontsize=12)
+    plt.title('Matrices with a read coverage < {} are removed.'.format(args.minimumReadCoverage), fontsize=10)
+    plt.grid(True)
+    plt.axvline(args.minimumReadCoverage, color='r', linestyle='dashed', linewidth=1)
+    plt.xlabel('Read coverage')
+    plt.ylabel('Frequency')
+    plt.savefig(args.outFileNameReadCoverage, dpi=args.dpi)
     plt.close()
+
     plt.hist(sparsity, bins=100)
-    plt.savefig(args.outFileNameSparsity, dpi=300)
+    plt.suptitle('Density of {}'.format(os.path.basename(args.matrix)), fontsize=12)
+    plt.title('Matrices with a read coverage < {} are removed.'.format(args.minimumReadCoverage), fontsize=10)
+    plt.grid(True)
+    plt.xlabel('Density')
+    plt.ylabel('Frequency')
+
+    plt.axvline(args.minimumDensity, color='r', linestyle='dashed', linewidth=1)
+
+    plt.savefig(args.outFileNameDensity, dpi=args.dpi)
     plt.close()
 
     mask_read_coverage = read_coverage >= args.minimumReadCoverage
@@ -286,14 +261,13 @@ def main(args=None):
 
     mask = np.logical_or(mask_read_coverage, mask_sparsity)
 
-
     matrices_list_filtered = np.array(matrices_list)[mask]
 
-    # log.debug('len(matrices_list_filtered) {}'.format(len(matrices_list_filtered)))
-    # log.debug('matrices_list_filtered {}'.format(matrices_list_filtered))
     np.savetxt('accepted_matrices.txt', matrices_list_filtered, fmt="%s")
     np.savetxt('rejected_matrices.txt', np.array(matrices_list)[~mask], fmt="%s")
 
+    if os.path.exists(args.outputMcool):
+        os.remove(args.outputMcool)
     for matrix in matrices_list_filtered:
 
         cooler.fileops.cp(args.matrix + '::' + matrix, args.outputMcool + '::' + matrix)
