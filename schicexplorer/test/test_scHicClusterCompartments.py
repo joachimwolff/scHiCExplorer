@@ -36,7 +36,7 @@ def test_kmeans():
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
         --outFileName {} -t {}".format(ROOT + 'test_matrix.mcool',
-                                             3, 'kmeans', outfile.name, 1).split()
+                                       3, 'kmeans', outfile.name, 2).split()
     scHicClusterCompartments.main(args)
     assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_kmeans.txt", outfile.name)
 
@@ -46,31 +46,21 @@ def test_spectral():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -h {}".format(ROOT + 'test_matrix.mcool',
-                                             3, 'spectral', outfile.name, 2).split()
+        --outFileName {} -t {} ".format(ROOT + 'test_matrix.mcool',
+                                        3, 'spectral', outfile.name, 2).split()
     scHicClusterCompartments.main(args)
     assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_spectral.txt", outfile.name)
+
 
 def test_kmeans_binarization():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {}".format(ROOT + 'test_matrix.mcool',
-                                             3, 'kmeans', outfile.name, 1).split()
+        --outFileName {} -t {} --binarization".format(ROOT + 'test_matrix.mcool',
+                                                      3, 'kmeans', outfile.name, 2).split()
     scHicClusterCompartments.main(args)
-    assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_kmeans.txt", outfile.name)
-
-
-def test_spectral_binarization():
-    outfile = NamedTemporaryFile(suffix='.txt', delete=False)
-
-    outfile.close()
-    args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -h {}".format(ROOT + 'test_matrix.mcool',
-                                             3, 'spectral', outfile.name, 2).split()
-    scHicClusterCompartments.main(args)
-    assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_spectral.txt", outfile.name)
+    assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_kmeans_binarization.txt", outfile.name)
 
 
 def test_kmeans_histonmark():
@@ -78,10 +68,21 @@ def test_kmeans_histonmark():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {}".format(ROOT + 'test_matrix.mcool',
-                                             3, 'kmeans', outfile.name, 1).split()
+        --outFileName {} -t {} --histonMarkType {} --binarization --norm".format(ROOT + 'test_matrix.mcool',
+                                                                                 3, 'kmeans', outfile.name, 2, ROOT + 'scHicClusterCompartments/mm9_H3K36me3.bed.gz').split()
     scHicClusterCompartments.main(args)
-    assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_kmeans.txt", outfile.name)
+    assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_kmeans_binarization_norm_histon_track.txt", outfile.name)
+
+
+def test_spectral_histonmark():
+    outfile = NamedTemporaryFile(suffix='.txt', delete=False)
+
+    outfile.close()
+    args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
+        --outFileName {} -t {} --histonMarkType {} --binarization --norm".format(ROOT + 'test_matrix.mcool',
+                                                                                 3, 'spectral', outfile.name, 2, ROOT + 'scHicClusterCompartments/mm9_H3K36me3.bed.gz').split()
+    scHicClusterCompartments.main(args)
+    assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_spectral_binarization_norm_histon_track.txt", outfile.name)
 
 
 def test_spectral_extraTrack():
@@ -89,18 +90,45 @@ def test_spectral_extraTrack():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -h {}".format(ROOT + 'test_matrix.mcool',
-                                             3, 'spectral', outfile.name, 2).split()
+        --outFileName {} -t {} --binarization --extraTrack {} --norm".format(ROOT + 'test_matrix.mcool',
+                                                                             3, 'spectral', outfile.name, 2, ROOT + 'scHicClusterCompartments/mm9_gene.bed.gz').split()
     scHicClusterCompartments.main(args)
-    assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_spectral.txt", outfile.name)
+    assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_spectral_binarization_norm_gene_track.txt", outfile.name)
+
+
+def test_kmeans_extraTrack():
+    outfile = NamedTemporaryFile(suffix='.txt', delete=False)
+
+    outfile.close()
+    args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
+        --outFileName {} -t {} --binarization --extraTrack {} --norm".format(ROOT + 'test_matrix.mcool',
+                                                                             3, 'kmeans', outfile.name, 2, ROOT + 'scHicClusterCompartments/mm9_gene.bed.gz').split()
+    scHicClusterCompartments.main(args)
+    assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_kmeans_binarization_norm_gene_track.txt", outfile.name)
+
 
 def test_kmeans_norm():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {}".format(ROOT + 'test_matrix.mcool',
-                                             3, 'kmeans', outfile.name, 1).split()
+        --outFileName {} -t {} --binarization --norm".format(ROOT + 'test_matrix.mcool',
+                                                             3, 'kmeans', outfile.name, 2).split()
     scHicClusterCompartments.main(args)
-    assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_kmeans.txt", outfile.name)
+    assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_kmeans_binarization_norm.txt", outfile.name)
 
+
+def test_version():
+    args = "--version".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicClusterCompartments.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0
+
+
+def test_help():
+    args = "--help".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicClusterCompartments.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0

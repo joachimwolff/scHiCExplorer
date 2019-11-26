@@ -22,3 +22,19 @@ def test_demultiplexing():
     scHicDemultiplex.main(args)
 
     assert set(os.listdir(ROOT + '/scHicDemultiplex/demultiplexed/')) == set(os.listdir(output_folder))
+
+
+def test_version():
+    args = "--version".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicDemultiplex.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0
+
+
+def test_help():
+    args = "--help".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicDemultiplex.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0

@@ -13,6 +13,7 @@ import cooler
 import numpy.testing as nt
 from hicmatrix import HiCMatrix as hm
 
+
 def test_correct_matrices():
 
     outfile = NamedTemporaryFile(suffix='.mcool', delete=False)
@@ -25,7 +26,7 @@ def test_correct_matrices():
         input_matrices_str += ROOT + 'scHicMergeToMCool/' + input_matrices[i] + ' '
 
     args = "--matrices {} --outFileName {} ".format(input_matrices_str,
-                                outfile.name).split()
+                                                    outfile.name).split()
     scHicMergeToMCool.main(args)
 
     test_data_matrix = ROOT + 'test_matrix.mcool'
@@ -37,8 +38,24 @@ def test_correct_matrices():
 
     for test_matrix, created_matrix in zip(matrices_list_test_data, matrices_list_created):
         test = hm.hiCMatrix(test_data_matrix + '::' + test_matrix)
-        created = hm.hiCMatrix(outfile.name + '::' + created_matrix )
+        created = hm.hiCMatrix(outfile.name + '::' + created_matrix)
         nt.assert_almost_equal(test.matrix.data, created.matrix.data, decimal=5)
         nt.assert_equal(test.cut_intervals, created.cut_intervals)
 
     os.unlink(outfile.name)
+
+
+def test_version():
+    args = "--version".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicMergeToMCool.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0
+
+
+def test_help():
+    args = "--help".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicMergeToMCool.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0

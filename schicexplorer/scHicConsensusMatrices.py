@@ -8,12 +8,15 @@ import cooler
 import numpy as np
 
 from hicmatrix.lib import MatrixFileHandler
+from schicexplorer._version import __version__
 
 
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
-        add_help=False
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False,
+        description=''
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
@@ -29,13 +32,16 @@ def parse_arguments(args=None):
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name of the consensus mcool matrix.',
                                 required=True)
+    parserOpt = parser.add_argument_group('Optional arguments')
 
-    parserRequired.add_argument('--threads', '-t',
-                                help='Number of threads. Using the python multiprocessing module.',
-                                required=False,
-                                default=4,
-                                type=int)
-
+    parserOpt.add_argument('--threads', '-t',
+                           help='Number of threads. Using the python multiprocessing module.',
+                           required=False,
+                           default=4,
+                           type=int)
+    parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
+    parserOpt.add_argument('--version', action='version',
+                           version='%(prog)s {}'.format(__version__))
     return parser
 
 
@@ -61,7 +67,7 @@ def compute_consensus_matrix(pMatrixName, pClusterMatricesList, pAppend, pQueue)
         matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=hic2CoolVersion)
 
         matrixFileHandlerOutput.set_matrix_variables(consensus_matrix, cut_intervals, nan_bins,
-                                                    correction_factors, distance_counts)
+                                                     correction_factors, distance_counts)
         cluster_consensus_matrices_list.append(matrixFileHandlerOutput)
 
     pQueue.put(cluster_consensus_matrices_list)
@@ -71,7 +77,6 @@ def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-    matrices_name = args.matrix
     clusters = {}
     with open(args.clusters, 'r') as cluster_file:
 
@@ -90,7 +95,7 @@ def main(args=None):
     threads = args.threads
     if len(cluster_list) < threads:
         threads = len(cluster_list)
-    
+
     consensus_matrices_threads = [None] * threads
     all_data_collected = False
     thread_done = [False] * threads
@@ -110,7 +115,7 @@ def main(args=None):
         process[i] = Process(target=compute_consensus_matrix, kwargs=dict(
             pMatrixName=args.matrix,
             pClusterMatricesList=cluster_name_list,
-            pAppend= i == 0,
+            pAppend=i == 0,
             pQueue=queue[i]
         )
         )

@@ -59,3 +59,19 @@ def test_merge_matrices_running_window():
         nt.assert_equal(test.cut_intervals, created.cut_intervals)
 
     os.unlink(outfile.name)
+
+
+def test_version():
+    args = "--version".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicMergeMatrixBins.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0
+
+
+def test_help():
+    args = "--help".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicMergeMatrixBins.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0

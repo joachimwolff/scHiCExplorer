@@ -12,17 +12,19 @@ import cooler
 from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.neighbors import NearestNeighbors
 from hicmatrix import HiCMatrix as hm
-from schicexplorer.utilities import opener
 
 import numpy as np
 from scipy.sparse import csr_matrix
 
+from schicexplorer._version import __version__
 
 
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
-        add_help=False
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False,
+        description=''
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
@@ -37,28 +39,32 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=12,
                                 type=int)
-
-    parserRequired.add_argument('--chromosomes',
-                                help='List of to be plotted chromosomes',
-                                nargs='+')
     parserRequired.add_argument('--clusterMethod', '-cm',
                                 help='Algorithm to cluster the Hi-C matrices',
                                 choices=['spectral', 'kmeans'],
                                 default='spectral')
-    parserRequired.add_argument('--dimensionReductionMethod', '-drm',
-                                help='Dimension reduction methods, knn with euclidean distance, pca',
-                                choices=['none','knn', 'pca'],
-                                default='none')
-    parserRequired.add_argument('--outFileName', '-o',
-                                help='File name to save the resulting clusters',
-                                required=True,
-                                default='clusters.txt')
-    parserRequired.add_argument('--threads', '-t',
-                                help='Number of threads. Using the python multiprocessing module.',
-                                required=False,
-                                default=4,
-                                type=int)
+    parserOpt = parser.add_argument_group('Optional arguments')
 
+    parserOpt.add_argument('--chromosomes',
+                           help='List of to be plotted chromosomes',
+                           nargs='+')
+
+    parserOpt.add_argument('--dimensionReductionMethod', '-drm',
+                           help='Dimension reduction methods, knn with euclidean distance, pca',
+                                choices=['none', 'knn', 'pca'],
+                           default='none')
+    parserOpt.add_argument('--outFileName', '-o',
+                           help='File name to save the resulting clusters',
+                           required=True,
+                           default='clusters.txt')
+    parserOpt.add_argument('--threads', '-t',
+                           help='Number of threads. Using the python multiprocessing module.',
+                           required=False,
+                           default=4,
+                           type=int)
+    parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
+    parserOpt.add_argument('--version', action='version',
+                           version='%(prog)s {}'.format(__version__))
     return parser
 
 
@@ -98,7 +104,6 @@ def main(args=None):
 
     all_data_collected = False
     thread_done = [False] * threads
-    log.debug('matrix read, starting processing')
     length_index = [None] * threads
     length_index[0] = 0
     matricesPerThread = len(matrices_list) // threads
@@ -146,36 +151,22 @@ def main(args=None):
         time.sleep(1)
 
     reduce_to_dimension = neighborhood_matrix.shape[0] - 1
-    precomputed_data = False
     if args.dimensionReductionMethod == 'knn':
-        log.debug('precompute knn')
-        precomputed_data = True
         nbrs = NearestNeighbors(n_neighbors=reduce_to_dimension, algorithm='ball_tree', n_jobs=args.threads).fit(neighborhood_matrix)
         neighborhood_matrix = nbrs.kneighbors_graph(mode='distance')
-        log.debug('precompute knn DONE')
 
     elif args.dimensionReductionMethod == 'pca':
-        log.debug('precompute pca')
-
-        precomputed_data = True
         corrmatrix = np.cov(neighborhood_matrix.todense())
         evals, eigs = linalg.eig(corrmatrix)
         neighborhood_matrix = eigs[:, :reduce_to_dimension].transpose()
-        log.debug('precompute pca DONE')
-
 
     if args.clusterMethod == 'spectral':
-        log.debug('spectral start')
         spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
                                                        n_neighbors=reduce_to_dimension, affinity='nearest_neighbors', random_state=0)
 
         labels_clustering = spectralClustering_object.fit_predict(neighborhood_matrix)
     elif args.clusterMethod == 'kmeans':
-        log.debug('start kmeans')
-        log.debug('size: neighborhood_matrix {}'.format(neighborhood_matrix.shape))
-        
         kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
-
         labels_clustering = kmeans_object.fit_predict(neighborhood_matrix)
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))

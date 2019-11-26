@@ -16,4 +16,3 @@ if not sys.warnoptions:
 warnings.simplefilter(action="ignore", category=RuntimeWarning)
 warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
 warnings.simplefilter(action="ignore", category=Warning)
-

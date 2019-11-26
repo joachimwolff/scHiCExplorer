@@ -9,12 +9,15 @@ import logging
 log = logging.getLogger(__name__)
 
 from schicexplorer.utilities import opener
+from schicexplorer._version import __version__
 
 
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
-        add_help=False
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False,
+        description=''
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
@@ -39,16 +42,21 @@ def parse_arguments(args=None):
                                 metavar='FOLDER',
                                 required=False,
                                 default='demultiplexed')
-    parserRequired.add_argument('--threads', '-t',
-                                help='Number of threads. Using the python multiprocessing module.',
-                                required=False,
-                                default=4,
-                                type=int)
-    parserRequired.add_argument('--bufferSize', '-bs',
-                                help='Number of lines to buffer in memory, if full, write the data to disk.',
-                                required=False,
-                                default=20e6,
-                                type=int)
+    parserOpt = parser.add_argument_group('Optional arguments')
+
+    parserOpt.add_argument('--threads', '-t',
+                           help='Number of threads. Using the python multiprocessing module.',
+                           required=False,
+                           default=4,
+                           type=int)
+    parserOpt.add_argument('--bufferSize', '-bs',
+                           help='Number of lines to buffer in memory, if full, write the data to disk.',
+                           required=False,
+                           default=20e6,
+                           type=int)
+    parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
+    parserOpt.add_argument('--version', action='version',
+                           version='%(prog)s {}'.format(__version__))
     return parser
 
 

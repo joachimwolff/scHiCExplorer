@@ -12,8 +12,9 @@ import time
 from krbalancing import *
 
 from hicmatrix import HiCMatrix as hm
-from hicexplorer._version import __version__
+# from hicexplorer._version import __version__
 from hicmatrix.lib import MatrixFileHandler
+from schicexplorer._version import __version__
 
 
 def parse_arguments(args=None):

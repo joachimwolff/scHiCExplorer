@@ -5,7 +5,7 @@ from multiprocessing import Process, Queue
 
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, vstack
 
 import logging
 log = logging.getLogger(__name__)
@@ -19,11 +19,15 @@ from sparse_neighbors_search import MinHashClustering
 
 from hicmatrix import HiCMatrix as hm
 
+from schicexplorer._version import __version__
+
 
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
-        add_help=False
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False,
+        description=''
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
@@ -38,17 +42,6 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=12,
                                 type=int)
-    parserRequired.add_argument('--exactModeMinHash', '-em',
-                                help='This option increases the runtime significantly, from a few minutes to XXX. If set, the number of hash collisions is only used for candidate set creation and the euclidean distance is considered too.',
-                                action='store_false')
-    parserRequired.add_argument('--numberOfHashFunctions', '-h',
-                                help='Number of to be used hash functions for minHash',
-                                required=False,
-                                default=2000,
-                                type=int)
-    parserRequired.add_argument('--chromosomes',
-                                help='List of to be plotted chromosomes',
-                                nargs='+')
     parserRequired.add_argument('--clusterMethod', '-cm',
                                 help='Algorithm to cluster the Hi-C matrices',
                                 choices=['spectral', 'kmeans'],
@@ -57,11 +50,28 @@ def parse_arguments(args=None):
                                 help='File name to save the resulting clusters',
                                 required=True,
                                 default='clusters.txt')
-    parserRequired.add_argument('--threads', '-t',
-                                help='Number of threads. Using the python multiprocessing module.',
-                                required=False,
-                                default=4,
-                                type=int)
+    parserOpt = parser.add_argument_group('Optional arguments')
+
+    parserOpt.add_argument('--exactModeMinHash', '-em',
+                           help='This option increases the runtime significantly, from a few minutes to XXX. If set, the number of hash collisions is only used for candidate set creation and the euclidean distance is considered too.',
+                           action='store_false')
+    parserOpt.add_argument('--numberOfHashFunctions', '-nh',
+                           help='Number of to be used hash functions for minHash',
+                           required=False,
+                           default=800,
+                           type=int)
+    parserOpt.add_argument('--chromosomes',
+                           help='List of to be plotted chromosomes',
+                           nargs='+')
+
+    parserOpt.add_argument('--threads', '-t',
+                           help='Number of threads. Using the python multiprocessing module.',
+                           required=False,
+                           default=4,
+                           type=int)
+    parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
+    parserOpt.add_argument('--version', action='version',
+                           version='%(prog)s {}'.format(__version__))
     return parser
 
 
@@ -97,6 +107,7 @@ def main(args=None):
     threads = args.threads
     matrices_list = cooler.fileops.list_coolers(matrices_name)
     neighborhood_matrix = None
+    neighborhood_matrix_threads = [None] * threads
 
     all_data_collected = False
     thread_done = [False] * threads
@@ -131,10 +142,11 @@ def main(args=None):
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
                 csr_matrix_worker = queue[i].get()
-                if neighborhood_matrix is None:
-                    neighborhood_matrix = csr_matrix_worker
-                else:
-                    neighborhood_matrix += csr_matrix_worker
+                neighborhood_matrix_threads[i] = csr_matrix_worker
+                # if neighborhood_matrix is None:
+                #     neighborhood_matrix = csr_matrix_worker
+                # else:
+                #     neighborhood_matrix += csr_matrix_worker
 
                 queue[i] = None
                 process[i].join()
@@ -146,6 +158,10 @@ def main(args=None):
             if not thread:
                 all_data_collected = False
         time.sleep(1)
+
+    neighborhood_matrix = neighborhood_matrix_threads[0]
+    for i in range(1, len(neighborhood_matrix_threads)):
+        neighborhood_matrix += neighborhood_matrix_threads[i]
 
     if args.clusterMethod == 'spectral':
         log.debug('spectral clustering')

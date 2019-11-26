@@ -23,11 +23,15 @@ import pyBigWig
 
 import scipy.sparse
 
+from schicexplorer._version import __version__
+
 
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
-        add_help=False
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False,
+        description=''
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
@@ -43,29 +47,6 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=12,
                                 type=int)
-    parserRequired.add_argument('--chromosomes',
-                                help='List of chromosomes to be included in the '
-                                'correlation.',
-                                default=None,
-                                nargs='+')
-    parserRequired.add_argument('--norm',
-                                help='Different obs-exp normalization as used by '
-                                'Homer software.',
-                                action='store_true')
-    parserRequired.add_argument('--binarization',
-                                help='Set all positive values of eigenvector to 1 and all negative ones to 0.',
-                                action='store_true')
-    parserRequired.add_argument('--extraTrack',
-                                help='Either a gene track or a histon mark coverage'
-                                ' file(preferably a broad mark) is needed to decide'
-                                ' if the values of the eigenvector need a sign flip'
-                                ' or not.',
-                                default=None)
-    parserRequired.add_argument('--histonMarkType',
-                                help='set it to active or inactive. This is only '
-                                'necessary if a histon mark coverage file is given '
-                                'as an extraTrack.',
-                                default='active')
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting clusters',
                                 required=True,
@@ -74,11 +55,40 @@ def parse_arguments(args=None):
                                 help='Algorithm to cluster the Hi-C matrices',
                                 choices=['spectral', 'kmeans'],
                                 default='spectral')
-    parserRequired.add_argument('--threads', '-t',
-                                help='Number of threads. Using the python multiprocessing module.',
-                                required=False,
-                                default=4,
-                                type=int)
+    parserOpt = parser.add_argument_group('Optional arguments')
+
+    parserOpt.add_argument('--chromosomes',
+                           help='List of chromosomes to be included in the '
+                           'correlation.',
+                                default=None,
+                                nargs='+')
+    parserOpt.add_argument('--norm',
+                           help='Different obs-exp normalization as used by '
+                           'Homer software.',
+                                action='store_true')
+    parserOpt.add_argument('--binarization',
+                           help='Set all positive values of eigenvector to 1 and all negative ones to 0.',
+                           action='store_true')
+    parserOpt.add_argument('--extraTrack',
+                           help='Either a gene track or a histon mark coverage'
+                           ' file(preferably a broad mark) is needed to decide'
+                                ' if the values of the eigenvector need a sign flip'
+                                ' or not.',
+                                default=None)
+    parserOpt.add_argument('--histonMarkType',
+                           help='set it to active or inactive. This is only '
+                           'necessary if a histon mark coverage file is given '
+                                'as an extraTrack.',
+                                default='active')
+
+    parserOpt.add_argument('--threads', '-t',
+                           help='Number of threads. Using the python multiprocessing module.',
+                           required=False,
+                           default=4,
+                           type=int)
+    parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
+    parserOpt.add_argument('--version', action='version',
+                           version='%(prog)s {}'.format(__version__))
 
     return parser
 
@@ -90,9 +100,9 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
 
         ma = hm.hiCMatrix(pMatrixName + '::' + matrix)
 
-        #### WARNING
-        #### DO NOT APPLY BIN MASKING, WILL LEAD TO DIFFERENT SIZES OF THE CHROMOSOMES
-        #### THIS IS CAUSING A FAIL OF THE COMPUTATION
+        # WARNING
+        # DO NOT APPLY BIN MASKING, WILL LEAD TO DIFFERENT SIZES OF THE CHROMOSOMES
+        # THIS IS CAUSING A FAIL OF THE COMPUTATION
         # ma.maskBins(ma.nan_bins)
         k = 1
         if pChromosomes:
@@ -110,10 +120,9 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
             chr_range = ma.getChrBinRange(chrname)
             length_chromosome += chr_range[1] - chr_range[0]
 
-
         if pExtraTrack and (pExtraTrack.endswith('.bw') or pExtraTrack.endswith('.bigwig')):
             bwTrack = pyBigWig.open(pExtraTrack, 'r')
-        
+
         for chrname in ma.getChrNames():
             chr_range = ma.getChrBinRange(chrname)
             submatrix = ma.matrix[chr_range[0]:chr_range[1],
@@ -168,7 +177,6 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
             eigenvector[mask] = 1
 
         compartments_matrix[pIndex + i, :] = eigenvector
-
 
     pQueue.put(compartments_matrix)
 
@@ -239,7 +247,7 @@ def main(args=None):
         time.sleep(1)
 
     if args.clusterMethod == 'spectral':
-        spectral_clustering = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,random_state=0)
+        spectral_clustering = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads, random_state=0)
         labels_clustering = spectral_clustering.fit_predict(compartments_matrix)
     elif args.clusterMethod == 'kmeans':
         kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)

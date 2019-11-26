@@ -17,11 +17,15 @@ from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import AxesGrid
 
+from schicexplorer._version import __version__
+
 
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
-        add_help=False
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False,
+        description=''
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
@@ -31,24 +35,30 @@ def parse_arguments(args=None):
                                 help='The consensus matrix created by scHicConsensusMatrices',
                                 metavar='mcool scHi-C matrix',
                                 required=True)
+    parserOpt = parser.add_argument_group('Optional arguments')
 
-    parserRequired.add_argument('--outFileName', '-o',
-                                help='File name to save the resulting cluster profile.',
-                                required=False,
-                                default='consensus_matrices.png')
-    parserRequired.add_argument('--dpi', '-d',
-                                help='The dpi of the plot.',
-                                required=False,
-                                default=300,
-                                type=int)
-    parserRequired.add_argument('--threads', '-t',
-                                help='Number of threads. Using the python multiprocessing module.',
-                                required=False,
-                                default=4,
-                                type=int)
-    parserRequired.add_argument('--chromosomes', '-c',
-                                help='List of to be plotted chromosomes',
-                                nargs='+')
+    parserOpt.add_argument('--outFileName', '-o',
+                           help='File name to save the resulting cluster profile.',
+                           required=False,
+                           default='consensus_matrices.png')
+
+    parserOpt.add_argument('--dpi', '-d',
+                           help='The dpi of the plot.',
+                           required=False,
+                           default=300,
+                           type=int)
+    parserOpt.add_argument('--threads', '-t',
+                           help='Number of threads. Using the python multiprocessing module.',
+                           required=False,
+                           default=4,
+                           type=int)
+    parserOpt.add_argument('--chromosomes', '-c',
+                           help='List of to be plotted chromosomes',
+                           nargs='+')
+
+    parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
+    parserOpt.add_argument('--version', action='version',
+                           version='%(prog)s {}'.format(__version__))
     return parser
 
 
@@ -86,7 +96,7 @@ def main(args=None):
         matrix_data += 1
         # log.debug('len(axes) {}'.format(len(axes)))
         # log.debug('len(axes[0]) {}'.format(len(axes[0])))
-        log.debug('i {}, columns {}, i // columns {}, i \% columns {}'.format(i,columns,  i // columns, i % columns))
+        log.debug('i {}, columns {}, i // columns {}, i % columns {}'.format(i, columns, i // columns, i % columns))
 
         if rows == 1:
             axes[i % columns].imshow(matrix_data, cmap='RdYlBu_r', norm=LogNorm())

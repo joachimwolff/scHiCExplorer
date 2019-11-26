@@ -18,12 +18,15 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+from schicexplorer._version import __version__
 
 
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
-        add_help=False
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False,
+        description=''
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
@@ -37,40 +40,45 @@ def parse_arguments(args=None):
                                 help='Text file which contains per matrix the associated cluster.',
                                 metavar='cluster file',
                                 required=True)
-    parserRequired.add_argument('--chromosomes',
-                                help='List of to be plotted chromosomes',
-                                nargs='+')
-    parserRequired.add_argument('--maximalDistance', '-md',
-                                help='maximal distance in bases',
-                                required=False,
-                                default=50000000,
-                                type=int)
-    parserRequired.add_argument('--distanceShortRange', '-ds',
-                                help='Distance which should be considered as short range. Default 2MB.',
-                                default=2000000,
-                                type=int)
-    parserRequired.add_argument('--distanceLongRange', '-dl',
-                                help='Distance which should be considered as short range. Default 12MB.',
-                                default=12000000,
-                                type=int)
-    parserRequired.add_argument('--orderBy', '-ob',
-                                help='Algorithm to cluster the Hi-C matrices',
-                                choices=['svl', 'orderByFile'],
-                                default='svl')
-    parserRequired.add_argument('--outFileName', '-o',
-                                help='File name to save the resulting cluster profile.',
-                                required=False,
-                                default='clusters_profile.png')
-    parserRequired.add_argument('--dpi', '-d',
-                                help='The dpi of the plot.',
-                                required=False,
-                                default=300,
-                                type=int)
-    parserRequired.add_argument('--threads', '-t',
-                                help='Number of threads. Using the python multiprocessing module.',
-                                required=False,
-                                default=4,
-                                type=int)
+    parserOpt = parser.add_argument_group('Optional arguments')
+
+    parserOpt.add_argument('--chromosomes',
+                           help='List of to be plotted chromosomes',
+                           nargs='+')
+    parserOpt.add_argument('--maximalDistance', '-md',
+                           help='maximal distance in bases',
+                           required=False,
+                           default=50000000,
+                           type=int)
+    parserOpt.add_argument('--distanceShortRange', '-ds',
+                           help='Distance which should be considered as short range. Default 2MB.',
+                           default=2000000,
+                           type=int)
+    parserOpt.add_argument('--distanceLongRange', '-dl',
+                           help='Distance which should be considered as short range. Default 12MB.',
+                           default=12000000,
+                           type=int)
+    parserOpt.add_argument('--orderBy', '-ob',
+                           help='Algorithm to cluster the Hi-C matrices',
+                           choices=['svl', 'orderByFile'],
+                           default='svl')
+    parserOpt.add_argument('--outFileName', '-o',
+                           help='File name to save the resulting cluster profile.',
+                           required=False,
+                           default='clusters_profile.png')
+    parserOpt.add_argument('--dpi', '-d',
+                           help='The dpi of the plot.',
+                           required=False,
+                           default=300,
+                           type=int)
+    parserOpt.add_argument('--threads', '-t',
+                           help='Number of threads. Using the python multiprocessing module.',
+                           required=False,
+                           default=4,
+                           type=int)
+    parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
+    parserOpt.add_argument('--version', action='version',
+                           version='%(prog)s {}'.format(__version__))
     return parser
 
 
@@ -165,7 +173,7 @@ def main(args=None):
     clusters = {}
     clusters_svl = {}
     short_range_distance = args.distanceShortRange // resolution
-    long_range_distance = args.distanceLongRange  // resolution
+    long_range_distance = args.distanceLongRange // resolution
 
     with open(args.clusters, 'r') as cluster_file:
 

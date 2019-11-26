@@ -19,7 +19,9 @@ from schicexplorer._version import __version__
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
-        add_help=False
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False,
+        description=''
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
@@ -29,50 +31,54 @@ def parse_arguments(args=None):
                                 help='The single cell Hi-C interaction matrices to investigate for QC. Needs to be in mcool format',
                                 metavar='mcool scHi-C matrix',
                                 required=True)
+    parserOpt = parser.add_argument_group('Optional arguments')
 
-    parserRequired.add_argument('--outputMcool', '-o',
-                                help='Mcool matrix which contains only the filtered matrices',
-                                default='filtered_matrices.mcool')
-    parserRequired.add_argument('--minimumReadCoverage',
-                                help='Remove all samples with a lower read coverage as this value.',
-                                required=False,
-                                default=1000000,
-                                type=int)
-    parserRequired.add_argument('--minimumDensity',
-                                help='Remove all samples with a lower read coverage as this value.',
-                                required=False,
-                                default=0.001,
-                                type=float)
-    parserRequired.add_argument('--maximumRegionToConsider',
-                                help='To compute the density, consider only this genomic distance around the diagonal.',
-                                required=False,
-                                default=30000000,
-                                type=int)
-    parserRequired.add_argument('--chromosomes', '-c',
-                                nargs='+',
-                                help='List of chromosomes that a cell needs to have to be not deleted. However, other chromosomes/contigs and scaffolds which may exist are not deleted. Use scHicAdjustMatrix for this.')
-    parserRequired.add_argument('--outFileNameDensity', '-od',
-                                help='File name of the density histogram',
-                                required=False,
-                                default='density.png')
-    parserRequired.add_argument('--outFileNameReadCoverage', '-or',
-                                help='File name of the read coverage',
-                                required=False,
-                                default='readCoverage.png')
-    parserRequired.add_argument('--outFileNameQCReport', '-oqc',
-                                help='File name of the quality report',
-                                required=False,
-                                default='qc_report.txt')
-    parserRequired.add_argument('--dpi', '-d',
-                                help='The dpi of the plot.',
-                                required=False,
-                                default=300,
-                                type=int)
-    parserRequired.add_argument('--threads', '-t',
-                                help='Number of threads. Using the python multiprocessing module.',
-                                required=False,
-                                default=4,
-                                type=int)
+    parserOpt.add_argument('--outputMcool', '-o',
+                           help='Mcool matrix which contains only the filtered matrices',
+                           default='filtered_matrices.mcool')
+    parserOpt.add_argument('--minimumReadCoverage',
+                           help='Remove all samples with a lower read coverage as this value.',
+                           required=False,
+                           default=1000000,
+                           type=int)
+    parserOpt.add_argument('--minimumDensity',
+                           help='Remove all samples with a lower read coverage as this value.',
+                           required=False,
+                           default=0.001,
+                           type=float)
+    parserOpt.add_argument('--maximumRegionToConsider',
+                           help='To compute the density, consider only this genomic distance around the diagonal.',
+                           required=False,
+                           default=30000000,
+                           type=int)
+    parserOpt.add_argument('--chromosomes', '-c',
+                           nargs='+',
+                           help='List of chromosomes that a cell needs to have to be not deleted. However, other chromosomes/contigs and scaffolds which may exist are not deleted. Use scHicAdjustMatrix for this.')
+    parserOpt.add_argument('--outFileNameDensity', '-od',
+                           help='File name of the density histogram',
+                           required=False,
+                           default='density.png')
+    parserOpt.add_argument('--outFileNameReadCoverage', '-or',
+                           help='File name of the read coverage',
+                           required=False,
+                           default='readCoverage.png')
+    parserOpt.add_argument('--outFileNameQCReport', '-oqc',
+                           help='File name of the quality report',
+                           required=False,
+                           default='qc_report.txt')
+    parserOpt.add_argument('--dpi', '-d',
+                           help='The dpi of the plot.',
+                           required=False,
+                           default=300,
+                           type=int)
+    parserOpt.add_argument('--threads', '-t',
+                           help='Number of threads. Using the python multiprocessing module.',
+                           required=False,
+                           default=4,
+                           type=int)
+    parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
+    parserOpt.add_argument('--version', action='version',
+                           version='%(prog)s {}'.format(__version__))
 
     return parser
 
@@ -101,7 +107,6 @@ def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pXDimension, pMax
 def compute_contains_all_chromosomes(pMatrixName, pMatricesList, pChromosomes, pQueue):
 
     keep_matrices_chromosome_names = []
-    length_of_chromosomes = {}
     for i, matrix in enumerate(pMatricesList):
         ma = hm.hiCMatrix(pMatrixName + '::' + matrix)
         if pChromosomes is None:
@@ -111,7 +116,6 @@ def compute_contains_all_chromosomes(pMatrixName, pMatricesList, pChromosomes, p
             keep_matrices_chromosome_names.append(1)
         except Exception:
             keep_matrices_chromosome_names.append(0)
-        length_array = []
     pQueue.put(keep_matrices_chromosome_names)
 
 
@@ -128,10 +132,8 @@ def main(args=None):
     # Detect broken chromosomes and remove these matrices
     #####################################################
     keep_matrices_thread = [None] * threads
-    length_of_chromosomes_thread = [None] * threads
     all_data_collected = False
     thread_done = [False] * threads
-    log.debug('matrix read, starting processing')
     length_index = [None] * threads
     length_index[0] = 0
     matricesPerThread = len(matrices_list) // threads

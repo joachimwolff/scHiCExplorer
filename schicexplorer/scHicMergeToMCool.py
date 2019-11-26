@@ -4,6 +4,7 @@ import argparse
 
 import logging
 log = logging.getLogger(__name__)
+from schicexplorer._version import __version__
 
 
 def parse_arguments(args=None):
@@ -25,6 +26,11 @@ def parse_arguments(args=None):
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the exported matrix.',
                                 required=True)
+    parserOpt = parser.add_argument_group('Optional arguments')
+
+    parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
+    parserOpt.add_argument('--version', action='version',
+                           version='%(prog)s {}'.format(__version__))
     return parser
 
 

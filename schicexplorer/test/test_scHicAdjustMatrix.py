@@ -12,6 +12,7 @@ import cooler
 import numpy.testing as nt
 from hicmatrix import HiCMatrix as hm
 
+
 def test_adjust_matrices_keep():
 
     outfile = NamedTemporaryFile(suffix='.mcool', delete=False)
@@ -19,7 +20,7 @@ def test_adjust_matrices_keep():
 
     chromosomes_to_keep = "chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chrX"
     args = "--matrix {} --outFileName {} --action {} --chromosomes {} -t {}".format(ROOT + 'test_matrix.mcool',
-                                outfile.name, 'keep', chromosomes_to_keep, 1).split()
+                                                                                    outfile.name, 'keep', chromosomes_to_keep, 1).split()
     scHicAdjustMatrix.main(args)
 
     test_data_matrix = ROOT + 'scHicAdjustMatrix/test_matrix_adjusted.mcool'
@@ -44,14 +45,15 @@ def test_adjust_matrices_keep():
         assert chromosomes_list_created != chromosomes_list_test_original
     os.unlink(outfile.name)
 
+
 def test_adjust_matrices_remove():
-    
+
     outfile = NamedTemporaryFile(suffix='.mcool', delete=False)
     outfile.close()
 
     chromosomes_to_remove = "chr1 chr2"
     args = "--matrix {} --outFileName {} --action {} --chromosomes {} -t {}".format(ROOT + 'test_matrix.mcool',
-                                outfile.name, 'remove', chromosomes_to_remove, 2).split()
+                                                                                    outfile.name, 'remove', chromosomes_to_remove, 2).split()
     scHicAdjustMatrix.main(args)
 
     test_data_matrix = ROOT + 'scHicAdjustMatrix/test_matrix_adjusted_remove.mcool'
@@ -77,3 +79,19 @@ def test_adjust_matrices_remove():
         assert chromosomes_list_created != chromosomes_list_test_original
 
     os.unlink(outfile.name)
+
+
+def test_version():
+    args = "--version".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicAdjustMatrix.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0
+
+
+def test_help():
+    args = "--help".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicAdjustMatrix.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0

@@ -17,7 +17,7 @@ def test_consensus_matrices():
 
     outfile.close()
     args = "--matrix {} --outFileName {} -t {} -c {}".format(ROOT + 'test_matrix.mcool',
-                                                              outfile.name, 4, ROOT + 'scHicConsensusMatrices/cluster_kmeans.txt').split()
+                                                             outfile.name, 4, ROOT + 'scHicConsensusMatrices/cluster_kmeans.txt').split()
     scHicConsensusMatrices.main(args)
 
     test_data_matrix = ROOT + 'scHicConsensusMatrices/consensus_matrix.mcool'
@@ -35,3 +35,19 @@ def test_consensus_matrices():
         nt.assert_equal(test.cut_intervals, created.cut_intervals)
 
     os.unlink(outfile.name)
+
+
+def test_version():
+    args = "--version".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicConsensusMatrices.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0
+
+
+def test_help():
+    args = "--help".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicConsensusMatrices.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0

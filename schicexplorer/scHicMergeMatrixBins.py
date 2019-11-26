@@ -21,13 +21,7 @@ def parse_arguments(args=None):
         description='Merges bins from a Hi-C matrix. For example, '
         'using a matrix containing 5kb bins, a matrix '
         'of 50kb bins can be derived using --numBins 10. '
-        'From one type of downstream analysis to another, '
-        'different bin sizes must be used. For example to call TADs, '
-        'unmerged matrices are recommended while to display '
-        'Hi-C matrices, bins of approximately 2000bp usually '
-        'yield the best reprensentations with `hicPlotMatrix` for small regions, '
-        'and even larger bins (50kb) are recommended for whole chromosome '
-        'representations or for `hicPlotDistVsCounts`.')
+    )
 
     parserRequired = parser.add_argument_group('Required arguments')
 
@@ -47,7 +41,6 @@ def parse_arguments(args=None):
                                 metavar='int',
                                 type=int,
                                 required=True)
-    # parserRequired.a
     parserOpt = parser.add_argument_group('Optional arguments')
 
     parserOpt.add_argument('--runningWindow',
@@ -126,7 +119,6 @@ def main(args=None):
                 log.debug('i {}'.format(i))
                 log.debug('len(queue) {}'.format(len(queue)))
                 log.debug('len(merged_matrices) {}'.format(len(merged_matrices)))
-
 
                 merged_matrices[i] = queue[i].get()
 

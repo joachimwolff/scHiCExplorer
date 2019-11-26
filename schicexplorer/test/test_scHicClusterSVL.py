@@ -28,15 +28,16 @@ def are_files_equal(file1, file2, delta=2, skip=0):
                     break
     return equal
 
+
 def test_kmeans():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
         --outFileName {} -t {} -ds  {} -dl {} ".format(ROOT + 'test_matrix.mcool',
-                                3, 'kmeans', outfile.name, 1, 2000000,12000000).split()
+                                                       3, 'kmeans', outfile.name, 2, 2000000, 12000000).split()
     scHicClusterSVL.main(args)
-    assert are_files_equal(ROOT + "scHicCluster/cluster_kmeans.txt", outfile.name)
+    assert are_files_equal(ROOT + "scHicClusterSVL/cluster_kmeans.txt", outfile.name)
 
 
 def test_spectral():
@@ -45,6 +46,22 @@ def test_spectral():
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
         --outFileName {} -t {} -ds  {} -dl {} ".format(ROOT + 'test_matrix.mcool',
-                                3, 'spectral', outfile.name, 1, 2000000,12000000).split()
+                                                       3, 'spectral', outfile.name, 2, 2000000, 12000000).split()
     scHicClusterSVL.main(args)
-    assert are_files_equal(ROOT + "scHicCluster/cluster_spectral.txt", outfile.name)
+    assert are_files_equal(ROOT + "scHicClusterSVL/cluster_spectral.txt", outfile.name)
+
+
+def test_version():
+    args = "--version".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicClusterSVL.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0
+
+
+def test_help():
+    args = "--help".split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        scHicClusterSVL.main(args)
+    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.value.code == 0

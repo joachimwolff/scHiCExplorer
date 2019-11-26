@@ -10,11 +10,15 @@ import numpy as np
 from hicmatrix import HiCMatrix
 from hicmatrix.lib import MatrixFileHandler
 
+from schicexplorer._version import __version__
+
 
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
-        add_help=False
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False,
+        description=''
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
@@ -34,7 +38,11 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=4,
                                 type=int)
+    parserOpt = parser.add_argument_group('Optional arguments')
 
+    parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
+    parserOpt.add_argument('--version', action='version',
+                           version='%(prog)s {}'.format(__version__))
     return parser
 
 
