@@ -92,9 +92,13 @@ class install(_install):
 
 
 install_requires_py = [
-    "pysam >= 0.14",
-    "cooler >= 0.8.3",
-    "sparse_neighbors_search >=0.4"
+    "hicexplorer >= 3.3.1",
+    "sparse-neighbors-search >= 0.4,
+    "numpy >= 1.17.3",
+    "scipy >= 1.3.2",
+    "cooler >= 0.8.5",
+    "hicmatrix >= 11",
+    "scikit-learn >= 0.21.1"
 ]
 
 
