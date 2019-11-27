@@ -113,3 +113,4 @@ def main(args=None):
             axes[i // columns, i % columns].yaxis.set_visible(False)
             axes[i // columns, i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
     plt.savefig(args.outFileName, dpi=args.dpi)
+    plt.close()

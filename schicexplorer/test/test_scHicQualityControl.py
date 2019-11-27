@@ -80,10 +80,10 @@ def test_plot():
         nt.assert_almost_equal(test.matrix.data, created.matrix.data, decimal=5)
         nt.assert_equal(test.cut_intervals, created.cut_intervals)
 
-    os.unlink(outfile_matrix.name)
-    os.unlink(outfile_density.name)
-    os.unlink(outfile_coverage.name)
-    os.unlink(outfile_qc_report.name)
+    # os.unlink(outfile_matrix.name)
+    # os.unlink(outfile_density.name)
+    # os.unlink(outfile_coverage.name)
+    # os.unlink(outfile_qc_report.name)
 
 
 def test_plot_chromosomes():
@@ -130,10 +130,10 @@ def test_plot_chromosomes():
         nt.assert_almost_equal(test.matrix.data, created.matrix.data, decimal=5)
         nt.assert_equal(test.cut_intervals, created.cut_intervals)
 
-    os.unlink(outfile_matrix.name)
-    os.unlink(outfile_density.name)
-    os.unlink(outfile_coverage.name)
-    os.unlink(outfile_qc_report.name)
+    # os.unlink(outfile_matrix.name)
+    # os.unlink(outfile_density.name)
+    # os.unlink(outfile_coverage.name)
+    # os.unlink(outfile_qc_report.name)
 
 
 def test_version():

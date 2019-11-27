@@ -233,7 +233,7 @@ def main(args=None):
 
     read_coverage = np.array([item for sublist in read_coverage for item in sublist])
     sparsity = np.array([item for sublist in sparsity for item in sublist])
-
+    plt.close()
     plt.hist(read_coverage, bins=100)
     plt.suptitle('Read coverage of {}'.format(os.path.basename(args.matrix)), fontsize=12)
     plt.title('Matrices with a read coverage < {} are removed.'.format(args.minimumReadCoverage), fontsize=10)
