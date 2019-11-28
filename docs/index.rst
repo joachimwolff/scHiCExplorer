@@ -18,20 +18,21 @@ The following is the list of tools available in scHiCExplorer
 =================================== ===============================================================================
 tool                                description
 =================================== ===============================================================================
-:ref:`scHicAdjustMatrix`            Identifies the genomic locations of restriction sites
-:ref:`scHicCluster`                 Creates a Hi-C matrix using the aligned BAM files of the Hi-C sequencing reads
-:ref:`scHicClusterCompartments`     Estimates the quality of Hi-C dataset
-:ref:`scHicClusterMinHash`          Estimates the quality of Hi-C dataset
-:ref:`scHicClusterSVL`              Estimates the quality of Hi-C dataset
-:ref:`scHicConsensusMatrices`       Estimates the quality of Hi-C dataset
-:ref:`scHicCorrectMatrices`         Estimates the quality of Hi-C dataset
-:ref:`scHicDemultiplex`             Estimates the quality of Hi-C dataset
-:ref:`scHicMergeMatrixBins`         Estimates the quality of Hi-C dataset
-:ref:`scHicMergeToMCool`            Estimates the quality of Hi-C dataset
-:ref:`scHicNormalize`               Estimates the quality of Hi-C dataset
-:ref:`scHicPlotClusterProfiles`     Estimates the quality of Hi-C dataset
+:ref:`scHicDemultiplex`             Demultiplexes the samples by their barcodes to one FASTQ file per samples
+:ref:`scHicMergeToMCool`            Merges all single-cell Hi-C matrices to one
+:ref:`scHicMergeMatrixBins`         Changes the resolution of the matrices 
+:ref:`scHicQualityControl`          Estimates the quality of scHi-C datasets
+:ref:`scHicAdjustMatrix`            Keeps / removes chromosomes / contigs / scaffolds of all samples 
+:ref:`scHicNormalize`               Normalizes the read coverage of all samples to the lowest read coverage
+:ref:`scHicCorrectMatrices`         Corrects all samples with Knight-Ruiz correction
+:ref:`scHicInfo`                    Retrieve information about the mcool matrix
+:ref:`scHicCluster`                 Cluster all samples on raw data or uses dimension reduction knn or pca 
+:ref:`scHicClusterMinHash`          Cluster all samples on knn computed by approximate knn search via LSH
+:ref:`scHicClusterSVL`              Cluster all samples based on short vs long range contact ratio  
+:ref:`scHicClusterCompartments`     Cluster all samples based on A / B scHicClusterCompartments  
+:ref:`scHicConsensusMatrices`       Computes the consensus matrices based on clustering
+:ref:`scHicPlotClusterProfiles`     Plots the cluster profiles with all samples
 :ref:`scHicPlotConsensusMatrices`   Estimates the quality of Hi-C dataset
-:ref:`scHicQualityControl`          Estimates the quality of Hi-C dataset
 =================================== ===============================================================================
 
 Getting Help
@@ -48,6 +49,8 @@ Contents:
    content/installation
    content/list-of-tools
    content/News
+   Examples_analysis
+
 
 
 This tool suite is developed by Joachim Wolff from the `Bioinformatics Lab <http://bioinf.uni-freiburg.de/>`_ of the `Albert-Ludwigs-University Freiburg <http://www.uni-freiburg.de>`_, Germany.
