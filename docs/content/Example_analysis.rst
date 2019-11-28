@@ -1,7 +1,8 @@
-.. _Example_analysis:
-
 Analysis of single-cell Hi-C data
 =================================
+
+.. contents::
+    :local:
 
 The analysis of single-cell Hi-C data deals is partially similar to regular Hi-C data analysis, the pre-processing of data i.e. mapping and the creation
 of a Hi-C interaction matrix and the correction of the data works can be adapted from a Hi-C data analysis. However, single-cell Hi-C deals
@@ -186,7 +187,7 @@ To guarantee these requirements the quality control works in three steps:
 
 .. code-block:: bash
 
-    $ scHicQualityControl --matrix nagano2017_raw.mcool --outputMcool nagano2017_qc.mcool --minimumReadCoverage 100000 --minimumDensity 0.01 --maximumRegionToConsider 30000000 --outFileNameReadCoverage read_coverage.png --outFileNameDensity density.png --threads 20 --chromosomes chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chrX
+    $ scHicQualityControl --matrix nagano2017_raw.mcool --outputMcool nagano2017_qc.mcool --minimumReadCoverage 100000 --minimumDensity 0.02 --maximumRegionToConsider 30000000 --outFileNameReadCoverage read_coverage.png --outFileNameDensity density.png --threads 20 --chromosomes chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chrX
 
 For this tutorial a minimum read coverage of 1 million and a density of 0.1% is used in range of 30MB around the main diagonal. The above command creates certain files:
 
@@ -206,9 +207,10 @@ For this tutorial a minimum read coverage of 1 million and a density of 0.1% is 
     scHi-C sample contained 3882 cells:
     Number of removed matrices containing bad chromosomes 0
     Number of removed matrices due to low read coverage (< 100000): 1374
-    Number of removed matrices due to too many zero bins (< 0.01 density, within 30000000 relative genomic distance): 388
+    Number of removed matrices due to too many zero bins (< 0.02 density, within 30000000 relative genomic distance): 610
+    2508 samples passed the quality control. Please consider matrices with a low read coverage may be the matrices with a low density and overlap therefore.
 
-These QC settings removes XXX matrices:
+These QC settings removes 2508 matrices:
 
 .. code-block:: bash
 
