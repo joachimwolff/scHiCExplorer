@@ -233,8 +233,10 @@ def main(args=None):
 
     read_coverage = np.array([item for sublist in read_coverage for item in sublist])
     sparsity = np.array([item for sublist in sparsity for item in sublist])
+
     plt.close()
     plt.hist(read_coverage, bins=100)
+
     plt.suptitle('Read coverage of {}'.format(os.path.basename(args.matrix)), fontsize=12)
     plt.title('Matrices with a read coverage < {} are removed.'.format(args.minimumReadCoverage), fontsize=10)
     plt.grid(True)
@@ -246,7 +248,7 @@ def main(args=None):
 
     plt.hist(sparsity, bins=100)
     plt.suptitle('Density of {}'.format(os.path.basename(args.matrix)), fontsize=12)
-    plt.title('Matrices with a read coverage < {} are removed.'.format(args.minimumReadCoverage), fontsize=10)
+    plt.title('Matrices with a density < {} are removed.'.format(args.minimumDensity), fontsize=10)
     plt.grid(True)
     plt.xlabel('Density')
     plt.ylabel('Frequency')
@@ -257,13 +259,16 @@ def main(args=None):
     plt.close()
 
     mask_read_coverage = read_coverage >= args.minimumReadCoverage
-    sum_read_coverage = np.sum(~mask_read_coverage)
     mask_sparsity = sparsity >= args.minimumDensity
-    sum_sparsity = np.sum(~mask_sparsity)
 
-    mask = np.logical_or(mask_read_coverage, mask_sparsity)
+    log.debug('len(mask_read_coverage) {}'.format(len(mask_read_coverage)))
+    log.debug('len(mask_sparsity) {}'.format(len(mask_sparsity)))
+
+    mask = np.logical_and(mask_read_coverage, mask_sparsity)
 
     matrices_list_filtered = np.array(matrices_list)[mask]
+    sum_read_coverage = np.sum(~mask_read_coverage)
+    sum_sparsity = np.sum(~mask_sparsity)
 
     np.savetxt('accepted_matrices.txt', matrices_list_filtered, fmt="%s")
     np.savetxt('rejected_matrices.txt', np.array(matrices_list)[~mask], fmt="%s")
@@ -286,9 +291,12 @@ def main(args=None):
     matrices_low_read_coverage = 'Number of removed matrices due to low read coverage (< {}): {}\n'.format(args.minimumReadCoverage, sum_read_coverage)
     matrices_too_sparse = 'Number of removed matrices due to too many zero bins (< {} density, within {} relative genomic distance): {}\n'.format(args.minimumDensity, args.maximumRegionToConsider, sum_sparsity)
 
+    matrix_qc = '{} samples passed the quality control. Please consider matrices with a low read coverage may be the matrices with a low density and overlap therefore.'.format(len(matrices_list_filtered))
+
     with open(args.outFileNameQCReport, 'w') as file:
         file.write(header)
         file.write(matrix_statistics)
         file.write(matrices_bad_chromosomes)
         file.write(matrices_low_read_coverage)
         file.write(matrices_too_sparse)
+        file.write(matrix_qc)
