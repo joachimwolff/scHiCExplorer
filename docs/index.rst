@@ -49,7 +49,7 @@ Contents:
    content/installation
    content/list-of-tools
    content/News
-   content/Examples_analysis
+   content/Example_analysis
 
 
 
