@@ -197,9 +197,9 @@ For this tutorial a minimum read coverage of 1 million and a density of 0.1% is 
 4. A text report presenting quality control information.
 
 
-.. image:: images/density.png
+.. image:: ../images/density.png
 
-.. image:: images/read_coverage.png
+.. image:: ../images/read_coverage.png
 
 .. code-block:: bash
 
@@ -358,10 +358,10 @@ The cluster internal ordering can be visualized in two ways: Either by the order
 
     $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --orderBy svl --distanceShortRange 2000000 --distanceLongRange 12000000  --clusters clusters_raw_spectral.txt -o clusters_raw_spectral.png --dpi 300  --threads 20
 
-.. image:: images/clusters_raw_spectral_order_by_file.png
+.. image:: ../images/clusters_raw_spectral_order_by_file.png
 
 
-.. image:: images/clusters_raw_spectral.png
+.. image:: ../images/clusters_raw_spectral.png
 
 
 Clustering with dimensional reduction by local sensitive hashing
@@ -394,10 +394,10 @@ To visualize the results run:
 
 The clustered samples based on the dimension reduction with MinHash are way more meaningful in comparison to the raw clustered data:
 
-.. image:: images/clusters_minhash_kmeans.png
+.. image:: ../images/clusters_minhash_kmeans.png
 
 
-.. image:: images/clusters_minhash_spectral.png
+.. image:: ../images/clusters_minhash_spectral.png
 
 The top image is clustered with kmeans, the bottom one with spectral clustering. Partially the results are quite equal e.g. in both cluster 3, however, the spectral clustering seems to detect the fine differences in the chromatine structure better.
 
@@ -431,10 +431,10 @@ To visualize the results run:
 
 The results of the clustering with the SVL dimension reduction technique:
 
-.. image:: images/clusters_svl_kmeans.png
+.. image:: ../images/clusters_svl_kmeans.png
 
 
-.. image:: images/clusters_svl_spectral.png
+.. image:: ../images/clusters_svl_spectral.png
 
 
 
