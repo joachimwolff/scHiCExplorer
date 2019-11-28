@@ -303,7 +303,7 @@ In Nagano 2017 a k-means approach is used to cluster the cells, however, the com
 Clustering on raw data
 ^^^^^^^^^^^^^^^^^^^^^^
 
-The first approach clusters the data on the raw data using first, kmeans and second, spectral clustering. Warning: the runtime of kmeans is multiple hours (on a XEON with 10 cores / 10 threads, around 8 h).
+The first approach clusters the data on the raw data using first, kmeans and second, spectral clustering. Warning: the runtime of kmeans is multiple hours (on a XEON E5-2630 v4 @ 2.20GHz with 10 cores / 20 threads, around 8 h).
 
 .. code-block:: bash
 
