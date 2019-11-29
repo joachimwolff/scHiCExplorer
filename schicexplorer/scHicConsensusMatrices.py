@@ -16,7 +16,8 @@ def parse_arguments(args=None):
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         add_help=False,
-        description=''
+        description='scHicConsensusMatrices creates based on the clustered samples one consensus matrix for each cluster. '
+        'The consensus matrices are normalized to an equal read coverage level and are stored all in one mcool matrix.'
     )
 
     parserRequired = parser.add_argument_group('Required arguments')

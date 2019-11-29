@@ -26,7 +26,11 @@ def parse_arguments(args=None):
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         add_help=False,
-        description=''
+        description='scHicClusterSVL uses kmeans or spectral clustering to associate each cell to a cluster and therefore to its cell cycle. '
+        'The clustering is applied on dimension reduced data based on the ratio of short vs long range contacts per chromosome. This approach reduces the number of dimensions from samples * (number of bins)^2 to samples * (number of chromosomes). '
+        'Please consider also the other clustering and dimension reduction approaches of the scHicExplorer suite. They can give you better results, '
+        'can be faster or less memory demanding.'
+
     )
 
     parserRequired = parser.add_argument_group('Required arguments')

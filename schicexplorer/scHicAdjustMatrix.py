@@ -23,7 +23,7 @@ def parse_arguments(args=None):
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         add_help=False,
-        description=''
+        description='scHicAdjustMatrix is a tool to keep or remove a list of chromosomes of all Hi-C matrices stored in the mcool file.'
     )
 
     parserRequired = parser.add_argument_group('Required arguments')

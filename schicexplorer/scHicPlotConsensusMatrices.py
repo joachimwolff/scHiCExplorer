@@ -96,7 +96,7 @@ def main(args=None):
         matrix_data += 1
         # log.debug('len(axes) {}'.format(len(axes)))
         # log.debug('len(axes[0]) {}'.format(len(axes[0])))
-        log.debug('i {}, columns {}, i // columns {}, i % columns {}'.format(i, columns, i // columns, i % columns))
+        # log.debug('i {}, columns {}, i // columns {}, i % columns {}'.format(i, columns, i // columns, i % columns))
 
         if rows == 1:
             axes[i % columns].imshow(matrix_data, cmap='RdYlBu_r', norm=LogNorm())
@@ -112,5 +112,7 @@ def main(args=None):
 
             axes[i // columns, i % columns].yaxis.set_visible(False)
             axes[i // columns, i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
+
+    plt.colorbar()
     plt.savefig(args.outFileName, dpi=args.dpi)
     plt.close()

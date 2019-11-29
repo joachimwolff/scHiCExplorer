@@ -1,7 +1,7 @@
 News
 ====
 
-**29. November 2019**
+**30. November 2019**
 
 Release of version 1 of the single-cell HiCExplorer.
 

@@ -17,7 +17,8 @@ def parse_arguments(args=None):
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         add_help=False,
-        description=''
+        description='scHicDemultiplex demultiplexes fastq files from Nagano 2017: \"Cell-cycle dynamics of chromosomal organization at single-cell resolution\" according their barcodes to '
+        'a seperated forward and reverse strand fastq files per cell.'
     )
 
     parserRequired = parser.add_argument_group('Required arguments')

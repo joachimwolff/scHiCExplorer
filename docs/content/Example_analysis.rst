@@ -19,7 +19,8 @@ In this tutorial we work with the 'diploid' data from Nagano 2017 (GSE94489).
 The raw fastq data is around 1,04 TB of size and the download speed is limited to a few Mb/s by NCBI. To decrease the download time it is recommended to download the files in parallel if enough disk space is available.
 Furthermore, please consider the data needs to be demultiplexed and mapped which needs additional disk space.
 
-If you do not want to download, demultiplex, map and build the matrices on your own, a precomputed mcool matrix is provided #TODO: here.
+If you do not want to download, demultiplex, map and build the matrices on your own, two precomputed raw mcool matrices are provided on `Zenodo <https://doi.org/10.5281/zenodo.3557682>`__ in 1Mb and 10kb resolution. 
+For this tutorial we use the 1Mb resolution of the matrix to reduce computation time. The 10kb takes significant longer and needs more memory to compute. 
 
 Download of the fastq files
 ---------------------------
@@ -77,7 +78,7 @@ Alternatively, download all with one command:
 Demultiplexing
 --------------
 
-Each downloaded file needs to be demultiplexed. To do so the barcodes per sample (https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE94489&format=file&file=GSE94489%5FREADME%2Etxt) and the SRR to sample mapping needs to be provided:
+Each downloaded file needs to be demultiplexed. To do so the `barcodes per sample <https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE94489&format=file&file=GSE94489%5FREADME%2Etxt>`__ and the SRR to sample mapping needs to be provided:
 
 
 .. code-block:: bash
@@ -126,14 +127,15 @@ As a last step, the matrices for each cell need to be created, we use the tool '
 
 .. code-block:: bash
 
-    $ ls *.bam |  tr '\n' ' ' | xargs -n 2 -P 1 -d ' ' | xargs -n1 -P1-I {} bash -c 'multinames=$1;outname=$(echo $multinames | cut -d" " -f 1 | sed -r "s?(^.*)_R[12]\..*?\\1?"); mkdir ${outname}_QC && hicBuildMatrix -s $multinames --binSize 1000000 --QCfolder  ${outname}_QC -o ${outname}.cool --threads 4' -- {}
+    $ hicBuildMatrix -s  Diploid_15_AGGCAGAA_CTCTCTAT_R1.bam Diploid_15_AGGCAGAA_CTCTCTAT_R2.bam --binSize 1000000 --QCfolder  Diploid_15_AGGCAGAA_CTCTCTAT_QC -o Diploid_15_AGGCAGAA_CTCTCTAT.cool --threads 4
 
 
 To make this step more automated, it is recommend to use either a platform like hicexplorer.usegalaxy.eu or to use a batch script:
 
 .. code-block:: bash
-    
-    $ ls -1 *.bam |  xargs -n2 -P 1 -I {} sh -c "hicBuildMatrix -s {} {} --binSize 1000000 name.cool"
+
+    $ ls *.bam |  tr '\n' ' ' | xargs -n 2 -P 1 -d ' ' | xargs -n1 -P1-I {} bash -c 'multinames=$1;outname=$(echo $multinames | cut -d" " -f 1 | sed -r "s?(^.*)_R[12]\..*?\\1?"); mkdir ${outname}_QC && hicBuildMatrix -s $multinames --binSize 1000000 --QCfolder  ${outname}_QC -o ${outname}.cool --threads 4' -- {}
+
 
 
 After the Hi-C interaction matrices for each cell is created, the matrices are pooled together to one mcool matrix:
@@ -363,6 +365,41 @@ The cluster internal ordering can be visualized in two ways: Either by the order
 
 .. image:: ../images/clusters_raw_spectral.png
 
+The profile of the clusters clearly shows that the algorithms fail to create a useful clustering of the samples and are not able to assoziate the cells to a cell cycle stage. 
+
+
+Clustering on kNN graph or PCA with exact methods
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To decrese the compute time, especially for kmeans, and to improve the clustering result the dimensions are reduced with two approaches: By computing a k-nearest neighbors graph and
+reduce the dimensions with it down to the number of samples or to compute the k-principal components of the matrix. 
+
+.. code-block:: bash
+
+    $ scHicCluster -m nagano2017_corrected.mcool --numberOfClusters 7 --clusterMethod spectral -o clusters_knn_spectral.txt --threads 20 -drm knn
+
+.. code-block:: bash
+
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --orderBy orderByFile --clusters clusters_knn_spectral.txt -o clusters_knn_spectral.png --dpi 300  --threads 20
+
+.. image:: ../images/clusters_knn_spectral.png
+
+.. code-block:: bash
+
+    $ scHicCluster -m nagano2017_corrected.mcool --numberOfClusters 7 --clusterMethod kmeans -o clusters_knn_kmeans.txt --threads 20 -drm knn
+
+.. code-block:: bash
+
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --orderBy orderByFile --clusters clusters_knn_kmeans.txt -o clusters_knn_kmeans.png --dpi 300  --threads 20
+
+.. image:: ../images/clusters_knn_kmeans.png
+
+Comparing the two profiles of the clustering process, the dimension reduction with k-NN and kmeans works way better in assoziating samples to cell cycles. It can be clearly 
+seen that cells with similar profiles are cluster together, however, not always this is the case. Considering cluster 6 shows on the right side 30 to 50 cells which profiles do not match the rest of the cluster. 
+The spectral clustering shows, especially in comparison to spectral clustering without any dimension reduction no real improvement. Still the majorities of the cells are clustered to one cell cycle and the differentiation between the cell stages is not visible.
+
+The PCA shows a different issue: Using a computer with 120 GB of memory is not enough to compute the PCA and is therefore not a method that is part of this analysis.
+
 
 Clustering with dimensional reduction by local sensitive hashing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -399,8 +436,9 @@ The clustered samples based on the dimension reduction with MinHash are way more
 
 .. image:: ../images/clusters_minhash_spectral.png
 
-The top image is clustered with kmeans, the bottom one with spectral clustering. Partially the results are quite equal e.g. in both cluster 3, however, the spectral clustering seems to detect the fine differences in the chromatine structure better.
+The top image is clustered with kmeans, the bottom one with spectral clustering. Partially the results are quite equal e.g. in cluster 1 (kmeans) and 3 (spectral), however, the kmeans clustering seems to detect the fine differences in the chromatine structure better.
 
+In comparison to the clustering based on raw data or the dimension reducted by exact kNN computation, the results with the approximate kNN based on MinHash seems to create better results.
 
 
 Clustering with dimensional reduction by short range vs. long range contact ratios
@@ -464,6 +502,14 @@ To visualize the results run:
 
     $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --clusters clusters_compartments_spectral.txt -o clusters_compartments_spectral.png --dpi 300 --threads 20 
 
+.. image:: ../images/clusters_compartments_kmeans.png
+
+
+.. image:: ../images/clusters_compartments_spectral.png
+
+
+The results of A/B compartment dimension reduction are mixed. The spectral clustering creates similar results as the non-dimension reduced clustering and is not useful. The kmeans clustering creates an equal distribution of the cells to the clusters,
+ but the profiles indicate the clustering itself is not good.
 
 
 Consensus matrices
@@ -477,6 +523,10 @@ The folding pattern of chromatin can be visualized by merging all Hi-C interacti
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool ---clusters clusters_minhash_spectral.txt -o consensus_matrix_minhash_kmeans.mcool --threads 20
+    $ scHicPlotConsensusMatrices -m nagano2017_corrected.mcool -o consensus_matrix_minhash_kmeans.png --threads 20 --chromosomes chr1
 
+
+.. image:: ../images/consensus_matrix_minhash_kmeans_chr1.png
+
+The plot of the consenus matrix shows a clear distinguishable pattern of the cells and therefore of the cell cycle.
 
