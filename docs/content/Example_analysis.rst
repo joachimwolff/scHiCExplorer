@@ -78,7 +78,7 @@ Alternatively, download all with one command:
 Demultiplexing
 --------------
 
-Each downloaded file needs to be demultiplexed. To do so the `barcodes per sample <https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE94489&format=file&file=GSE94489%5FREADME%2Etxt>`__ and the SRR to sample mapping needs to be provided:
+Each downloaded file needs to be demultiplexed. To do so the `barcodes per sample <https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE94489&format=file&file=GSE94489%5FREADME%2Etxt>`__ and the `SRR to sample <https://github.com/joachimwolff/scHiCExplorer/blob/master/samples.txt>`__ mapping needs to be provided:
 
 
 .. code-block:: bash
