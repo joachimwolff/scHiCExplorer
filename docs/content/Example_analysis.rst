@@ -523,10 +523,26 @@ The folding pattern of chromatin can be visualized by merging all Hi-C interacti
 
 .. code-block:: bash
 
-    $ scHicPlotConsensusMatrices -m nagano2017_corrected.mcool -o consensus_matrix_minhash_kmeans.png --threads 20 --chromosomes chr1
+    $ scHicPlotConsensusMatrices -m consensus_matrix_minhash_kmeans.mcool -o consensus_matrix_minhash_kmeans.png --threads 20 --chromosomes chr6
 
 
-.. image:: ../images/consensus_matrix_minhash_kmeans_chr1.png
+In the following plots for different dimension reduction techniques are shown:
 
-The plot of the consenus matrix shows a clear distinguishable pattern of the cells and therefore of the cell cycle.
+.. image:: ../images/consensus_compartments_kmeans.png
+
+.. image:: ../images/consensus_compartments_spectral.png
+
+.. image:: ../images/consensus_knn_kmeans.png
+
+.. image:: ../images/consensus_knn_spectral.png
+
+.. image:: ../images/consensus_minhash_kmeans.png
+
+.. image:: ../images/consensus_minhash_spectral.png
+
+.. image:: ../images/consensus_svl_kmeans.png
+
+.. image:: ../images/consensus_svl_spectral.png
+
+.. image:: ../images/consensus_raw_spectral.png
 
