@@ -55,7 +55,11 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--chromosomes', '-c',
                            help='List of to be plotted chromosomes',
                            nargs='+')
-
+    parserOpt.add_argument('--colorMap',
+                           help='Color map to use for the heatmap. Available '
+                           'values can be seen here: '
+                           'http://matplotlib.org/examples/color/colormaps_reference.html',
+                           default='RdYlBu_r')
     parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
                            version='%(prog)s {}'.format(__version__))
@@ -73,6 +77,14 @@ def main(args=None):
     if rows < 1:
         rows = 1
     f, axes = plt.subplots(rows, columns)
+
+    title_string = 'Consensus matrices of {}'.format(os.path.basename(args.matrix))
+    if args.chromosomes:
+        title_string += ' on chromosome: {}'.format(' '.join(args.chromosomes))
+    else:
+        title_string += ' on all chromosomes'
+    plt.suptitle(title_string, fontsize=10)
+
     for i, matrix in enumerate(matrices_list):
         if args.chromosomes is not None and len(args.chromosomes) == 1:
             hic_ma = hm.hiCMatrix(pMatrixFile=args.matrix + '::' + matrix, pChrnameList=args.chromosomes)
@@ -94,25 +106,31 @@ def main(args=None):
             matrix_data[mask_nan] = np.nanmin(matrix_data[mask_nan == False])
             matrix_data[mask_inf] = np.nanmin(matrix_data[mask_inf == False])
         matrix_data += 1
-        # log.debug('len(axes) {}'.format(len(axes)))
-        # log.debug('len(axes[0]) {}'.format(len(axes[0])))
-        # log.debug('i {}, columns {}, i // columns {}, i % columns {}'.format(i, columns, i // columns, i % columns))
 
         if rows == 1:
-            axes[i % columns].imshow(matrix_data, cmap='RdYlBu_r', norm=LogNorm())
+            im = axes[i % columns].imshow(matrix_data, cmap=args.colorMap, norm=LogNorm())
             axes[i % columns].get_xaxis().set_ticks([])
             axes[i % columns].get_yaxis().set_ticks([])
 
             axes[i % columns].yaxis.set_visible(False)
             axes[i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
         else:
-            axes[i // columns, i % columns].imshow(matrix_data, cmap='RdYlBu_r', norm=LogNorm())
+            im = axes[i // columns, i % columns].imshow(matrix_data, cmap=args.colorMap, norm=LogNorm())
             axes[i // columns, i % columns].get_xaxis().set_ticks([])
             axes[i // columns, i % columns].get_yaxis().set_ticks([])
 
             axes[i // columns, i % columns].yaxis.set_visible(False)
             axes[i // columns, i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
 
-    plt.colorbar()
+    number_of_plots = len(matrices_list)
+    i = -1
+    while rows * columns > number_of_plots:
+
+        axes[-1, i].axis('off')
+        number_of_plots += 1
+        i -= 1
+
+    f.colorbar(im)
+    plt.tight_layout()
     plt.savefig(args.outFileName, dpi=args.dpi)
     plt.close()
