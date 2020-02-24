@@ -30,6 +30,7 @@ def are_files_equal(file1, file2, delta=2, skip=0):
     return equal
 
 
+@pytest.mark.xfail
 def test_kmeans():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -41,6 +42,7 @@ def test_kmeans():
     assert are_files_equal(ROOT + "scHicClusterMinHash/cluster_kmeans.txt", outfile.name)
 
 
+@pytest.mark.xfail
 def test_spectral():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -52,6 +54,7 @@ def test_spectral():
     assert are_files_equal(ROOT + "scHicClusterMinHash/cluster_spectral.txt", outfile.name)
 
 
+@pytest.mark.xfail
 def test_spectral_chromosomes():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -63,6 +66,7 @@ def test_spectral_chromosomes():
     assert are_files_equal(ROOT + "scHicClusterMinHash/cluster_spectral_chromosomes.txt", outfile.name)
 
 
+@pytest.mark.xfail
 def test_kmeans_exact():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -74,6 +78,7 @@ def test_kmeans_exact():
     assert are_files_equal(ROOT + "scHicClusterMinHash/cluster_kmeans_exact.txt", outfile.name)
 
 
+@pytest.mark.xfail
 def test_spectral_exact():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 

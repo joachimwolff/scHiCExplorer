@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 import cooler
 
 from hicmatrix import HiCMatrix as hm
-from hicexplorer.utilities import obs_exp_matrix_lieberman, obs_exp_matrix_norm, convertInfsToZeros_ArrayFloat
+from hicexplorer.utilities import obs_exp_matrix_lieberman, obs_exp_matrix_non_zero, convertInfsToZeros_ArrayFloat
 from hicexplorer.hicPCA import correlateEigenvectorWithGeneTrack, correlateEigenvectorWithHistonMarkTrack
 from hicexplorer.utilities import convertNansToZeros, convertInfsToZeros
 from sklearn.cluster import KMeans, SpectralClustering
@@ -131,8 +131,7 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
             submatrix = ma.matrix[chr_range[0]:chr_range[1],
                                   chr_range[0]:chr_range[1]]
             if pNorm:
-                obs_exp_matrix_ = obs_exp_matrix_norm(submatrix)
-
+                obs_exp_matrix_ = obs_exp_matrix_non_zero(submatrix, ligation_factor=True)
             else:
                 obs_exp_matrix_ = obs_exp_matrix_lieberman(submatrix,
                                                            length_chromosome,
