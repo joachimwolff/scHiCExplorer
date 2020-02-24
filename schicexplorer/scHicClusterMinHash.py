@@ -5,7 +5,7 @@ from multiprocessing import Process, Queue
 
 
 import numpy as np
-from scipy.sparse import csr_matrix, vstack
+from scipy.sparse import csr_matrix, vstack, save_npz
 
 import logging
 log = logging.getLogger(__name__)
@@ -57,13 +57,21 @@ def parse_arguments(args=None):
     parserOpt = parser.add_argument_group('Optional arguments')
 
     parserOpt.add_argument('--exactModeMinHash', '-em',
-                           help='This option increases the runtime significantly, from a few minutes to XXX. If set, the number of hash collisions is only used for candidate set creation and the euclidean distance is considered too.',
+                           help='This option increases the runtime significantly, from a few minutes to half an hour or longer. If set, the number of hash collisions is only used for candidate set creation and the euclidean distance is considered too.',
                            action='store_false')
+    parserOpt.add_argument('--saveIntermediateRawMatrix', '-sm',
+                           help='This option activates the save of the intermediate raw scHi-C matrix.',
+                           required=False)
     parserOpt.add_argument('--numberOfHashFunctions', '-nh',
                            help='Number of to be used hash functions for minHash',
                            required=False,
                            default=800,
                            type=int)
+    parserOpt.add_argument('--shareOfMatrixToBeTransferred', '-s',
+                           help='Which share of rows shall be transferred from Python to C++ at once. Values between 0 and 1, the more are transferred at once, the larger the memory usage is. The less rows are transferred, the slower the computation is.',
+                           required=False,
+                           default=0.25,
+                           type=float)
     parserOpt.add_argument('--chromosomes',
                            help='List of to be plotted chromosomes',
                            nargs='+')
@@ -147,10 +155,6 @@ def main(args=None):
             if queue[i] is not None and not queue[i].empty():
                 csr_matrix_worker = queue[i].get()
                 neighborhood_matrix_threads[i] = csr_matrix_worker
-                # if neighborhood_matrix is None:
-                #     neighborhood_matrix = csr_matrix_worker
-                # else:
-                #     neighborhood_matrix += csr_matrix_worker
 
                 queue[i] = None
                 process[i].join()
@@ -167,28 +171,27 @@ def main(args=None):
     for i in range(1, len(neighborhood_matrix_threads)):
         neighborhood_matrix += neighborhood_matrix_threads[i]
 
+    if args.saveIntermediateRawMatrix:
+        save_npz(args.saveIntermediateRawMatrix, neighborhood_matrix)
     if args.clusterMethod == 'spectral':
         log.debug('spectral clustering')
-        # minHashSpectralClustering = MinHashSpectralClustering(n_clusters=args.numberOfClusters, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-        #                                                       shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
         spectral_object = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads, random_state=0)
         log.debug('spectral clustering fit predict')
         minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                 shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
+                                 shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0], maxFeatures=int(max(neighborhood_matrix.getnnz(1))))
         minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=spectral_object)
-        # log.debug('kmeans clustering fit predict')
 
-        labels_clustering = minHashClustering.fit_predict(neighborhood_matrix)
+        labels_clustering = minHashClustering.fit_predict(neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred)
         log.debug('create label matrix assoziation')
     elif args.clusterMethod == 'kmeans':
         log.debug('kmeans clustering')
         kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
         minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                 shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0])
+                                 shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0], maxFeatures=int(max(neighborhood_matrix.getnnz(1))))
         minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=kmeans_object)
         log.debug('kmeans clustering fit predict')
 
-        labels_clustering = minHashClustering.fit_predict(neighborhood_matrix)
+        labels_clustering = minHashClustering.fit_predict(neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred)
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
     np.savetxt(args.outFileName, matrices_cluster, fmt="%s")
