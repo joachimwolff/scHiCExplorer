@@ -67,6 +67,11 @@ def parse_arguments(args=None):
                            required=False,
                            default=800,
                            type=int)
+    parserOpt.add_argument('--numberOfNearestNeighbors', '-k',
+                           help='Number of to be used computed nearest neighbors for the knn graph.',
+                           required=False,
+                           default=100,
+                           type=int)
     parserOpt.add_argument('--shareOfMatrixToBeTransferred', '-s',
                            help='Which share of rows shall be transferred from Python to C++ at once. Values between 0 and 1, the more are transferred at once, the larger the memory usage is. The less rows are transferred, the slower the computation is.',
                            required=False,
@@ -177,8 +182,8 @@ def main(args=None):
         log.debug('spectral clustering')
         spectral_object = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads, random_state=0)
         log.debug('spectral clustering fit predict')
-        minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                 shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0], maxFeatures=int(max(neighborhood_matrix.getnnz(1))))
+        minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+                                 shingle_size=4, fast=args.exactModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))))
         minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=spectral_object)
 
         labels_clustering = minHashClustering.fit_predict(neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred)
@@ -186,8 +191,8 @@ def main(args=None):
     elif args.clusterMethod == 'kmeans':
         log.debug('kmeans clustering')
         kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
-        minHash_object = MinHash(number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                 shingle_size=4, fast=args.exactModeMinHash, n_neighbors=neighborhood_matrix.shape[0], maxFeatures=int(max(neighborhood_matrix.getnnz(1))))
+        minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+                                 shingle_size=4, fast=args.exactModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))))
         minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=kmeans_object)
         log.debug('kmeans clustering fit predict')
 
