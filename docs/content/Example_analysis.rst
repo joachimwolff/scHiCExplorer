@@ -107,10 +107,16 @@ Mapping
 
 After demultiplexing, each forward and reverse strand file needs to be mapped as usual in Hi-C as single-paired files. Foe this tutorial we use bwa mem and the mm10 index:
 
+
+.. code-block:: bash
+    $ wget http://hgdownload-test.cse.ucsc.edu/goldenPath/mm10/bigZips/chromFa.tar.gz -O genome_mm10/chromFa.tar.gz
+    $ tar -xvzf genome_mm10/chromFa.tar.gz
+    $ cat genome_mm10/*.fa > genome_mm10/mm10.fa
+    
+
 .. code-block:: bash
 
-    $ wget ftp://ftp.ccb.jhu.edu/pub/data/bowtie2_indexes/mm10.zip
-    $ mkdir mm10 && unzip mm10.zip -d mm10
+    $ bwa index -p bwa/mm10_index genome_mm10/mm10.fa
 
 
 .. code-block:: bash
