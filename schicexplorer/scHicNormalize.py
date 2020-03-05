@@ -40,10 +40,10 @@ def parse_arguments(args=None):
                                 type=int)
     parserOpt = parser.add_argument_group('Optional arguments')
     parserOpt.add_argument('--setToZeroThreshold', '-z',
-                                help='Values smaller as this threshold are set to 0.',
-                                required=False,
-                                default=1.0,
-                                type=float)
+                           help='Values smaller as this threshold are set to 0.',
+                           required=False,
+                           default=1.0,
+                           type=float)
     parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
                            version='%(prog)s {}'.format(__version__))
@@ -101,7 +101,7 @@ def compute_normalize(pMatrixName, pMatricesList, pArgminSum, pSumOfAll, pAppend
         _matrix.data[mask] = 0
         _matrix.eliminate_zeros()
 
-        log.debug('new read coverage: {}\n\n'.format(np.sum(_matrix.data)) )
+        log.debug('new read coverage: {}\n\n'.format(np.sum(_matrix.data)))
         matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
 
         matrixFileHandlerOutput.set_matrix_variables(_matrix, cut_intervals, nan_bins,
@@ -173,10 +173,9 @@ def main(args=None):
     argmin = np.argmin(sum_of_all)
     argminSum = sum_of_all[argmin]
 
-    log.debug('sum_of_all[:10] {}'.format(sum_of_all[:10] ))
+    log.debug('sum_of_all[:10] {}'.format(sum_of_all[:10]))
     log.debug('argmin {}'.format(argmin))
     log.debug('argminSum {}'.format(argminSum))
-
 
     matricesPerThread = len(matrices_list) // threads
 

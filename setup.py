@@ -112,7 +112,7 @@ setup(
              'bin/scHicMergeToMCool', 'bin/scHicQualityControl', 'bin/scHicCorrectMatrices',
              'bin/scHicPlotClusterProfiles', 'bin/scHicPlotConsensusMatrices', 'bin/scHicConsensusMatrices',
              'bin/scHicMergeMatrixBins', 'bin/scHicCluster', 'bin/scHicAdjustMatrix', 'bin/scHicNormalize',
-             'bin/scHicInfo'
+             'bin/scHicInfo', 'bin/scHicCreateBulkMatrix'
              ],
     include_package_data=True,
     package_dir={'schicexplorer': 'schicexplorer'},

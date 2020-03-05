@@ -69,8 +69,8 @@ def parse_arguments(args=None):
                            required=False,
                            default='qc_report.txt')
     parserOpt.add_argument('--plotOnly',
-                            help='Do not create a new matrix, create only the plots.',
-                            action='store_true')
+                           help='Do not create a new matrix, create only the plots.',
+                           action='store_true')
     parserOpt.add_argument('--dpi', '-d',
                            help='The dpi of the plot.',
                            required=False,
