@@ -109,7 +109,7 @@ setup(
     author_email='wolffj@informatik.uni-freiburg.de',
     packages=find_packages(),
     scripts=['bin/scHicDemultiplex', 'bin/scHicClusterMinHash', 'bin/scHicClusterSVL', 'bin/scHicClusterCompartments',
-             'bin/scHicMergeToMCool', 'bin/scHicQualityControl', 'bin/scHicCorrectMatrices',
+             'bin/scHicMergeToSCool', 'bin/scHicQualityControl', 'bin/scHicCorrectMatrices',
              'bin/scHicPlotClusterProfiles', 'bin/scHicPlotConsensusMatrices', 'bin/scHicConsensusMatrices',
              'bin/scHicMergeMatrixBins', 'bin/scHicCluster', 'bin/scHicAdjustMatrix', 'bin/scHicNormalize',
              'bin/scHicInfo', 'bin/scHicCreateBulkMatrix'
