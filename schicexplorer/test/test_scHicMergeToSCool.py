@@ -5,7 +5,7 @@ import pytest
 import os
 from tempfile import NamedTemporaryFile, mkdtemp
 
-from schicexplorer import scHicMergeToMCool
+from schicexplorer import scHicMergeToSCool
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
 
 
@@ -23,13 +23,13 @@ def test_correct_matrices():
     input_matrices = input_matrices.split(' ')
     input_matrices_str = ''
     for i in range(len(input_matrices)):
-        input_matrices_str += ROOT + 'scHicMergeToMCool/' + input_matrices[i] + ' '
+        input_matrices_str += ROOT + 'scHicMergeToSCool/' + input_matrices[i] + ' '
 
     args = "--matrices {} --outFileName {} ".format(input_matrices_str,
                                                     outfile.name).split()
-    scHicMergeToMCool.main(args)
+    scHicMergeToSCool.main(args)
 
-    test_data_matrix = ROOT + 'test_matrix.mcool'
+    test_data_matrix = ROOT + 'test_matrix.scool'
     matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
     matrices_list_created = cooler.fileops.list_coolers(outfile.name)
 
@@ -48,7 +48,7 @@ def test_correct_matrices():
 def test_version():
     args = "--version".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        scHicMergeToMCool.main(args)
+        scHicMergeToSCool.main(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
@@ -56,6 +56,6 @@ def test_version():
 def test_help():
     args = "--help".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        scHicMergeToMCool.main(args)
+        scHicMergeToSCool.main(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
