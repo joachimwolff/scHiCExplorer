@@ -54,10 +54,10 @@ def parse_arguments(args=None):
 
     parserOpt.add_argument('--dimensionReductionMethod', '-drm',
                            help='Dimension reduction methods, knn with euclidean distance, pca',
-                                choices=['none', 'knn', 'pca'],
+                           choices=['none', 'knn', 'pca'],
                            default='none')
     parserOpt.add_argument('--numberOfNearestNeighbors', '-k',
-                           help='Number of to be used computed nearest neighbors for the knn graph.',
+                           help='Number of to be used computed nearest neighbors for the knn graph. Default is either the default value or the number of the provided cells, whatever is smaller.',
                            required=False,
                            default=100,
                            type=int)
@@ -160,6 +160,9 @@ def main(args=None):
 
     reduce_to_dimension = neighborhood_matrix.shape[0] - 1
     if args.dimensionReductionMethod == 'knn':
+
+        if args.numberOfNearestNeighbors > reduce_to_dimension:
+            args.numberOfNearestNeighbors = reduce_to_dimension
         nbrs = NearestNeighbors(n_neighbors=args.numberOfNearestNeighbors, algorithm='ball_tree', n_jobs=args.threads).fit(neighborhood_matrix)
         neighborhood_matrix = nbrs.kneighbors_graph(mode='distance')
 

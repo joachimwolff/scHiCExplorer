@@ -62,6 +62,7 @@ def are_files_equal_clustering(file1, file2, number_of_clusters=3, delta=2, skip
     return equal
 
 
+@pytest.mark.skip
 @pytest.mark.xfail
 def test_kmeans():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
@@ -74,6 +75,7 @@ def test_kmeans():
     assert are_files_equal(ROOT + "scHicClusterCompartments/cluster_kmeans.txt", outfile.name)
 
 
+@pytest.mark.skip
 @pytest.mark.xfail
 def test_spectral():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
