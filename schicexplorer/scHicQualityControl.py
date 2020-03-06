@@ -35,9 +35,9 @@ def parse_arguments(args=None):
                                 required=True)
     parserOpt = parser.add_argument_group('Optional arguments')
 
-    parserOpt.add_argument('--outputMcool', '-o',
-                           help='Mcool matrix which contains only the filtered matrices',
-                           default='filtered_matrices.mcool')
+    parserOpt.add_argument('--outputScool', '-o',
+                           help='scool matrix which contains only the filtered matrices',
+                           default='filtered_matrices.scool')
     parserOpt.add_argument('--minimumReadCoverage',
                            help='Remove all samples with a lower read coverage as this value.',
                            required=False,
@@ -290,11 +290,11 @@ def main(args=None):
         np.savetxt('accepted_matrices.txt', matrices_list_filtered, fmt="%s")
         np.savetxt('rejected_matrices.txt', np.array(matrices_list)[~mask], fmt="%s")
 
-        if os.path.exists(args.outputMcool):
-            os.remove(args.outputMcool)
+        if os.path.exists(args.outputScool):
+            os.remove(args.outputScool)
         for matrix in matrices_list_filtered:
 
-            cooler.fileops.cp(args.matrix + '::' + matrix, args.outputMcool + '::' + matrix)
+            cooler.fileops.cp(args.matrix + '::' + matrix, args.outputScool + '::' + matrix)
 
     ##################
     # Create QC report

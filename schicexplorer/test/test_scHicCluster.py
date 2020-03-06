@@ -63,7 +63,7 @@ def test_kmeans():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {}".format(ROOT + 'test_matrix.scool',
                                        3, 'kmeans', outfile.name, 1).split()
     scHicCluster.main(args)
     assert are_files_equal(ROOT + "scHicCluster/cluster_kmeans.txt", outfile.name)
@@ -75,7 +75,7 @@ def test_kmeans_chromosomes():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} --chromosomes {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} --chromosomes {}".format(ROOT + 'test_matrix.scool',
                                                         3, 'kmeans', outfile.name, 1, "chr1 chr2").split()
     scHicCluster.main(args)
     assert are_files_equal(ROOT + "scHicCluster/cluster_kmeans_chromosomes.txt", outfile.name)
@@ -87,7 +87,7 @@ def test_spectral():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {}".format(ROOT + 'test_matrix.scool',
                                        3, 'spectral', outfile.name, 1).split()
     scHicCluster.main(args)
     assert are_files_equal(ROOT + "scHicCluster/cluster_spectral.txt", outfile.name)
@@ -99,7 +99,7 @@ def test_spectral_knn():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'spectral', outfile.name, 1, "knn").split()
     scHicCluster.main(args)
     assert are_files_equal(ROOT + "scHicCluster/cluster_spectral_knn.txt", outfile.name)
@@ -111,7 +111,7 @@ def test_spectral_pca():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'spectral', outfile.name, 4, "pca").split()
     scHicCluster.main(args)
     assert are_files_equal(ROOT + "scHicCluster/cluster_spectral_pca.txt", outfile.name)
@@ -123,7 +123,7 @@ def test_kmeans_knn():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'kmeans', outfile.name, 2, "knn").split()
     scHicCluster.main(args)
     assert are_files_equal(ROOT + "scHicCluster/cluster_kmeans_knn.txt", outfile.name)
@@ -135,7 +135,7 @@ def test_kmeans_pca():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'kmeans', outfile.name, 3, "pca").split()
     scHicCluster.main(args)
     assert are_files_equal(ROOT + "scHicCluster/cluster_kmeans_pca.txt", outfile.name)
@@ -146,7 +146,7 @@ def test_kmeans_clustering():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {}".format(ROOT + 'test_matrix.scool',
                                        3, 'kmeans', outfile.name, 1).split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans.txt", outfile.name)
@@ -157,7 +157,7 @@ def test_kmeans_chromosomes_clustering():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} --chromosomes {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} --chromosomes {}".format(ROOT + 'test_matrix.scool',
                                                         3, 'kmeans', outfile.name, 1, "chr1 chr2").split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans_chromosomes.txt", outfile.name)
@@ -168,7 +168,7 @@ def test_spectral_clustering():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {}".format(ROOT + 'test_matrix.scool',
                                        3, 'spectral', outfile.name, 1).split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral.txt", outfile.name)
@@ -179,7 +179,7 @@ def test_spectral_knn_clustering():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'spectral', outfile.name, 1, "knn").split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral_knn.txt", outfile.name)
@@ -190,7 +190,7 @@ def test_spectral_pca_clustering():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'spectral', outfile.name, 4, "pca").split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral_pca.txt", outfile.name)
@@ -201,7 +201,7 @@ def test_kmeans_knn_clustering():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'kmeans', outfile.name, 2, "knn").split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans_knn.txt", outfile.name)
@@ -212,7 +212,7 @@ def test_kmeans_pca_clustering():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'kmeans', outfile.name, 3, "pca").split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans_pca.txt", outfile.name)

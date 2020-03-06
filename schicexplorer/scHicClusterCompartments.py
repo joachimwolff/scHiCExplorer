@@ -248,6 +248,7 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
+    log.debug('Clustering starting')
     if args.clusterMethod == 'spectral':
         spectral_clustering = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads, random_state=0)
         labels_clustering = spectral_clustering.fit_predict(compartments_matrix)

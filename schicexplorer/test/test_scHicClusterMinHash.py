@@ -36,7 +36,7 @@ def test_kmeans():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -nh {}".format(ROOT + 'test_matrix.scool',
                                               3, 'kmeans', outfile.name, 3, 800).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal(ROOT + "scHicClusterMinHash/cluster_kmeans.txt", outfile.name)
@@ -48,7 +48,7 @@ def test_spectral():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {}".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -nh {}".format(ROOT + 'test_matrix.scool',
                                               3, 'spectral', outfile.name, 2, 800).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal(ROOT + "scHicClusterMinHash/cluster_spectral.txt", outfile.name)
@@ -60,7 +60,7 @@ def test_spectral_chromosomes():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {} --chromosomes {} ".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -nh {} --chromosomes {} ".format(ROOT + 'test_matrix.scool',
                                                                 3, 'spectral', outfile.name, 2, 800, "chr1 chr2").split()
     scHicClusterMinHash.main(args)
     assert are_files_equal(ROOT + "scHicClusterMinHash/cluster_spectral_chromosomes.txt", outfile.name)
@@ -72,7 +72,7 @@ def test_kmeans_exact():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {} --exactModeMinHash".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -nh {} --exactModeMinHash".format(ROOT + 'test_matrix.scool',
                                                                  3, 'kmeans', outfile.name, 2, 800).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal(ROOT + "scHicClusterMinHash/cluster_kmeans_exact.txt", outfile.name)
@@ -84,7 +84,7 @@ def test_spectral_exact():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {} --exactModeMinHash".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -nh {} --exactModeMinHash".format(ROOT + 'test_matrix.scool',
                                                                  3, 'spectral', outfile.name, 2, 800).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal(ROOT + "scHicClusterMinHash/cluster_spectral_exact.txt", outfile.name)

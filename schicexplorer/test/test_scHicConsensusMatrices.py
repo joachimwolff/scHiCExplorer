@@ -13,14 +13,14 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
 
 
 def test_consensus_matrices():
-    outfile = NamedTemporaryFile(suffix='.mcool', delete=False)
+    outfile = NamedTemporaryFile(suffix='.scool', delete=False)
 
     outfile.close()
-    args = "--matrix {} --outFileName {} -t {} -c {}".format(ROOT + 'test_matrix.mcool',
+    args = "--matrix {} --outFileName {} -t {} -c {}".format(ROOT + 'test_matrix.scool',
                                                              outfile.name, 4, ROOT + 'scHicConsensusMatrices/cluster_kmeans.txt').split()
     scHicConsensusMatrices.main(args)
 
-    test_data_matrix = ROOT + 'scHicConsensusMatrices/consensus_matrix.mcool'
+    test_data_matrix = ROOT + 'scHicConsensusMatrices/consensus_matrix.scool'
     matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
     matrices_list_created = cooler.fileops.list_coolers(outfile.name)
 
