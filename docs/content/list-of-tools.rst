@@ -12,7 +12,7 @@ scHiCExplorer tools
 |                                      |                  | SRR to sample mapping file             |                                              |                                                                                   |
 |                                      |                  | Barcode file                           |                                              |                                                                                   |
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
-|:ref:`scHicMergeToscool`              | preprocessing    | n Hi-C matrices in cool format         | One scool file containg all Hi-C matrices    | Merges all single-cell Hi-C matrices to one                                       |
+|:ref:`scHicMergeToScool`              | preprocessing    | n Hi-C matrices in cool format         | One scool file containg all Hi-C matrices    | Merges all single-cell Hi-C matrices to one                                       |
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
 |:ref:`scHicMergeMatrixBins`           | preprocessing    | scool Hi-C matrix                      | scool Hi-C matrix                            | Changes the resolution of the matrices                                            |
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
@@ -24,9 +24,9 @@ scHiCExplorer tools
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
 |:ref:`scHicCorrectMatrices`           | preprocessing    | scool Hi-C matrix                      | scool Hi-C matrix                            | Corrects all samples with Knight-Ruiz correction                                  |
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
-|:ref:`scHicInfo   `                   | information      | scool Hi-C matrix                      | information about the scool matrix           | Retrieve information about the scool matrix: resolution, number of samples, etc   |
+|:ref:`scHicInfo`                      | information      | scool Hi-C matrix                      | information about the scool matrix           | Retrieve information about the scool matrix: resolution, number of samples, etc   |
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
-|:ref:`scHicCreateBulkMatrix`          | analysis         | scool Hi-C matrix                      | cool Hi-C matrix                            | Changes the resolution of the matrices                                            |
+|:ref:`scHicCreateBulkMatrix`          | analysis         | scool Hi-C matrix                      | cool Hi-C matrix                             | Changes the resolution of the matrices                                            |
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
 |:ref:`scHicCluster`                   | analysis         | scool Hi-C matrix                      | text file with sample to cluster association | Cluster all samples on raw data or uses dimension reduction knn or pca            |
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
@@ -35,9 +35,9 @@ scHiCExplorer tools
 |:ref:`scHicClusterSVL`                | analysis         | scool Hi-C matrix                      | text file with sample to cluster association | Cluster all samples based on short vs long range contact ratio                    |
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
 |:ref:`scHicClusterCompartments`       | analysis         | scool Hi-C matrix                      | text file with sample to cluster association | Cluster all samples based on A / B scHicClusterCompartments                       |
-|                                      |                  | (gene or histone track)                 |                                              |                                                                                   | 
+|                                      |                  | (gene or histone track)                |                                              |                                                                                   | 
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
-|:ref:`scHicConsensusMatrix`           | analysis         | scool Hi-C matrix,                     | scool Hi-C matrix with consensus matrices    | Computes the consensus matrices based on clustering                               |
+|:ref:`scHicConsensusMatrices`         | analysis         | scool Hi-C matrix,                     | scool Hi-C matrix with consensus matrices    | Computes the consensus matrices based on clustering                               |
 |                                      |                  | txt file sample to cluster association |                                              |                                                                                   |
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
 |:ref:`scHicPlotClusterProfiles`       | visualization    | scool Hi-C matrix                      | one image with cluster profiles              | Plots the cluster profiles with all samples                                       |
@@ -112,8 +112,8 @@ Tools for Hi-C data analysis
 """"""""""""""""""""""""""
 :ref:`scHicClusterSVL`
 """"""""""""""""""""""
-:ref:`scHicConsensusMatrix`
-"""""""""""""""""""""""""""
+:ref:`scHicConsensusMatrices`
+"""""""""""""""""""""""""""""
 
 Tools for single-cell Hi-C visualization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

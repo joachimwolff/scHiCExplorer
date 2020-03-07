@@ -109,6 +109,7 @@ After demultiplexing, each forward and reverse strand file needs to be mapped as
 
 
 .. code-block:: bash
+    
     $ wget http://hgdownload-test.cse.ucsc.edu/goldenPath/mm10/bigZips/chromFa.tar.gz -O genome_mm10/chromFa.tar.gz
     $ tar -xvzf genome_mm10/chromFa.tar.gz
     $ cat genome_mm10/*.fa > genome_mm10/mm10.fa
@@ -572,6 +573,6 @@ The resulting cool matrix can be plotted with HiCExplorer hicPlotMatrix:
     $ hicPlotMatrix -m nagano_1MB_bulk.cool --log1p -o nagano_bulk.png --dpi 300 --chromosomeOrder chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chrX --fontsize 5 --rotationX 45
 
 
-   .. image:: ../images/nagano_bulk.parse_arguments
+.. image:: ../images/nagano_bulk.png
 
-   Nagano 2017 1 Mb resolution bulk matrix.
+Nagano 2017 1 Mb resolution bulk matrix.
