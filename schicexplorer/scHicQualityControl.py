@@ -7,6 +7,8 @@ log = logging.getLogger(__name__)
 
 import cooler
 from hicmatrix import HiCMatrix as hm
+from hicmatrix.lib import MatrixFileHandler
+
 
 import numpy as np
 
@@ -28,14 +30,14 @@ def parse_arguments(args=None):
 
     # define the arguments
     parserRequired.add_argument('--matrix', '-m',
-                                help='The single cell Hi-C interaction matrices to investigate for QC. Needs to be in mcool format',
-                                metavar='mcool scHi-C matrix',
+                                help='The single cell Hi-C interaction matrices to investigate for QC. Needs to be in scool format',
+                                metavar='scool scHi-C matrix',
                                 required=True)
     parserOpt = parser.add_argument_group('Optional arguments')
 
-    parserOpt.add_argument('--outputMcool', '-o',
-                           help='Mcool matrix which contains only the filtered matrices',
-                           default='filtered_matrices.mcool')
+    parserOpt.add_argument('--outputScool', '-o',
+                           help='scool matrix which contains only the filtered matrices',
+                           default='filtered_matrices.scool')
     parserOpt.add_argument('--minimumReadCoverage',
                            help='Remove all samples with a lower read coverage as this value.',
                            required=False,
@@ -66,6 +68,9 @@ def parse_arguments(args=None):
                            help='File name of the quality report',
                            required=False,
                            default='qc_report.txt')
+    parserOpt.add_argument('--plotOnly',
+                           help='Do not create a new matrix, create only the plots.',
+                           action='store_true')
     parserOpt.add_argument('--dpi', '-d',
                            help='The dpi of the plot.',
                            required=False,
@@ -86,14 +91,23 @@ def parse_arguments(args=None):
 def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pXDimension, pMaximumRegionToConsider, pQueue):
     read_coverage = []
     sparsity = []
+    log.debug('read covarage and sparsity')
     for i, matrix in enumerate(pMatricesList):
         hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix)
 
-        _matrix = hic_ma.matrix
+        # _matrix = hic_ma.matrix
+
+        matrixFileHandler = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix)
+        _matrix, cut_intervals, nan_bins, \
+            distance_counts, correction_factors = matrixFileHandler.load()
         max_distance = pMaximumRegionToConsider // hic_ma.getBinSize()
 
         read_coverage.append(_matrix.data.sum())
 
+        # if (_matrix.data.sum()) < 100000:
+        #     log.debug('smaller 100000: {}'.format(_matrix.data.sum()))
+        # if np.sum(_matrix.data) < 100000:
+        #     log.debug('II smaller 100000: {}'.format(_matrix.data.sum()))
         instances, features = _matrix.nonzero()
         distances = np.absolute(instances - features)
         mask = distances >= max_distance
@@ -180,11 +194,12 @@ def main(args=None):
     matrices_list = matrices_name_chromosome_names[keep_matrices_chromosome_names]
 
     matrices_remove = matrices_name_chromosome_names[~keep_matrices_chromosome_names]
+    # log.debug('matrices_remove {}'.format(matrices_remove[:10]))
 
     #######################################
 
-    read_coverage = [None] * threads
-    sparsity = [None] * threads
+    read_coverage_thread = [None] * threads
+    sparsity_thread = [None] * threads
 
     all_data_collected = False
     thread_done = [False] * threads
@@ -217,8 +232,8 @@ def main(args=None):
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
                 worker_result = queue[i].get()
-                read_coverage[i] = worker_result[0]
-                sparsity[i] = worker_result[1]
+                read_coverage_thread[i] = worker_result[0]
+                sparsity_thread[i] = worker_result[1]
 
                 queue[i] = None
                 process[i].join()
@@ -231,9 +246,10 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
-    read_coverage = np.array([item for sublist in read_coverage for item in sublist])
-    sparsity = np.array([item for sublist in sparsity for item in sublist])
+    read_coverage = np.array([item for sublist in read_coverage_thread for item in sublist])
+    sparsity = np.array([item for sublist in sparsity_thread for item in sublist])
 
+    log.debug('read_coverage {}'.format(read_coverage))
     plt.close()
     plt.hist(read_coverage, bins=100)
 
@@ -265,19 +281,20 @@ def main(args=None):
     log.debug('len(mask_sparsity) {}'.format(len(mask_sparsity)))
 
     mask = np.logical_and(mask_read_coverage, mask_sparsity)
-
+    # mask = np.logical_or(mask, matrices_remove)
     matrices_list_filtered = np.array(matrices_list)[mask]
     sum_read_coverage = np.sum(~mask_read_coverage)
     sum_sparsity = np.sum(~mask_sparsity)
 
-    np.savetxt('accepted_matrices.txt', matrices_list_filtered, fmt="%s")
-    np.savetxt('rejected_matrices.txt', np.array(matrices_list)[~mask], fmt="%s")
+    if not args.plotOnly:
+        np.savetxt('accepted_matrices.txt', matrices_list_filtered, fmt="%s")
+        np.savetxt('rejected_matrices.txt', np.array(matrices_list)[~mask], fmt="%s")
 
-    if os.path.exists(args.outputMcool):
-        os.remove(args.outputMcool)
-    for matrix in matrices_list_filtered:
+        if os.path.exists(args.outputScool):
+            os.remove(args.outputScool)
+        for matrix in matrices_list_filtered:
 
-        cooler.fileops.cp(args.matrix + '::' + matrix, args.outputMcool + '::' + matrix)
+            cooler.fileops.cp(args.matrix + '::' + matrix, args.outputScool + '::' + matrix)
 
     ##################
     # Create QC report

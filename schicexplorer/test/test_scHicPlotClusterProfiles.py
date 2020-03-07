@@ -17,7 +17,7 @@ def test_plot_svl():
     outfile = NamedTemporaryFile(suffix='.png', delete=False)
 
     outfile.close()
-    args = "--matrix {} -c {} --outFileName {} -t {} --maximalDistance {} --distanceShortRange {} --distanceLongRange {} --orderBy {} --dpi {}".format(ROOT + 'test_matrix.mcool',
+    args = "--matrix {} -c {} --outFileName {} -t {} --maximalDistance {} --distanceShortRange {} --distanceLongRange {} --orderBy {} --dpi {}".format(ROOT + 'test_matrix.scool',
                                                                                                                                                        ROOT + 'scHicPlotClusterProfiles/cluster_kmeans.txt', outfile.name,
                                                                                                                                                        1, 50000000, 2000000, 12000000,
                                                                                                                                                        'svl', 300
@@ -35,7 +35,7 @@ def test_plot_use_defaults():
     outfile = NamedTemporaryFile(suffix='.png', delete=False)
 
     outfile.close()
-    args = "--matrix {} -c {} --outFileName {} -t {} ".format(ROOT + 'test_matrix.mcool',
+    args = "--matrix {} -c {} --outFileName {} -t {} ".format(ROOT + 'test_matrix.scool',
                                                               ROOT + 'scHicPlotClusterProfiles/cluster_kmeans.txt', outfile.name,
                                                               1
                                                               ).split()
@@ -53,7 +53,7 @@ def test_plot_chromosomes():
     outfile.close()
     args = "--matrix {} -c {} --outFileName {} -t {} --maximalDistance {} --distanceShortRange {} \
             --distanceLongRange {} --orderBy {} --dpi {} --chromosomes {}"\
-                .format(ROOT + 'test_matrix.mcool',
+                .format(ROOT + 'test_matrix.scool',
                         ROOT + 'scHicPlotClusterProfiles/cluster_kmeans.txt', outfile.name,
                         1, 50000000, 2000000, 12000000,
                         'svl', 300, 'chr1 chr2'
@@ -72,7 +72,7 @@ def test_plot_orderByFile():
     outfile.close()
     args = "--matrix {} -c {} --outFileName {} -t {} --maximalDistance {} --distanceShortRange {} \
             --distanceLongRange {} --orderBy {} --dpi {}"\
-                .format(ROOT + 'test_matrix.mcool',
+                .format(ROOT + 'test_matrix.scool',
                         ROOT + 'scHicPlotClusterProfiles/cluster_kmeans.txt', outfile.name,
                         1, 50000000, 2000000, 12000000,
                         'orderByFile', 300
@@ -91,7 +91,7 @@ def test_plot_maxDistance():
     outfile.close()
     args = "--matrix {} -c {} --outFileName {} -t {} --maximalDistance {} --distanceShortRange {} \
             --distanceLongRange {} --orderBy {} --dpi {}"\
-                .format(ROOT + 'test_matrix.mcool',
+                .format(ROOT + 'test_matrix.scool',
                         ROOT + 'scHicPlotClusterProfiles/cluster_kmeans.txt', outfile.name,
                         1, 9000000, 2000000, 12000000,
                         'orderByFile', 300

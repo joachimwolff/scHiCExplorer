@@ -19,7 +19,7 @@ In this tutorial we work with the 'diploid' data from Nagano 2017 (GSE94489).
 The raw fastq data is around 1,04 TB of size and the download speed is limited to a few Mb/s by NCBI. To decrease the download time it is recommended to download the files in parallel if enough disk space is available.
 Furthermore, please consider the data needs to be demultiplexed and mapped which needs additional disk space.
 
-If you do not want to download, demultiplex, map and build the matrices on your own, two precomputed raw mcool matrices are provided on `Zenodo <https://doi.org/10.5281/zenodo.3557682>`__ in 1Mb and 10kb resolution. 
+If you do not want to download, demultiplex, map and build the matrices on your own, two precomputed raw scool matrices are provided on `Zenodo <https://doi.org/10.5281/zenodo.3557682>`__ in 1Mb and 10kb resolution. 
 For this tutorial we use the 1Mb resolution of the matrix to reduce computation time. The 10kb takes significant longer and needs more memory to compute. 
 
 Download of the fastq files
@@ -107,10 +107,17 @@ Mapping
 
 After demultiplexing, each forward and reverse strand file needs to be mapped as usual in Hi-C as single-paired files. Foe this tutorial we use bwa mem and the mm10 index:
 
+
+.. code-block:: bash
+    
+    $ wget http://hgdownload-test.cse.ucsc.edu/goldenPath/mm10/bigZips/chromFa.tar.gz -O genome_mm10/chromFa.tar.gz
+    $ tar -xvzf genome_mm10/chromFa.tar.gz
+    $ cat genome_mm10/*.fa > genome_mm10/mm10.fa
+    
+
 .. code-block:: bash
 
-    $ wget ftp://ftp.ccb.jhu.edu/pub/data/bowtie2_indexes/mm10.zip
-    $ mkdir mm10 && unzip mm10.zip -d mm10
+    $ bwa index -p bwa/mm10_index genome_mm10/mm10.fa
 
 
 .. code-block:: bash
@@ -138,23 +145,23 @@ To make this step more automated, it is recommend to use either a platform like 
 
 
 
-After the Hi-C interaction matrices for each cell is created, the matrices are pooled together to one mcool matrix:
+After the Hi-C interaction matrices for each cell is created, the matrices are pooled together to one scool matrix:
 
 .. code-block:: bash
 
-    $ scHicMergeToMCool --matrices matrices/* --outFileName nagano2017_raw.mcool
+    $ scHicMergeToScool --matrices matrices/* --outFileName nagano2017_raw.scool
 
 
-Call scHicInfo to get an information about the used mcool file:
-
-.. code-block:: bash
-
-    $ scHicInfo --matrix nagano2017_raw.mcool
-
+Call scHicInfo to get an information about the used scool file:
 
 .. code-block:: bash
 
-    Filename: nagano2017_raw.mcool
+    $ scHicInfo --matrix nagano2017_raw.scool
+
+
+.. code-block:: bash
+
+    Filename: nagano2017_raw.scool
     Contains 3882 single-cell matrices
     The information stored via cooler.info of the first cell is: 
 
@@ -189,11 +196,11 @@ To guarantee these requirements the quality control works in three steps:
 
 .. code-block:: bash
 
-    $ scHicQualityControl --matrix nagano2017_raw.mcool --outputMcool nagano2017_qc.mcool --minimumReadCoverage 100000 --minimumDensity 0.02 --maximumRegionToConsider 30000000 --outFileNameReadCoverage read_coverage.png --outFileNameDensity density.png --threads 20 --chromosomes chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chrX
+    $ scHicQualityControl --matrix nagano2017_raw.scool --outputscool nagano2017_qc.scool --minimumReadCoverage 100000 --minimumDensity 0.02 --maximumRegionToConsider 30000000 --outFileNameReadCoverage read_coverage.png --outFileNameDensity density.png --threads 20 --chromosomes chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chrX
 
 For this tutorial a minimum read coverage of 1 million and a density of 0.1% is used in range of 30MB around the main diagonal. The above command creates certain files:
 
-1. A mcool matrix containing only samples with matrices that passed the quality settings.
+1. A scool matrix containing only samples with matrices that passed the quality settings.
 2. A plot showing the density of all samples. Use this plot to adjust the minimumDensity parameter.
 3. A plot showing the read coverage of all samples, use this plot to adjust the minimum read coverage parameter.
 4. A text report presenting quality control information.
@@ -216,12 +223,12 @@ These QC settings removes 2508 matrices:
 
 .. code-block:: bash
 
-    $ scHicInfo --matrix nagano2017_qc.mcool
+    $ scHicInfo --matrix nagano2017_qc.scool
 
 
 .. code-block:: bash
 
-    Filename: nagano2017_raw.mcool
+    Filename: nagano2017_raw.scool
     Contains 3491 single-cell matrices
     The information stored via cooler.info of the first cell is: 
 
@@ -251,7 +258,7 @@ samples contain contigs and scaffolds, this cannot be guaranteed.
 
 .. code-block:: bash
 
-    $ scHicAdjustMatrix -m nagano2017_qc.mcool -o nagano2017_qc_adjusted.mcool -t 20 --action keep --chromosomes chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 
+    $ scHicAdjustMatrix -m nagano2017_qc.scool -o nagano2017_qc_adjusted.scool -t 20 --action keep --chromosomes chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 
 
 
 Normalization
@@ -261,7 +268,7 @@ Working with a few thousand samples makes it even more crucial to normalize the 
 
 .. code-block:: bash
 
-    $ scHicNormalize -m nagano2017_qc_adjusted.mcool -o nagano2017_normalized.mcool --threads 20
+    $ scHicNormalize -m nagano2017_qc_adjusted.scool -o nagano2017_normalized.scool --threads 20
 
 
 Correction
@@ -272,7 +279,7 @@ To correct this we use the KR correction of matrices from Knight-Ruiz 2012.
 
 .. code-block:: bash
 
-    $ scHicCorrectMatrices -m nagano2017_normalized.mcool -o nagano2017_corrected.mcool --threads 20
+    $ scHicCorrectMatrices -m nagano2017_normalized.scool -o nagano2017_corrected.scool --threads 20
 
 
 Analysis
@@ -285,7 +292,7 @@ scHiCExplorer uses a flatting approach to create out of the two dimensional 2D i
 a number of samples times number of bins^2 matrix. For example: Nagano 2017 has around 3000 cells and using a 1MB binning approach results for the mouse genome in
 2600 times 2600 matrix. After flattening, the matrix which is used to operate on is 3000 * (2600 * 2600) = 3000 * 6760000. 
 
-Two approaches to apply clustering are now possible: 
+Two approaches to apply clustering are possible: 
 
 1. Compute the clustering directly on the matrix.
 2. Reduce the dimensions first and apply clustering.
@@ -309,14 +316,14 @@ The first approach clusters the data on the raw data using first, kmeans and sec
 
 .. code-block:: bash
 
-    $ scHicCluster -m nagano2017_corrected.mcool --numberOfClusters 7 --clusterMethod kmeans -o clusters_raw_kmeans.txt --threads 20
+    $ scHicCluster -m nagano2017_corrected.scool --numberOfClusters 7 --clusterMethod kmeans -o clusters_raw_kmeans.txt --threads 20
 
 .. code-block:: bash
 
-    $ scHicCluster -m nagano2017_corrected.mcool --numberOfClusters 7 --clusterMethod spectral -o clusters_raw_spectral.txt --threads 20
+    $ scHicCluster -m nagano2017_corrected.scool --numberOfClusters 7 --clusterMethod spectral -o clusters_raw_spectral.txt --threads 20
     
 
-The output of all cluster algorithms is a text file containing the internal sample name of the mcool file and the associated cluster:
+The output of all cluster algorithms is a text file containing the internal sample name of the scool file and the associated cluster:
 
 ..code-block:: bash
 
@@ -347,18 +354,18 @@ To visualize the results run:
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --clusters clusters_raw_kmeans.txt -o clusters_raw_kmeans.png --dpi 300  --threads 20
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.scool --clusters clusters_raw_kmeans.txt -o clusters_raw_kmeans.png --dpi 300  --threads 20
 
 
 The cluster internal ordering can be visualized in two ways: Either by the order the samples appear in the cluster output file or by sorting with the ratio of short vs. long range contacts. Default mode is the last one.
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --orderBy orderByFile --clusters clusters_raw_spectral.txt -o clusters_raw_spectral_order_by_file.png --dpi 300  --threads 20
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.scool --orderBy orderByFile --clusters clusters_raw_spectral.txt -o clusters_raw_spectral_order_by_file.png --dpi 300  --threads 20
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --orderBy svl --distanceShortRange 2000000 --distanceLongRange 12000000  --clusters clusters_raw_spectral.txt -o clusters_raw_spectral.png --dpi 300  --threads 20
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.scool --orderBy svl --distanceShortRange 2000000 --distanceLongRange 12000000  --clusters clusters_raw_spectral.txt -o clusters_raw_spectral.png --dpi 300  --threads 20
 
 .. image:: ../images/clusters_raw_spectral_order_by_file.png
 
@@ -376,21 +383,21 @@ reduce the dimensions with it down to the number of samples or to compute the k-
 
 .. code-block:: bash
 
-    $ scHicCluster -m nagano2017_corrected.mcool --numberOfClusters 7 --clusterMethod spectral -o clusters_knn_spectral.txt --threads 20 -drm knn
+    $ scHicCluster -m nagano2017_corrected.scool --numberOfClusters 7 --clusterMethod spectral -o clusters_knn_spectral.txt --threads 20 -drm knn
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --orderBy orderByFile --clusters clusters_knn_spectral.txt -o clusters_knn_spectral.png --dpi 300  --threads 20
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.scool --orderBy orderByFile --clusters clusters_knn_spectral.txt -o clusters_knn_spectral.png --dpi 300  --threads 20
 
 .. image:: ../images/clusters_knn_spectral.png
 
 .. code-block:: bash
 
-    $ scHicCluster -m nagano2017_corrected.mcool --numberOfClusters 7 --clusterMethod kmeans -o clusters_knn_kmeans.txt --threads 20 -drm knn
+    $ scHicCluster -m nagano2017_corrected.scool --numberOfClusters 7 --clusterMethod kmeans -o clusters_knn_kmeans.txt --threads 20 -drm knn
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --orderBy orderByFile --clusters clusters_knn_kmeans.txt -o clusters_knn_kmeans.png --dpi 300  --threads 20
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.scool --orderBy orderByFile --clusters clusters_knn_kmeans.txt -o clusters_knn_kmeans.png --dpi 300  --threads 20
 
 .. image:: ../images/clusters_knn_kmeans.png
 
@@ -412,22 +419,22 @@ With this approach a few hundred hash functions compute their minium hash value.
 
 .. code-block:: bash
 
-    $ scHicClusterMinHash -m nagano2017_corrected.mcool --numberOfHashFunctions 1200  --numberOfClusters 7 --clusterMethod kmeans -o clusters_minhash_kmeans.txt --threads 20
+    $ scHicClusterMinHash -m nagano2017_corrected.scool --numberOfHashFunctions 1200  --numberOfClusters 7 --clusterMethod kmeans -o clusters_minhash_kmeans.txt --threads 20
 
 .. code-block:: bash
 
-    $ scHicClusterMinHash -m nagano2017_corrected.mcool --numberOfHashFunctions 1200 --numberOfClusters 7 --clusterMethod spectral -o clusters_minhash_spectral.txt --threads 20
+    $ scHicClusterMinHash -m nagano2017_corrected.scool --numberOfHashFunctions 1200 --numberOfClusters 7 --clusterMethod spectral -o clusters_minhash_spectral.txt --threads 20
     
 
 To visualize the results run:
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --clusters clusters_minhash_kmeans.txt -o clusters_minhash_kmeans.png --dpi 300 --threads 20 
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.scool --clusters clusters_minhash_kmeans.txt -o clusters_minhash_kmeans.png --dpi 300 --threads 20 
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --clusters clusters_minhash_spectral.txt -o clusters_minhash_spectral.png --dpi 300 --threads 20 
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.scool --clusters clusters_minhash_spectral.txt -o clusters_minhash_spectral.png --dpi 300 --threads 20 
 
 The clustered samples based on the dimension reduction with MinHash are way more meaningful in comparison to the raw clustered data:
 
@@ -449,22 +456,22 @@ Nagano 2017 shows the ratio between genomical distance of less than 2MB and betw
 
 .. code-block:: bash
 
-    $ scHicClusterSVL -m nagano2017_corrected.mcool --distanceShortRange 2000000 --distanceLongRange 12000000 --numberOfClusters 7 --clusterMethod kmeans -o clusters_svl_kmeans.txt --threads 20
+    $ scHicClusterSVL -m nagano2017_corrected.scool --distanceShortRange 2000000 --distanceLongRange 12000000 --numberOfClusters 7 --clusterMethod kmeans -o clusters_svl_kmeans.txt --threads 20
 
 .. code-block:: bash
 
-    $ scHicClusterSVL -m nagano2017_corrected.mcool --distanceShortRange 2000000 --distanceLongRange 12000000 --numberOfClusters 7 --clusterMethod spectral -o clusters_svl_spectral.txt --threads 20
+    $ scHicClusterSVL -m nagano2017_corrected.scool --distanceShortRange 2000000 --distanceLongRange 12000000 --numberOfClusters 7 --clusterMethod spectral -o clusters_svl_spectral.txt --threads 20
     
 
 To visualize the results run:
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --clusters clusters_svl_kmeans.txt -o clusters_svl_kmeans.png --dpi 300 --threads 20 
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.scool --clusters clusters_svl_kmeans.txt -o clusters_svl_kmeans.png --dpi 300 --threads 20 
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --clusters clusters_svl_spectral.txt -o clusters_svl_spectral.png --dpi 300 --threads 20 
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.scool --clusters clusters_svl_spectral.txt -o clusters_svl_spectral.png --dpi 300 --threads 20 
 
 
 The results of the clustering with the SVL dimension reduction technique:
@@ -484,11 +491,11 @@ reducing the dimensions to the square root of the number of features i.e. in our
 
 .. code-block:: bash
 
-    $ scHicClusterCompartments -m nagano2017_corrected.mcool --binarization --numberOfClusters 7 --clusterMethod kmeans -o clusters_compartments_kmeans.txt --threads 20
+    $ scHicClusterCompartments -m nagano2017_corrected.scool --binarization --numberOfClusters 7 --clusterMethod kmeans -o clusters_compartments_kmeans.txt --threads 20
 
 .. code-block:: bash
 
-    $ scHicClusterCompartments -m nagano2017_corrected.mcool --binarization --numberOfClusters 7 --clusterMethod spectral -o clusters_compartments_spectral.txt --threads 20
+    $ scHicClusterCompartments -m nagano2017_corrected.scool --binarization --numberOfClusters 7 --clusterMethod spectral -o clusters_compartments_spectral.txt --threads 20
     
 
 
@@ -496,11 +503,11 @@ To visualize the results run:
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --clusters clusters_compartments_kmeans.txt -o clusters_compartments_kmeans.png --dpi 300 --threads 20 
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.scool --clusters clusters_compartments_kmeans.txt -o clusters_compartments_kmeans.png --dpi 300 --threads 20 
 
 .. code-block:: bash
 
-    $ scHicPlotClusterProfiles -m nagano2017_corrected.mcool --clusters clusters_compartments_spectral.txt -o clusters_compartments_spectral.png --dpi 300 --threads 20 
+    $ scHicPlotClusterProfiles -m nagano2017_corrected.scool --clusters clusters_compartments_spectral.txt -o clusters_compartments_spectral.png --dpi 300 --threads 20 
 
 .. image:: ../images/clusters_compartments_kmeans.png
 
@@ -519,11 +526,11 @@ The folding pattern of chromatin can be visualized by merging all Hi-C interacti
 
 .. code-block:: bash
 
-    $ scHicConsensusMatrices -m nagano2017_corrected.mcool --clusters clusters_minhash_kmeans.txt -o consensus_matrix_minhash_kmeans.mcool --threads 20
+    $ scHicConsensusMatrices -m nagano2017_corrected.scool --clusters clusters_minhash_kmeans.txt -o consensus_matrix_minhash_kmeans.scool --threads 20
 
 .. code-block:: bash
 
-    $ scHicPlotConsensusMatrices -m consensus_matrix_minhash_kmeans.mcool -o consensus_matrix_minhash_kmeans.png --threads 20 --chromosomes chr6
+    $ scHicPlotConsensusMatrices -m consensus_matrix_minhash_kmeans.scool -o consensus_matrix_minhash_kmeans.png --threads 20 --chromosomes chr6
 
 
 In the following plots for different dimension reduction techniques are shown:
@@ -546,3 +553,26 @@ In the following plots for different dimension reduction techniques are shown:
 
 .. image:: ../images/consensus_raw_spectral.png
 
+
+
+Bulk matrix
+-----------
+
+
+All single-cell matrices can be added together to one bulk matrix with the following command:
+
+.. code-block:: bash
+
+    $ scHicCreateBulkMatrix -m nagano2017_corrected.scool -o nagano2017_bulk.cool -t 4 
+
+
+The resulting cool matrix can be plotted with HiCExplorer hicPlotMatrix:
+
+.. code-block:: bash
+
+    $ hicPlotMatrix -m nagano_1MB_bulk.cool --log1p -o nagano_bulk.png --dpi 300 --chromosomeOrder chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chrX --fontsize 5 --rotationX 45
+
+
+.. image:: ../images/nagano_bulk.png
+
+Nagano 2017 1 Mb resolution bulk matrix.

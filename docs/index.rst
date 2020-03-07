@@ -8,7 +8,7 @@ Set of programs to process, normalize, analyse and visualize single-cell Hi-C da
 Availability
 ------------
 
-scHiCExplorer is available as a **command line suite of tools** on this `GitHub repository <https://github.com/joachimwolff/scHiCExplorer>`_.
+scHiCExplorer is available as a **command line suite of tools** on this `GitHub repository <https://github.com/joachimwolff/scHiCExplorer>`_. scHiCExplorer is a general use single-cell Hi-C analysis software, to process raw single-cell Hi-C data we provide a demultiplexing tool for data provided by Nagano 2017. For all other protocols the demultiplexing must be computed by a third party tool. However, as long as per cell one forward and reverse FASTQ respectivly after mapping a BAM/SAM file is provided, scHiCExplorer is able to process it.
 
 
 The following is the list of tools available in scHiCExplorer
@@ -19,7 +19,8 @@ The following is the list of tools available in scHiCExplorer
 tool                                description
 =================================== ===============================================================================
 :ref:`scHicDemultiplex`             Demultiplexes the samples by their barcodes to one FASTQ file per samples
-:ref:`scHicMergeToMCool`            Merges all single-cell Hi-C matrices to one
+:ref:`scHicMergeToSCool`            Merges all single-cell Hi-C matrices to one
+:ref:`scHicCreateBulkMatrix`        Compute the bulk matrix out of all single-cell Hi-C matrices
 :ref:`scHicMergeMatrixBins`         Changes the resolution of the matrices 
 :ref:`scHicQualityControl`          Estimates the quality of scHi-C datasets
 :ref:`scHicAdjustMatrix`            Keeps / removes chromosomes / contigs / scaffolds of all samples 

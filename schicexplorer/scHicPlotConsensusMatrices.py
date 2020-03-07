@@ -33,7 +33,7 @@ def parse_arguments(args=None):
     # define the arguments
     parserRequired.add_argument('--matrix', '-m',
                                 help='The consensus matrix created by scHicConsensusMatrices',
-                                metavar='mcool scHi-C matrix',
+                                metavar='scool scHi-C matrix',
                                 required=True)
     parserOpt = parser.add_argument_group('Optional arguments')
 

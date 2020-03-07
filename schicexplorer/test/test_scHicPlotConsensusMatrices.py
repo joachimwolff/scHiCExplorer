@@ -17,7 +17,7 @@ def test_plot():
     outfile = NamedTemporaryFile(suffix='.png', delete=False)
 
     outfile.close()
-    args = "--matrix {} --outFileName {} -t {} --dpi {}".format(ROOT + 'scHicConsensusMatrices/consensus_matrix.mcool',
+    args = "--matrix {} --outFileName {} -t {} --dpi {}".format(ROOT + 'scHicConsensusMatrices/consensus_matrix.scool',
                                                                 outfile.name, 1, 300
                                                                 ).split()
     scHicPlotConsensusMatrices.main(args)
@@ -32,7 +32,7 @@ def test_plot_chr():
     outfile = NamedTemporaryFile(suffix='.png', delete=False)
 
     outfile.close()
-    args = "--matrix {} --outFileName {} -t {} --dpi {} -c {}".format(ROOT + 'scHicConsensusMatrices/consensus_matrix.mcool',
+    args = "--matrix {} --outFileName {} -t {} --dpi {} -c {}".format(ROOT + 'scHicConsensusMatrices/consensus_matrix.scool',
                                                                       outfile.name, 1, 300, "chr1"
                                                                       ).split()
     scHicPlotConsensusMatrices.main(args)
@@ -47,7 +47,7 @@ def test_plot_multi_chr():
     outfile = NamedTemporaryFile(suffix='.png', delete=False)
 
     outfile.close()
-    args = "--matrix {} --outFileName {} -t {} --dpi {} -c {}".format(ROOT + 'scHicConsensusMatrices/consensus_matrix.mcool',
+    args = "--matrix {} --outFileName {} -t {} --dpi {} -c {}".format(ROOT + 'scHicConsensusMatrices/consensus_matrix.scool',
                                                                       outfile.name, 1, 300, 'chr1 chr2'
                                                                       ).split()
     scHicPlotConsensusMatrices.main(args)

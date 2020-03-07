@@ -92,13 +92,13 @@ class install(_install):
 
 
 install_requires_py = [
-    "hicexplorer >= 3.3.1",
-    "sparse-neighbors-search >= 0.4",
-    "numpy >= 1.17.3",
-    "scipy >= 1.3.2",
+    "hicexplorer >= 3.4.1",
+    "sparse-neighbors-search >= 0.5",
+    "numpy >= 1.18",
+    "scipy >= 1.4",
     "cooler >= 0.8.5",
     "hicmatrix >= 11",
-    "scikit-learn >= 0.21.1"
+    "scikit-learn >= 0.22"
 ]
 
 
@@ -109,10 +109,10 @@ setup(
     author_email='wolffj@informatik.uni-freiburg.de',
     packages=find_packages(),
     scripts=['bin/scHicDemultiplex', 'bin/scHicClusterMinHash', 'bin/scHicClusterSVL', 'bin/scHicClusterCompartments',
-             'bin/scHicMergeToMCool', 'bin/scHicQualityControl', 'bin/scHicCorrectMatrices',
+             'bin/scHicMergeToSCool', 'bin/scHicQualityControl', 'bin/scHicCorrectMatrices',
              'bin/scHicPlotClusterProfiles', 'bin/scHicPlotConsensusMatrices', 'bin/scHicConsensusMatrices',
              'bin/scHicMergeMatrixBins', 'bin/scHicCluster', 'bin/scHicAdjustMatrix', 'bin/scHicNormalize',
-             'bin/scHicInfo'
+             'bin/scHicInfo', 'bin/scHicCreateBulkMatrix'
              ],
     include_package_data=True,
     package_dir={'schicexplorer': 'schicexplorer'},

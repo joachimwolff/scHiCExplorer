@@ -35,7 +35,7 @@ def test_kmeans():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -ds  {} -dl {} ".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -ds  {} -dl {} ".format(ROOT + 'test_matrix.scool',
                                                        3, 'kmeans', outfile.name, 2, 2000000, 12000000).split()
     scHicClusterSVL.main(args)
     assert are_files_equal(ROOT + "scHicClusterSVL/cluster_kmeans.txt", outfile.name)
@@ -47,7 +47,7 @@ def test_spectral():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -ds  {} -dl {} ".format(ROOT + 'test_matrix.mcool',
+        --outFileName {} -t {} -ds  {} -dl {} ".format(ROOT + 'test_matrix.scool',
                                                        3, 'spectral', outfile.name, 2, 2000000, 12000000).split()
     scHicClusterSVL.main(args)
     assert are_files_equal(ROOT + "scHicClusterSVL/cluster_spectral.txt", outfile.name)

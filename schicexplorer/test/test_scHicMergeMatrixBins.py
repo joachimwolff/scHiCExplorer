@@ -14,14 +14,14 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
 
 
 def test_merge_matrices():
-    outfile = NamedTemporaryFile(suffix='.mcool', delete=False)
+    outfile = NamedTemporaryFile(suffix='.scool', delete=False)
 
     outfile.close()
-    args = "--matrix {} --outFileName {} -t {} -nb {}".format(ROOT + 'test_matrix.mcool',
+    args = "--matrix {} --outFileName {} -t {} -nb {}".format(ROOT + 'test_matrix.scool',
                                                               outfile.name, 1, 10).split()
     scHicMergeMatrixBins.main(args)
 
-    test_data_matrix = ROOT + 'scHicMergeMatrixBins/test_matrix_10mb.mcool'
+    test_data_matrix = ROOT + 'scHicMergeMatrixBins/test_matrix_10mb.scool'
     matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
     matrices_list_created = cooler.fileops.list_coolers(outfile.name)
 
@@ -38,14 +38,14 @@ def test_merge_matrices():
 
 
 def test_merge_matrices_running_window():
-    outfile = NamedTemporaryFile(suffix='.mcool', delete=False)
+    outfile = NamedTemporaryFile(suffix='.scool', delete=False)
 
     outfile.close()
-    args = "--matrix {} --outFileName {} -t {} -nb {} --runningWindow".format(ROOT + 'test_matrix.mcool',
+    args = "--matrix {} --outFileName {} -t {} -nb {} --runningWindow".format(ROOT + 'test_matrix.scool',
                                                                               outfile.name, 1, 11).split()
     scHicMergeMatrixBins.main(args)
 
-    test_data_matrix = ROOT + 'scHicMergeMatrixBins/test_matrix_10mb_running_window.mcool'
+    test_data_matrix = ROOT + 'scHicMergeMatrixBins/test_matrix_10mb_running_window.scool'
     matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
     matrices_list_created = cooler.fileops.list_coolers(outfile.name)
 

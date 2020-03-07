@@ -17,21 +17,21 @@ def parse_arguments(args=None):
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         add_help=False,
         description='scHicConsensusMatrices creates based on the clustered samples one consensus matrix for each cluster. '
-        'The consensus matrices are normalized to an equal read coverage level and are stored all in one mcool matrix.'
+        'The consensus matrices are normalized to an equal read coverage level and are stored all in one scool matrix.'
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
 
     parserRequired.add_argument('--matrix', '-m',
-                                help='The single cell Hi-C interaction matrices to investigate for QC. Needs to be in mcool format',
-                                metavar='mcool scHi-C matrix',
+                                help='The single cell Hi-C interaction matrices to investigate for QC. Needs to be in scool format',
+                                metavar='scool scHi-C matrix',
                                 required=True)
     parserRequired.add_argument('--clusters', '-c',
-                                help='Text file which contains per matrix the assoziated cluster.',
+                                help='Text file which contains per matrix the associated cluster.',
                                 metavar='cluster file',
                                 required=True)
     parserRequired.add_argument('--outFileName', '-o',
-                                help='File name of the consensus mcool matrix.',
+                                help='File name of the consensus scool matrix.',
                                 required=True)
     parserOpt = parser.add_argument_group('Optional arguments')
 

@@ -25,12 +25,12 @@ def parse_arguments(args=None):
 
     # define the arguments
     parserRequired.add_argument('--matrix', '-m',
-                                help='The single cell Hi-C interaction matrices to investigate for QC. Needs to be in mcool format',
-                                metavar='mcool scHi-C matrix',
+                                help='The single cell Hi-C interaction matrices to investigate for QC. Needs to be in scool format',
+                                metavar='scool scHi-C matrix',
                                 required=True)
 
     parserRequired.add_argument('--outFileName', '-o',
-                                help='File name of the consensus mcool matrix.',
+                                help='File name of the consensus scool matrix.',
                                 required=True)
 
     parserRequired.add_argument('--threads', '-t',
@@ -39,7 +39,11 @@ def parse_arguments(args=None):
                                 default=4,
                                 type=int)
     parserOpt = parser.add_argument_group('Optional arguments')
-
+    parserOpt.add_argument('--setToZeroThreshold', '-z',
+                           help='Values smaller as this threshold are set to 0.',
+                           required=False,
+                           default=1.0,
+                           type=float)
     parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
                            version='%(prog)s {}'.format(__version__))
@@ -61,7 +65,7 @@ def compute_sum(pMatrixName, pMatricesList, pThread, pQueue):
     pQueue.put(sum_list)
 
 
-def compute_normalize(pMatrixName, pMatricesList, pArgminSum, pSumOfAll, pAppend, pQueue):
+def compute_normalize(pMatrixName, pMatricesList, pArgminSum, pSumOfAll, pAppend, pThreshold, pQueue):
 
     matrixFileHandlerList = []
     for i, matrix in enumerate(pMatricesList):
@@ -79,6 +83,11 @@ def compute_normalize(pMatrixName, pMatricesList, pArgminSum, pSumOfAll, pAppend
         mask = np.isinf(_matrix.data)
         _matrix.data[mask] = 0
         adjust_factor = pSumOfAll[i] / pArgminSum
+
+        log.debug('pSumOfAll[i] {}'.format(pSumOfAll[i]))
+        log.debug('pArgminSum {}'.format(pArgminSum))
+        log.debug('adjust_factor {}'.format(adjust_factor))
+
         _matrix.data /= adjust_factor
         mask = np.isnan(_matrix.data)
 
@@ -87,12 +96,16 @@ def compute_normalize(pMatrixName, pMatricesList, pArgminSum, pSumOfAll, pAppend
 
         mask = np.isinf(_matrix.data)
         _matrix.data[mask] = 0
+
+        mask = _matrix.data < pThreshold
+        _matrix.data[mask] = 0
         _matrix.eliminate_zeros()
 
+        log.debug('new read coverage: {}\n\n'.format(np.sum(_matrix.data)))
         matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
 
         matrixFileHandlerOutput.set_matrix_variables(_matrix, cut_intervals, nan_bins,
-                                                     correction_factors, distance_counts)
+                                                     None, distance_counts)
 
         matrixFileHandlerList.append(matrixFileHandlerOutput)
 
@@ -153,9 +166,16 @@ def main(args=None):
         time.sleep(1)
 
     sum_of_all = [item for sublist in sum_list_threads for item in sublist]
+    sum_of_all = np.array(sum_of_all)
+    foo = sum_of_all[sum_of_all < 100000]
+    log.debug('len(foo_ {}'.format(len(foo)))
     # log.debug('size of sum_all: {}'.format(len(sum_of_all)))
     argmin = np.argmin(sum_of_all)
     argminSum = sum_of_all[argmin]
+
+    log.debug('sum_of_all[:10] {}'.format(sum_of_all[:10]))
+    log.debug('argmin {}'.format(argmin))
+    log.debug('argminSum {}'.format(argminSum))
 
     matricesPerThread = len(matrices_list) // threads
 
@@ -165,7 +185,7 @@ def main(args=None):
     queue = [None] * args.threads
 
     thread_done = [False] * args.threads
-
+    # args.threads = 1
     for i in range(args.threads):
         if i < args.threads - 1:
             matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
@@ -181,6 +201,7 @@ def main(args=None):
             pArgminSum=argminSum,
             pSumOfAll=sum_of_all_list,
             pAppend=i == 0,
+            pThreshold=args.setToZeroThreshold,
             pQueue=queue[i]
         )
         )

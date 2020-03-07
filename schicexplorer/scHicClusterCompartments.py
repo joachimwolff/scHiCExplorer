@@ -41,8 +41,8 @@ def parse_arguments(args=None):
 
     # define the arguments
     parserRequired.add_argument('--matrix', '-m',
-                                help='The single cell Hi-C interaction matrices to cluster. Needs to be in mcool format',
-                                metavar='mcool scHi-C matrix',
+                                help='The single cell Hi-C interaction matrices to cluster. Needs to be in scool format',
+                                metavar='scool scHi-C matrix',
                                 required=True)
 
     parserRequired.add_argument('--numberOfClusters', '-c',
@@ -248,6 +248,7 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
+    log.debug('Clustering starting')
     if args.clusterMethod == 'spectral':
         spectral_clustering = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads, random_state=0)
         labels_clustering = spectral_clustering.fit_predict(compartments_matrix)

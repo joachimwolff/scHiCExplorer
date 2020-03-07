@@ -8,7 +8,7 @@ Requirements
 -------------
 
 * Python 3.6
-* HiCExplorer 3.3
+* HiCExplorer 3.4
 
 
 Command line installation using ``conda``

@@ -13,7 +13,7 @@ from matplotlib.testing.compare import compare_images
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
 import numpy.testing as nt
 from hicmatrix import HiCMatrix as hm
-tolerance = 30
+tolerance = 40
 
 
 def are_files_equal(file1, file2, delta=2, skip=0):
@@ -43,12 +43,12 @@ def test_plot():
     outfile_coverage.close()
     outfile_qc_report = NamedTemporaryFile(suffix='.txt', delete=False)
     outfile_qc_report.close()
-    outfile_matrix = NamedTemporaryFile(suffix='.mcool', delete=False)
+    outfile_matrix = NamedTemporaryFile(suffix='.scool', delete=False)
     outfile_matrix.close()
-    args = "--matrix {} --outputMcool {} -t {} --dpi {} --outFileNameDensity {} \
+    args = "--matrix {} --outputScool {} -t {} --dpi {} --outFileNameDensity {} \
             --outFileNameReadCoverage {} --outFileNameQCReport {} \
             --minimumReadCoverage {} --minimumDensity {} \
-            --maximumRegionToConsider {}".format(ROOT + 'test_matrix.mcool',
+            --maximumRegionToConsider {}".format(ROOT + 'test_matrix.scool',
                                                         outfile_matrix.name, 1, 300,
                                                         outfile_density.name,
                                                         outfile_coverage.name,
@@ -67,7 +67,7 @@ def test_plot():
 
     assert are_files_equal(ROOT + "scHicQualityControl/qc_report.txt", outfile_qc_report.name)
 
-    test_data_matrix = ROOT + 'scHicQualityControl/qc_matrix.mcool'
+    test_data_matrix = ROOT + 'scHicQualityControl/qc_matrix.scool'
     matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
     matrices_list_created = cooler.fileops.list_coolers(outfile_matrix.name)
 
@@ -93,12 +93,12 @@ def test_plot_chromosomes():
     outfile_coverage.close()
     outfile_qc_report = NamedTemporaryFile(suffix='.txt', delete=False)
     outfile_qc_report.close()
-    outfile_matrix = NamedTemporaryFile(suffix='.mcool', delete=False)
+    outfile_matrix = NamedTemporaryFile(suffix='.scool', delete=False)
     outfile_matrix.close()
-    args = "--matrix {} --outputMcool {} -t {} --dpi {} --outFileNameDensity {} \
+    args = "--matrix {} --outputScool {} -t {} --dpi {} --outFileNameDensity {} \
             --outFileNameReadCoverage {} --outFileNameQCReport {} \
             --minimumReadCoverage {} --minimumDensity {} \
-            --maximumRegionToConsider {} --chromosomes chr1 chr2".format(ROOT + 'test_matrix.mcool',
+            --maximumRegionToConsider {} --chromosomes chr1 chr2".format(ROOT + 'test_matrix.scool',
                                                                          outfile_matrix.name, 1, 300,
                                                                          outfile_density.name,
                                                                          outfile_coverage.name,
@@ -117,7 +117,7 @@ def test_plot_chromosomes():
 
     assert are_files_equal(ROOT + "scHicQualityControl/qc_report_chr1_chr2.txt", outfile_qc_report.name)
 
-    test_data_matrix = ROOT + 'scHicQualityControl/qc_matrix_chr1_chr2.mcool'
+    test_data_matrix = ROOT + 'scHicQualityControl/qc_matrix_chr1_chr2.scool'
     matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
     matrices_list_created = cooler.fileops.list_coolers(outfile_matrix.name)
 

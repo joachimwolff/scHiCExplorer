@@ -15,14 +15,14 @@ from schicexplorer import scHicNormalize
 
 
 def test_normalize():
-    outfile = NamedTemporaryFile(suffix='.mcool', delete=False)
+    outfile = NamedTemporaryFile(suffix='.scool', delete=False)
 
     outfile.close()
-    args = "--matrix {} --outFileName {} -t {}".format(ROOT + 'test_matrix.mcool',
-                                                       outfile.name, 1).split()
+    args = "--matrix {} --outFileName {} -t {} --setToZeroThreshold {}".format(ROOT + 'test_matrix.scool',
+                                                                               outfile.name, 1, 0).split()
     scHicNormalize.main(args)
 
-    test_data_matrix = ROOT + 'scHicNormalize/test_matrix_normalized.mcool'
+    test_data_matrix = ROOT + 'scHicNormalize/test_matrix_normalized.scool'
     matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
     matrices_list_created = cooler.fileops.list_coolers(outfile.name)
 

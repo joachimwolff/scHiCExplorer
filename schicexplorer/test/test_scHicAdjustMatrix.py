@@ -15,15 +15,15 @@ from hicmatrix import HiCMatrix as hm
 
 def test_adjust_matrices_keep():
 
-    outfile = NamedTemporaryFile(suffix='.mcool', delete=False)
+    outfile = NamedTemporaryFile(suffix='.scool', delete=False)
     outfile.close()
 
     chromosomes_to_keep = "chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chrX"
-    args = "--matrix {} --outFileName {} --action {} --chromosomes {} -t {}".format(ROOT + 'test_matrix.mcool',
+    args = "--matrix {} --outFileName {} --action {} --chromosomes {} -t {}".format(ROOT + 'test_matrix.scool',
                                                                                     outfile.name, 'keep', chromosomes_to_keep, 1).split()
     scHicAdjustMatrix.main(args)
 
-    test_data_matrix = ROOT + 'scHicAdjustMatrix/test_matrix_adjusted.mcool'
+    test_data_matrix = ROOT + 'scHicAdjustMatrix/test_matrix_adjusted.scool'
     matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
     matrices_list_created = cooler.fileops.list_coolers(outfile.name)
 
@@ -41,22 +41,22 @@ def test_adjust_matrices_keep():
         assert chromosomes_list_test == chromosomes_list_created
         assert chromosomes_list_created == chromosomes_to_keep
 
-        chromosomes_list_test_original = sorted(cooler.Cooler(ROOT + 'test_matrix.mcool' + '::' + test_matrix).chromnames)
+        chromosomes_list_test_original = sorted(cooler.Cooler(ROOT + 'test_matrix.scool' + '::' + test_matrix).chromnames)
         assert chromosomes_list_created != chromosomes_list_test_original
     os.unlink(outfile.name)
 
 
 def test_adjust_matrices_remove():
 
-    outfile = NamedTemporaryFile(suffix='.mcool', delete=False)
+    outfile = NamedTemporaryFile(suffix='.scool', delete=False)
     outfile.close()
 
     chromosomes_to_remove = "chr1 chr2"
-    args = "--matrix {} --outFileName {} --action {} --chromosomes {} -t {}".format(ROOT + 'test_matrix.mcool',
+    args = "--matrix {} --outFileName {} --action {} --chromosomes {} -t {}".format(ROOT + 'test_matrix.scool',
                                                                                     outfile.name, 'remove', chromosomes_to_remove, 2).split()
     scHicAdjustMatrix.main(args)
 
-    test_data_matrix = ROOT + 'scHicAdjustMatrix/test_matrix_adjusted_remove.mcool'
+    test_data_matrix = ROOT + 'scHicAdjustMatrix/test_matrix_adjusted_remove.scool'
     matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
     matrices_list_created = cooler.fileops.list_coolers(outfile.name)
 
@@ -75,7 +75,7 @@ def test_adjust_matrices_remove():
         assert chromosomes_to_remove[0] not in chromosomes_list_created
         assert chromosomes_to_remove[1] not in chromosomes_list_created
 
-        chromosomes_list_test_original = sorted(cooler.Cooler(ROOT + 'test_matrix.mcool' + '::' + test_matrix).chromnames)
+        chromosomes_list_test_original = sorted(cooler.Cooler(ROOT + 'test_matrix.scool' + '::' + test_matrix).chromnames)
         assert chromosomes_list_created != chromosomes_list_test_original
 
     os.unlink(outfile.name)

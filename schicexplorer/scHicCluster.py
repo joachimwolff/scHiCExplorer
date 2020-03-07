@@ -34,8 +34,8 @@ def parse_arguments(args=None):
 
     # define the arguments
     parserRequired.add_argument('--matrix', '-m',
-                                help='The single cell Hi-C interaction matrices to cluster. Needs to be in mcool format',
-                                metavar='mcool scHi-C matrix',
+                                help='The single cell Hi-C interaction matrices to cluster. Needs to be in scool format',
+                                metavar='scool scHi-C matrix',
                                 required=True)
     parserRequired.add_argument('--numberOfClusters', '-c',
                                 help='Number of to be computed clusters',
@@ -54,8 +54,13 @@ def parse_arguments(args=None):
 
     parserOpt.add_argument('--dimensionReductionMethod', '-drm',
                            help='Dimension reduction methods, knn with euclidean distance, pca',
-                                choices=['none', 'knn', 'pca'],
+                           choices=['none', 'knn', 'pca'],
                            default='none')
+    parserOpt.add_argument('--numberOfNearestNeighbors', '-k',
+                           help='Number of to be used computed nearest neighbors for the knn graph. Default is either the default value or the number of the provided cells, whatever is smaller.',
+                           required=False,
+                           default=100,
+                           type=int)
     parserOpt.add_argument('--outFileName', '-o',
                            help='File name to save the resulting clusters',
                            required=True,
@@ -155,7 +160,10 @@ def main(args=None):
 
     reduce_to_dimension = neighborhood_matrix.shape[0] - 1
     if args.dimensionReductionMethod == 'knn':
-        nbrs = NearestNeighbors(n_neighbors=reduce_to_dimension, algorithm='ball_tree', n_jobs=args.threads).fit(neighborhood_matrix)
+
+        if args.numberOfNearestNeighbors > reduce_to_dimension:
+            args.numberOfNearestNeighbors = reduce_to_dimension
+        nbrs = NearestNeighbors(n_neighbors=args.numberOfNearestNeighbors, algorithm='ball_tree', n_jobs=args.threads).fit(neighborhood_matrix)
         neighborhood_matrix = nbrs.kneighbors_graph(mode='distance')
 
     elif args.dimensionReductionMethod == 'pca':
