@@ -92,13 +92,13 @@ class install(_install):
 
 
 install_requires_py = [
-    "hicexplorer >= 3.3.1",
-    "sparse-neighbors-search >= 0.4",
-    "numpy >= 1.17.3",
-    "scipy >= 1.3.2",
+    "hicexplorer >= 3.4.1",
+    "sparse-neighbors-search >= 0.5",
+    "numpy >= 1.18",
+    "scipy >= 1.4",
     "cooler >= 0.8.5",
     "hicmatrix >= 11",
-    "scikit-learn >= 0.21.1"
+    "scikit-learn >= 0.22"
 ]
 
 

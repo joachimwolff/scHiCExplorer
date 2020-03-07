@@ -19,7 +19,8 @@ The following is the list of tools available in scHiCExplorer
 tool                                description
 =================================== ===============================================================================
 :ref:`scHicDemultiplex`             Demultiplexes the samples by their barcodes to one FASTQ file per samples
-:ref:`scHicMergeToMCool`            Merges all single-cell Hi-C matrices to one
+:ref:`scHicMergeToSCool`            Merges all single-cell Hi-C matrices to one
+:ref:`scHicCreateBulkMatrix`        Compute the bulk matrix out of all single-cell Hi-C matrices
 :ref:`scHicMergeMatrixBins`         Changes the resolution of the matrices 
 :ref:`scHicQualityControl`          Estimates the quality of scHi-C datasets
 :ref:`scHicAdjustMatrix`            Keeps / removes chromosomes / contigs / scaffolds of all samples 
