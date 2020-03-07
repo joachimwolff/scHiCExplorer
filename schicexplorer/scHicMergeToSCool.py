@@ -13,7 +13,7 @@ def parse_arguments(args=None):
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description='Creates out of n cool files one mcool file.',
+        description='Creates out of n cool files one scool file.',
         add_help=False)
 
     parserRequired = parser.add_argument_group('Required arguments')

@@ -22,7 +22,7 @@ def parse_arguments(args=None):
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         add_help=False,
-        description='Correct each matrix of the given mcool matrix with KR correction.')
+        description='Correct each matrix of the given scool matrix with KR correction.')
 
     parserRequired = parser.add_argument_group('Required arguments')
 
@@ -32,7 +32,7 @@ def parse_arguments(args=None):
                                 required=True)
 
     parserRequired.add_argument('--outFileName', '-o',
-                                help='File name to save the resulting matrix, please add the mcool prefix.',
+                                help='File name to save the resulting matrix, please add the scool prefix.',
                                 required=True)
     # parserRequired.a
     parserOpt = parser.add_argument_group('Optional arguments')

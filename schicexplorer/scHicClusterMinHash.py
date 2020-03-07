@@ -38,8 +38,8 @@ def parse_arguments(args=None):
 
     # define the arguments
     parserRequired.add_argument('--matrix', '-m',
-                                help='The single cell Hi-C interaction matrices to cluster. Needs to be in mcool format',
-                                metavar='mcool scHi-C matrix',
+                                help='The single cell Hi-C interaction matrices to cluster. Needs to be in scool format',
+                                metavar='scool scHi-C matrix',
                                 required=True)
     parserRequired.add_argument('--numberOfClusters', '-c',
                                 help='Number of to be computed clusters',
