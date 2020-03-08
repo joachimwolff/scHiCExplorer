@@ -16,6 +16,11 @@ In this tutorial we work with the 'diploid' data from Nagano 2017 (GSE94489).
 
 **Disclaimer**
 
+scHiCExplorer is a general tool to process and analysis single-cell Hi-C data. In this tutorial single-cell Hi-C data from Nagano 2017 (GSE94489) is used and scHiCExplorer provides a tool to demultiplex the FASTQ files. However, if all pre-processing (demultiplexing, trimming etc) is achieved by third-party tools
+and per cell the mapped forward and reverse strand files are present, scHiCExplorer can process them. 
+
+**Disclaimer**
+
 The raw fastq data is around 1,04 TB of size and the download speed is limited to a few Mb/s by NCBI. To decrease the download time it is recommended to download the files in parallel if enough disk space is available.
 Furthermore, please consider the data needs to be demultiplexed and mapped which needs additional disk space.
 
@@ -65,14 +70,57 @@ Download the each file via:
 
 .. code-block:: bash
 
-    $ fastq-dump SRR5229019
+    $ fastq-dump --accession SRR5229019 --split-files --defline-seq \'@$sn[_$rn]/$ri\' --defline-qual \'+\'  --split-spot --stdout SRR5229019  > SRR5229019.fastq
 
 Alternatively, download all with one command:
 
 .. code-block:: bash
 
-    $ echo SRR5229019,SRR5229021,SRR5229023,SRR5229025,SRR5229027,SRR5229031,SRR5229033,SRR5229035,SRR5229037,SRR5229039,SRR5229041,SRR5229043,SRR5229045,SRR5229047,SRR5229049,SRR5229051,SRR5229053,SRR5229055,SRR5229057,SRR5507553,SRR5507554,SRR5507555 |  sed "s/,/\n/g" | xargs -n1 -P 22 -I {} sh -c "fastq-dump {}" 
+    $ echo SRR5229019,SRR5229021,SRR5229023,SRR5229025,SRR5229027,SRR5229031,SRR5229033,SRR5229035,SRR5229037,SRR5229039,SRR5229041,SRR5229043,SRR5229045,SRR5229047,SRR5229049,SRR5229051,SRR5229053,SRR5229055,SRR5229057,SRR5507553,SRR5507554,SRR5507555 |  sed "s/,/\n/g" | xargs -n1 -P 22 -I {} sh -c "fastq-dump --accession {} --split-files --defline-seq \'@$sn[_$rn]/$ri\' --defline-qual \'+\'  --split-spot --stdout {}  > {}.fastq" 
 
+
+Please be aware that the additional parameters are only necessary if the files are downloaded via the bash. If you plan to download the files on hicexplorer.usegalaxy.eu and use there fastq-dump, the here shown additional parameters are handled in the background and only the accession number is required.
+
+
+The downloaded fastq files must be in the following format:
+
+.. code-block:: bash
+
+    @HWI-M02293:190:000000000-AHGUV:1:1101:12370:1000/1
+    NAAACTTCAAGGAAGCCAGAACAAGGATAGGAAAGNNNNGNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNTNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
+    +
+    #8ACCGGGGGGGGGGFGGGGGGGGGGG9FFDFGGG####################################################################################################################
+    @HWI-M02293:190:000000000-AHGUV:1:1101:12370:1000/2
+    NNNNNNNN
+    +
+    ########
+    @HWI-M02293:190:000000000-AHGUV:1:1101:12370:1000/3
+    NNNNNNNN
+    +
+    ########
+    @HWI-M02293:190:000000000-AHGUV:1:1101:12370:1000/4
+    NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
+    +
+    #######################################################################################################################################################
+    @HWI-M02293:190:000000000-AHGUV:1:1101:13757:1000/1
+    NCCCTGTACTGGGGCATATAAAGTTTTACATGCACNTNTTNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
+    +
+    #8BCCGGGGGFFFGGGGGGGGGGGGGGGGGGFGGG####################################################################################################################
+    @HWI-M02293:190:000000000-AHGUV:1:1101:13757:1000/2
+    NNNNNNNN
+    +
+    ########
+    @HWI-M02293:190:000000000-AHGUV:1:1101:13757:1000/3
+    NNNNNNNN
+    +
+    ########
+    @HWI-M02293:190:000000000-AHGUV:1:1101:13757:1000/4
+    NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
+    +
+    #######################################################################################################################################################
+
+
+Please check this before the demultiplexing starts. If this format is not present, the demultiplexing will not work and creates only an empty output folder.
 
 
 Demultiplexing
@@ -105,7 +153,7 @@ Please consider that the time to demultiplex the file SRR5229025, which itself i
 Mapping
 -------
 
-After demultiplexing, each forward and reverse strand file needs to be mapped as usual in Hi-C as single-paired files. Foe this tutorial we use bwa mem and the mm10 index:
+After demultiplexing, each forward and reverse strand file needs to be mapped as usual in Hi-C as single-paired files. For this tutorial we use bwa mem and the mm10 index:
 
 
 .. code-block:: bash

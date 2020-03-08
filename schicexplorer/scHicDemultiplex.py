@@ -1,3 +1,5 @@
+from schicexplorer._version import __version__
+from schicexplorer.utilities import opener
 import argparse
 import os
 import gzip
@@ -7,9 +9,6 @@ from multiprocessing import Process, Queue
 import time
 import logging
 log = logging.getLogger(__name__)
-
-from schicexplorer.utilities import opener
-from schicexplorer._version import __version__
 
 
 def parse_arguments(args=None):
@@ -27,7 +26,9 @@ def parse_arguments(args=None):
     parserRequired.add_argument('--fastq', '-f',
                                 help='The fastq files to demultiplex of Nagano 2017 Cell cycle dynamics of chromosomal organization at single-cell resolution'
                                 'GEO: GSE94489. Files need to have four FASTQ lines per read:'
-                                '/1 forward; /2 barcode forward; /3 bardcode reverse; /4 reverse read',
+                                '/1 forward; /2 barcode forward; /3 bardcode reverse; /4 reverse read.'
+                                'Please be aware the files can be downloaded via the command fastq-dump to be in the right format:'
+                                'fastq-dump --accession SRR5229025 --split-files --defline-seq \'@$sn[_$rn]/$ri\' --defline-qual \'+\'  --split-spot --stdout SRR5229025  > SRR5229025.fastq',
                                 metavar='list of fastq files to demultiplex',
                                 nargs='+',
                                 required=True)
@@ -55,7 +56,8 @@ def parse_arguments(args=None):
                            required=False,
                            default=20e6,
                            type=int)
-    parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
+    parserOpt.add_argument('--help', '-h', action='help',
+                           help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
                            version='%(prog)s {}'.format(__version__))
     return parser
@@ -100,7 +102,8 @@ def readBarcodeFile(pFileName):
                     barcode_sample[line_[-1]] = [line_[2] + line_[3]]
                 if line_[0] in sample_run_to_individual_run:
                     if line_[-1] not in sample_run_to_individual_run[line_[0]]:
-                        sample_run_to_individual_run[line_[0]].append(line_[-1])
+                        sample_run_to_individual_run[line_[
+                            0]].append(line_[-1])
                 else:
                     sample_run_to_individual_run[line_[0]] = [line_[-1]]
             except Exception:
@@ -149,8 +152,10 @@ def handleCompressingMulticore(pFileNameList, pBuffer, pThreads):
         for i in range(pThreads):
 
             if i < pThreads - 1:
-                file_list_sample = pFileNameList[i * filesPerThread:(i + 1) * filesPerThread]
-                buffer_sample = pBuffer[i * filesPerThread:(i + 1) * filesPerThread]
+                file_list_sample = pFileNameList[i *
+                                                 filesPerThread:(i + 1) * filesPerThread]
+                buffer_sample = pBuffer[i *
+                                        filesPerThread:(i + 1) * filesPerThread]
             else:
                 file_list_sample = pFileNameList[i * filesPerThread:]
                 buffer_sample = pBuffer[i * filesPerThread:]
@@ -193,16 +198,20 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
         if fastq.split('/')[-1].split(".")[0] in pSrrToSampleDict:
             sample = pSrrToSampleDict[fastq.split('/')[-1].split(".")[0]]
         else:
-            log.warning('No sample known with SRR: {}'.format(fastq.split('/')[-1].split(".")[0]))
+            log.warning('No sample known with SRR: {}'.format(
+                fastq.split('/')[-1].split(".")[0]))
             continue
         log.debug('sample {}'.format(sample))
         if sample not in pSampleToIndividualSampleDict:
-            log.warning('No sample known with SRR: {}'.format(fastq.split('/')[-1].split(".")[0]))
+            log.warning('No sample known with SRR: {}'.format(
+                fastq.split('/')[-1].split(".")[0]))
             continue
-        log.debug('pSampleToIndividualSampleDict[sample]: {}'.format(pSampleToIndividualSampleDict[sample]))
+        log.debug('pSampleToIndividualSampleDict[sample]: {}'.format(
+            pSampleToIndividualSampleDict[sample]))
         for sample_ in pSampleToIndividualSampleDict[sample]:
             if sample_ in pBarcodeSampleDict:
-                log.debug(' sample {} pBarcodeSampleDict[sample_] {}'.format(sample_, pBarcodeSampleDict[sample_]))
+                log.debug(' sample {} pBarcodeSampleDict[sample_] {}'.format(
+                    sample_, pBarcodeSampleDict[sample_]))
         fh = opener(fastq)
 
         line = True
@@ -241,15 +250,19 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
                 continue
 
             if forward_barcode + reverse_barcode + '_' + sample_name in cell_index:
-                cell_index_write = cell_index[forward_barcode + reverse_barcode + '_' + sample_name]
+                cell_index_write = cell_index[forward_barcode +
+                                              reverse_barcode + '_' + sample_name]
                 lines_out_buffer[cell_index_write][0].extend(fastq_read[:4])
                 lines_out_buffer[cell_index_write][1].extend(fastq_read[12:])
             else:
                 cell_index_write = cell_counter
-                cell_index[forward_barcode + reverse_barcode + '_' + sample_name] = cell_counter
+                cell_index[forward_barcode + reverse_barcode +
+                           '_' + sample_name] = cell_counter
                 cell_counter += 1
-                forward_read_cell = pOutputFolder + '/' + sample_name + '_' + forward_barcode + '_' + reverse_barcode + '_R1.fastq.gz'
-                reverse_read_cell = pOutputFolder + '/' + sample_name + '_' + forward_barcode + '_' + reverse_barcode + '_R2.fastq.gz'
+                forward_read_cell = pOutputFolder + '/' + sample_name + '_' + \
+                    forward_barcode + '_' + reverse_barcode + '_R1.fastq.gz'
+                reverse_read_cell = pOutputFolder + '/' + sample_name + '_' + \
+                    forward_barcode + '_' + reverse_barcode + '_R2.fastq.gz'
 
                 file_writer.append([forward_read_cell, reverse_read_cell])
                 lines_out_buffer.append([fastq_read[:4], fastq_read[12:]])
@@ -261,7 +274,8 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
                     buffered_elements += len(lines_buffered[1])
 
                 if buffered_elements > pBufferSize or line is False:
-                    handleCompressingMulticore(file_writer, lines_out_buffer, pThreads)
+                    handleCompressingMulticore(
+                        file_writer, lines_out_buffer, pThreads)
 
                     lines_out_buffer = None
                     lines_out_buffer = []
@@ -270,6 +284,18 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
                     file_writer = None
                     file_writer = []
                     cell_counter = 0
+
+        log.debug('foo')
+        if lines_out_buffer is not None and len(lines_out_buffer) > 0:
+            handleCompressingMulticore(file_writer, lines_out_buffer, pThreads)
+            lines_out_buffer = None
+            lines_out_buffer = []
+            cell_index = None
+            cell_index = {}
+            file_writer = None
+            file_writer = []
+            cell_counter = 0
+
         fh.close()
 
 
@@ -282,8 +308,10 @@ def main(args=None):
         except OSError as exc:  # Guard against race condition
             if exc.errno != errno.EEXIST:
                 raise
-    barcode_sample_dict, sample_to_individual_sample_dict = readBarcodeFile(args.barcodeFile)
+    barcode_sample_dict, sample_to_individual_sample_dict = readBarcodeFile(
+        args.barcodeFile)
 
     srr_to_sample_dict = readSrrToSampleFile(args.srrToSampleFile)
 
-    splitFastq(args.fastq, args.outputFolder, barcode_sample_dict, sample_to_individual_sample_dict, srr_to_sample_dict, args.threads, args.bufferSize)
+    splitFastq(args.fastq, args.outputFolder, barcode_sample_dict,
+               sample_to_individual_sample_dict, srr_to_sample_dict, args.threads, args.bufferSize)
