@@ -62,6 +62,17 @@ def parse_arguments(args=None):
                            help='Algorithm to cluster the Hi-C matrices',
                            choices=['svl', 'orderByFile'],
                            default='svl')
+    parserOpt.add_argument('--fontsize',
+                           help='Fontsize in the plot for x and y axis.',
+                           type=float,
+                           default=10)
+    parserOpt.add_argument('--rotationX',
+                           help='Rotation in degrees for the labels of x axis.',
+                           type=int,
+                           default=0)
+    parserOpt.add_argument('--no_ticks',
+                           help='Do not plot the x ticks. Might be helpful if they overlap.',
+                           action='store_false')
     parserOpt.add_argument('--outFileName', '-o',
                            help='File name to save the resulting cluster profile.',
                            required=False,
@@ -239,14 +250,23 @@ def main(args=None):
             y_ticks.append(i)
 
             y_labels.append(str(i) + 'MB')
-    plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=8)
+    plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=args.fontsize)
 
     plt.gca().invert_yaxis()
-    plt.xticks(ticks=ticks_position, labels=cluster_ticks, fontsize=4)
+    if args.no_ticks:
+        plt.xticks(ticks=ticks_position, labels=cluster_ticks, rotation=args.rotationX, fontsize=args.fontsize)
+    else:
+        plt.tick_params(
+                axis='x',          # changes apply to the x-axis
+                which='both',      # both major and minor ticks are affected
+                bottom=False,      # ticks along the bottom edge are off
+                top=False,         # ticks along the top edge are off
+                labelbottom=False) 
+    
     fig.autofmt_xdate()
 
     cbar = plt.colorbar()
-    cbar.ax.set_ylabel('% contacts', rotation=270, fontsize=5)
+    cbar.ax.set_ylabel('% contacts', rotation=270, fontsize=args.fontsize)
     cbar.ax.invert_yaxis()
     cbar.ax.tick_params(labelsize=5)
     plt.tight_layout()
