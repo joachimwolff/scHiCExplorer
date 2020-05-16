@@ -6,6 +6,12 @@ The scHiCExplorer is a software to demultiplex, process, correct, normalize, man
 
 .. image:: ./docs/images/scHi-C_workflow.png
 
+Citation
+--------
+
+Joachim Wolff, Leily Rabbani, Ralf Gilsbach, Gautier Richard, Thomas Manke, Rolf Backofen, Björn A Grüning.
+**Galaxy HiCExplorer 3: a web server for reproducible Hi-C, capture Hi-C and single-cell Hi-C data analysis, quality control and visualization, Nucleic Acids Research**, , gkaa220, https://doi.org/10.1093/nar/gkaa220
+
 Availability
 ------------
 
