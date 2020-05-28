@@ -5,7 +5,7 @@ from multiprocessing import Process, Queue
 
 
 import numpy as np
-from scipy.sparse import csr_matrix, vstack, save_npz
+from scipy.sparse import csr_matrix, vstack, save_npz, lil_matrix, dok_matrix
 
 import logging
 log = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ from sparse_neighbors_search import MinHashClustering
 from hicmatrix import HiCMatrix as hm
 
 from schicexplorer._version import __version__
-
+import time
 
 def parse_arguments(args=None):
 
@@ -94,25 +94,55 @@ def parse_arguments(args=None):
 
 def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pQueue):
     neighborhood_matrix = None
+    time_load = 0.0
+    time_all = 0.0
+    time_csr_create = 0.0
+    time_add = 0.0
+    features = []
+    data = []
+    features_length = []
+    max_shape = 0
     for i, matrix in enumerate(pMatricesList):
+        time_start_load = time.time()
+        time_start_all = time.time() 
+
         if pChromosomes is not None and len(pChromosomes) == 1:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes)
+            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes, pNoIntervalTree=True, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
         else:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix)
+            if not pChromosomes:
+                hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=True, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
+            else:
+                hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=False, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
             if pChromosomes:
                 hic_ma.keepOnlyTheseChr(pChromosomes)
         _matrix = hic_ma.matrix
+        time_load += time.time() - time_start_load
+        time_csr_create_start = time.time()
 
-        if neighborhood_matrix is None:
-            neighborhood_matrix = csr_matrix((pXDimension, _matrix.shape[0] * _matrix.shape[1]), dtype=np.float)
+        time_csr_create += time.time() - time_csr_create_start 
+        time_add_start = time.time()
+        if max_shape < _matrix[3]:
+            max_shape = _matrix[3]
+        
+        _matrix[0] *= _matrix[3]
+        _matrix[0] += _matrix[1]
+        _matrix[1] = None
+        features.extend(_matrix[0])
 
-        instances, features = _matrix.nonzero()
+        data.extend(_matrix[2])
+        features_length.append(len(_matrix[2]))
+        time_add += time.time() - time_add_start
+        del _matrix
+        time_all += time.time() - time_start_all
+    
 
-        instances *= _matrix.shape[1]
-        instances += features
-        features = None
-        neighborhood_matrix[pIndex + i, instances] = _matrix.data
-
+    time_start_tocsr = time.time()
+    instances = []
+    for i, instance_length in enumerate(features_length):
+        instances.extend([pIndex + i] * instance_length)
+    
+    neighborhood_matrix = csr_matrix((data, (instances, features)),(pXDimension, max_shape * max_shape), dtype=np.float)
+    log.debug('time_all {}, time_csr {}, time_add {} time_load {} time_tocsr {}'.format(time_all, time_csr_create, time_add, time_load, time.time() - time_start_tocsr))
     pQueue.put(neighborhood_matrix)
 
 
@@ -159,8 +189,13 @@ def main(args=None):
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
                 csr_matrix_worker = queue[i].get()
-                neighborhood_matrix_threads[i] = csr_matrix_worker
-
+                neighborhood_matrix_threads = csr_matrix_worker
+                if neighborhood_matrix is None:
+                    neighborhood_matrix = csr_matrix((len(matrices_list), neighborhood_matrix_threads.shape[1]))
+                    neighborhood_matrix += neighborhood_matrix_threads
+                else:
+                    neighborhood_matrix += neighborhood_matrix_threads
+                del neighborhood_matrix_threads
                 queue[i] = None
                 process[i].join()
                 process[i].terminate()
@@ -172,10 +207,11 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
-    neighborhood_matrix = neighborhood_matrix_threads[0]
-    for i in range(1, len(neighborhood_matrix_threads)):
-        neighborhood_matrix += neighborhood_matrix_threads[i]
+    # neighborhood_matrix = neighborhood_matrix_threads[0]
+    # for i in range(1, len(neighborhood_matrix_threads)):
+    #     neighborhood_matrix += neighborhood_matrix_threads[i]
 
+    # neighborhood_matrix = neighborhood_matrix.tocsr()
     if args.saveIntermediateRawMatrix:
         save_npz(args.saveIntermediateRawMatrix, neighborhood_matrix)
     if args.clusterMethod == 'spectral':
