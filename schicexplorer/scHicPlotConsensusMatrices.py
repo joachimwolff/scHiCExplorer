@@ -60,6 +60,13 @@ def parse_arguments(args=None):
                            'values can be seen here: '
                            'http://matplotlib.org/examples/color/colormaps_reference.html',
                            default='RdYlBu_r')
+    parserOpt.add_argument('--fontsize',
+                           help='Fontsize in the plot for x and y axis.',
+                           type=float,
+                           default=10)
+    parserOpt.add_argument('--no_header',
+                           help='Do not plot a header.',
+                           action='store_false')
     parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
                            version='%(prog)s {}'.format(__version__))
@@ -83,7 +90,9 @@ def main(args=None):
         title_string += ' on chromosome: {}'.format(' '.join(args.chromosomes))
     else:
         title_string += ' on all chromosomes'
-    plt.suptitle(title_string, fontsize=10)
+    
+    if args.no_header:
+        plt.suptitle(title_string, fontsize=args.fontsize)
 
     for i, matrix in enumerate(matrices_list):
         if args.chromosomes is not None and len(args.chromosomes) == 1:

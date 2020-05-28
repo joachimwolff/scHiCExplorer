@@ -285,14 +285,16 @@ def splitFastq(pFastqFile, pOutputFolder, pBarcodeSampleDict, pSampleToIndividua
                     file_writer = []
                     cell_counter = 0
 
-        handleCompressingMulticore(file_writer, lines_out_buffer, pThreads)
-        lines_out_buffer = None
-        lines_out_buffer = []
-        cell_index = None
-        cell_index = {}
-        file_writer = None
-        file_writer = []
-        cell_counter = 0
+        log.debug('foo')
+        if lines_out_buffer is not None and len(lines_out_buffer) > 0:
+            handleCompressingMulticore(file_writer, lines_out_buffer, pThreads)
+            lines_out_buffer = None
+            lines_out_buffer = []
+            cell_index = None
+            cell_index = {}
+            file_writer = None
+            file_writer = []
+            cell_counter = 0
 
         fh.close()
 
