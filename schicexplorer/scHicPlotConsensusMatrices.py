@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import AxesGrid
 
 from schicexplorer._version import __version__
+from schicexplorer.utilities import cell_name_list
 
 
 def parse_arguments(args=None):
@@ -76,7 +77,7 @@ def parse_arguments(args=None):
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
-    matrices_list = cooler.fileops.list_coolers(args.matrix)
+    matrices_list = cell_name_list(args.matrix)
     columns = 4
     if len(matrices_list) < columns:
         columns = len(matrices_list)

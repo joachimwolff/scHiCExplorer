@@ -11,6 +11,7 @@ from hicmatrix import HiCMatrix as hm
 from hicexplorer.hicMergeMatrixBins import running_window_merge, merge_bins
 from schicexplorer._version import __version__
 from hicmatrix.lib import MatrixFileHandler
+from schicexplorer.utilities import cell_name_list
 
 
 def parse_arguments(args=None):
@@ -83,7 +84,7 @@ def main(args=None):
 
     threads = args.threads
     merged_matrices = [None] * threads
-    matrices_list = cooler.fileops.list_coolers(args.matrix)
+    matrices_list = cell_name_list(args.matrix)
     if len(matrices_list) < threads:
         threads = len(matrices_list)
     all_data_collected = False

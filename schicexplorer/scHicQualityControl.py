@@ -16,7 +16,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from schicexplorer._version import __version__
-
+from schicexplorer.utilities import cell_name_list
 
 def parse_arguments(args=None):
 
@@ -44,7 +44,7 @@ def parse_arguments(args=None):
                            default=1000000,
                            type=int)
     parserOpt.add_argument('--minimumDensity',
-                           help='Remove all samples with a lower read coverage as this value.',
+                           help='Remove all samples with a lower density as this value. The density is given by: number of non-zero interactions / all possible interactions.',
                            required=False,
                            default=0.001,
                            type=float)
@@ -71,6 +71,9 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--plotOnly',
                            help='Do not create a new matrix, create only the plots.',
                            action='store_true')
+    parserOpt.add_argument('--skipChromosomeCheck',
+                           help='Skip the data integrity check for the chromosomes.',
+                           action='store_true')
     parserOpt.add_argument('--dpi', '-d',
                            help='The dpi of the plot.',
                            required=False,
@@ -92,28 +95,39 @@ def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pXDimension, pMax
     read_coverage = []
     sparsity = []
     log.debug('read covarage and sparsity')
+    hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + pMatricesList[0])
+    bin_size = hic_ma.getBinSize()
+    shape_x = hic_ma.matrix.shape[0]
     for i, matrix in enumerate(pMatricesList):
-        hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix)
 
         # _matrix = hic_ma.matrix
 
-        matrixFileHandler = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix)
+        matrixFileHandler = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix, pLoadMatrixOnly=True)
         _matrix, cut_intervals, nan_bins, \
             distance_counts, correction_factors = matrixFileHandler.load()
-        max_distance = pMaximumRegionToConsider // hic_ma.getBinSize()
+        max_distance = pMaximumRegionToConsider // bin_size
 
-        read_coverage.append(_matrix.data.sum())
 
         # if (_matrix.data.sum()) < 100000:
         #     log.debug('smaller 100000: {}'.format(_matrix.data.sum()))
         # if np.sum(_matrix.data) < 100000:
         #     log.debug('II smaller 100000: {}'.format(_matrix.data.sum()))
-        instances, features = _matrix.nonzero()
-        distances = np.absolute(instances - features)
-        mask = distances >= max_distance
-        sparsity_length = len(_matrix.data[mask])
+        instances = _matrix[0]
+        features = _matrix[1]
 
-        sparsity.append(sparsity_length / (_matrix.shape[0] * max_distance))
+        distances = np.absolute(instances - features)
+        mask = distances <= max_distance
+        sparsity_length = len(_matrix[2][mask])
+
+        sparsity.append(sparsity_length / (shape_x * max_distance))
+        
+        # only upper half is loaded --> times 2
+        read_coverage_sum = _matrix[2].sum()*2 
+        # minus the double main diagonal
+        mask = distances == 0
+        read_coverage_sum -= _matrix[2][mask].sum()
+        read_coverage.append(read_coverage_sum)
+
 
     pQueue.put([read_coverage, sparsity])
 
@@ -139,61 +153,62 @@ def main(args=None):
 
     matrices_name = args.matrix
     threads = args.threads
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
+    matrices_list = cell_name_list(matrices_name)
     all_samples_number = len(matrices_list)
 
-    #####################################################
-    # Detect broken chromosomes and remove these matrices
-    #####################################################
-    keep_matrices_thread = [None] * threads
-    all_data_collected = False
-    thread_done = [False] * threads
-    length_index = [None] * threads
-    length_index[0] = 0
-    matricesPerThread = len(matrices_list) // threads
-    queue = [None] * threads
-    process = [None] * threads
-    for i in range(threads):
-
-        if i < threads - 1:
-            matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
-            length_index[i + 1] = length_index[i] + len(matrices_name_list)
-        else:
-            matrices_name_list = matrices_list[i * matricesPerThread:]
-
-        queue[i] = Queue()
-        process[i] = Process(target=compute_contains_all_chromosomes, kwargs=dict(
-            pMatrixName=matrices_name,
-            pMatricesList=matrices_name_list,
-            pChromosomes=args.chromosomes,
-            pQueue=queue[i]
-        )
-        )
-
-        process[i].start()
-
-    while not all_data_collected:
+    if not args.skipChromosomeCheck:
+        #####################################################
+        # Detect broken chromosomes and remove these matrices
+        #####################################################
+        keep_matrices_thread = [None] * threads
+        all_data_collected = False
+        thread_done = [False] * threads
+        length_index = [None] * threads
+        length_index[0] = 0
+        matricesPerThread = len(matrices_list) // threads
+        queue = [None] * threads
+        process = [None] * threads
         for i in range(threads):
-            if queue[i] is not None and not queue[i].empty():
-                worker_result = queue[i].get()
-                keep_matrices_thread[i] = worker_result
-                queue[i] = None
-                process[i].join()
-                process[i].terminate()
-                process[i] = None
-                thread_done[i] = True
-        all_data_collected = True
-        for thread in thread_done:
-            if not thread:
-                all_data_collected = False
-        time.sleep(1)
 
-    keep_matrices_chromosome_names = np.array([item for sublist in keep_matrices_thread for item in sublist], dtype=bool)
+            if i < threads - 1:
+                matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
+                length_index[i + 1] = length_index[i] + len(matrices_name_list)
+            else:
+                matrices_name_list = matrices_list[i * matricesPerThread:]
 
-    matrices_name_chromosome_names = np.array(matrices_list)
-    matrices_list = matrices_name_chromosome_names[keep_matrices_chromosome_names]
+            queue[i] = Queue()
+            process[i] = Process(target=compute_contains_all_chromosomes, kwargs=dict(
+                pMatrixName=matrices_name,
+                pMatricesList=matrices_name_list,
+                pChromosomes=args.chromosomes,
+                pQueue=queue[i]
+            )
+            )
 
-    matrices_remove = matrices_name_chromosome_names[~keep_matrices_chromosome_names]
+            process[i].start()
+
+        while not all_data_collected:
+            for i in range(threads):
+                if queue[i] is not None and not queue[i].empty():
+                    worker_result = queue[i].get()
+                    keep_matrices_thread[i] = worker_result
+                    queue[i] = None
+                    process[i].join()
+                    process[i].terminate()
+                    process[i] = None
+                    thread_done[i] = True
+            all_data_collected = True
+            for thread in thread_done:
+                if not thread:
+                    all_data_collected = False
+            time.sleep(1)
+
+        keep_matrices_chromosome_names = np.array([item for sublist in keep_matrices_thread for item in sublist], dtype=bool)
+
+        matrices_name_chromosome_names = np.array(matrices_list)
+        matrices_list = matrices_name_chromosome_names[keep_matrices_chromosome_names]
+
+        matrices_remove = matrices_name_chromosome_names[~keep_matrices_chromosome_names]
     # log.debug('matrices_remove {}'.format(matrices_remove[:10]))
 
     #######################################
@@ -303,7 +318,8 @@ def main(args=None):
     header = '# QC report for single-cell Hi-C data generated by scHiCExplorer ' + __version__ + '\n'
 
     matrix_statistics = 'scHi-C sample contained {} cells:\n'.format(all_samples_number)
-    matrices_bad_chromosomes = 'Number of removed matrices containing bad chromosomes {}\n'.format(len(matrices_remove))
+    if not args.skipChromosomeCheck:
+        matrices_bad_chromosomes = 'Number of removed matrices containing bad chromosomes {}\n'.format(len(matrices_remove))
 
     matrices_low_read_coverage = 'Number of removed matrices due to low read coverage (< {}): {}\n'.format(args.minimumReadCoverage, sum_read_coverage)
     matrices_too_sparse = 'Number of removed matrices due to too many zero bins (< {} density, within {} relative genomic distance): {}\n'.format(args.minimumDensity, args.maximumRegionToConsider, sum_sparsity)
@@ -313,7 +329,8 @@ def main(args=None):
     with open(args.outFileNameQCReport, 'w') as file:
         file.write(header)
         file.write(matrix_statistics)
-        file.write(matrices_bad_chromosomes)
+        if not args.skipChromosomeCheck:
+            file.write(matrices_bad_chromosomes)
         file.write(matrices_low_read_coverage)
         file.write(matrices_too_sparse)
         file.write(matrix_qc)

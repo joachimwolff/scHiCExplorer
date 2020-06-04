@@ -10,6 +10,7 @@ import cooler
 
 from hicmatrix import HiCMatrix as hm
 from hicmatrix.lib import MatrixFileHandler
+from schicexplorer.utilities import cell_name_list
 
 import numpy as np
 
@@ -128,7 +129,7 @@ def main(args=None):
 
     matrices_name = args.matrix
     threads = args.threads
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
+    matrices_list = cell_name_list(matrices_name)
     read_coverage = [None] * threads
 
     all_data_collected = False
@@ -236,7 +237,12 @@ def main(args=None):
 
         cluster_ticks.append('Cluster {} ({} cells)'.format(i + 1, len(cluster)))
 
-    fig = plt.figure(figsize=(10, 2))
+    if len(matrices_list) > 1000:
+        fig = plt.figure(figsize=(10, 2))
+    elif len(matrices_list) > 5000:
+        fig = plt.figure(figsize=(5, 2))
+    elif len(matrices_list) > 250:
+        fig = plt.figure(figsize=(4, 2))
 
     plt.imshow(all_data.T, cmap='RdYlBu_r', norm=LogNorm(), aspect="auto")
 

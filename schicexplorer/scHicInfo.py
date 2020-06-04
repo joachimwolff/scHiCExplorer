@@ -9,6 +9,8 @@ import numpy as np
 
 from hicmatrix.lib import MatrixFileHandler
 from schicexplorer._version import __version__
+from schicexplorer.utilities import cell_name_list
+
 
 
 def parse_arguments(args=None):
@@ -37,7 +39,7 @@ def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-    matrices_list = cooler.fileops.list_coolers(args.matrix)
+    matrices_list = cell_name_list(args.matrix)
 
     print('Filename: {}'.format(args.matrix))
     print('Contains {} single-cell matrices'.format(len(matrices_list)))

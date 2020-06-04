@@ -17,6 +17,9 @@ from hicmatrix.lib import MatrixFileHandler
 
 from copy import deepcopy
 
+from schicexplorer.utilities import cell_name_list
+
+
 
 def parse_arguments(args=None):
 
@@ -100,7 +103,7 @@ def main(args=None):
     hicmatrix_adjusted_objects = []
     matrices_name = args.matrix
     threads = args.threads
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
+    matrices_list = cell_name_list(matrices_name)
     if args.createSubmatrix is not None and args.regions is None and args.chromosomes is None:
         for matrix in matrices_list[:args.createSubmatrix]:
             cooler.fileops.cp(args.matrix + '::' + matrix, args.outFileName + '::' + matrix)

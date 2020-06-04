@@ -19,6 +19,8 @@ from sklearn.cluster import SpectralClustering, KMeans
 
 
 from schicexplorer._version import __version__
+from schicexplorer.utilities import cell_name_list
+
 
 
 def parse_arguments(args=None):
@@ -125,7 +127,7 @@ def main(args=None):
 
     matrices_name = args.matrix
     threads = args.threads
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
+    matrices_list = cell_name_list(matrices_name)
     svl_matrix = None
 
     all_data_collected = False

@@ -20,6 +20,8 @@ from sparse_neighbors_search import MinHashClustering
 from hicmatrix import HiCMatrix as hm
 
 from schicexplorer._version import __version__
+from schicexplorer.utilities import cell_name_list
+
 import time
 
 def parse_arguments(args=None):
@@ -152,7 +154,7 @@ def main(args=None):
 
     matrices_name = args.matrix
     threads = args.threads
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
+    matrices_list = cell_name_list(matrices_name)
     neighborhood_matrix = None
     neighborhood_matrix_threads = [None] * threads
 
