@@ -104,6 +104,7 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
     data = []
     features_length = []
     max_shape = 0
+    index_datatype = np.int64
     for i, matrix in enumerate(pMatricesList):
         time_start_load = time.time()
         time_start_all = time.time() 
@@ -126,10 +127,28 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
         if max_shape < _matrix[3]:
             max_shape = _matrix[3]
         
-        _matrix[0] *= _matrix[3]
-        _matrix[0] += _matrix[1]
-        _matrix[1] = None
+
+        _matrix[0] = _matrix[0].astype(index_datatype)
+        _matrix[1] = _matrix[1].astype(index_datatype)
+
+        # log.debug('np.max(_matrix[0] {}'.format(np.max(_matrix[0])))
+        # log.debug('type(_matrix[0] {}'.format(_matrix[0].dtype))
+
+        # mask = _matrix[0] < 0
+        # log.debug('_matrix[0][mask] 1 {}'.format(_matrix[0][mask]))
+        # log.debug('_matrix[3] {}'.format(_matrix[3]))
+        _matrix[0] *= np.int64(_matrix[3]) # matrix[0] are the instance ids, matrix[3] is the shape
+        # mask = _matrix[0] < 0
+        # log.debug('_matrix[0][mask] 2 {}'.format(_matrix[0][mask]))
+        _matrix[0] += _matrix[1] # matrix[3] is the shape, matrix[1] are the feature ids
         features.extend(_matrix[0])
+        # log.debug('_matrix[0] {}'.format(_matrix[0][:10]))
+        
+        # mask = _matrix[0] < 0
+        # log.debug('_matrix[0][mask] 3 {}'.format(_matrix[0][mask]))
+        # log.debug('_matrix[1] {}'.format(_matrix[1][:10]))
+        # log.debug('_matrix[3] {}'.format(_matrix[3]))
+        _matrix[1] = None
 
         data.extend(_matrix[2])
         features_length.append(len(_matrix[2]))
@@ -143,6 +162,17 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
     for i, instance_length in enumerate(features_length):
         instances.extend([pIndex + i] * instance_length)
     
+    # instances_tmp = np.array(instances)
+
+   
+    # mask = instances_tmp < 0
+    # log.debug('instances_tmp {}'.format(instances_tmp[mask]))
+
+    # features_tmp = np.array(features)
+    # mask = features_tmp < 0
+    # log.debug('features_tmp {}'.format(features_tmp[mask]))
+
+
     neighborhood_matrix = csr_matrix((data, (instances, features)),(pXDimension, max_shape * max_shape), dtype=np.float)
     log.debug('time_all {}, time_csr {}, time_add {} time_load {} time_tocsr {}'.format(time_all, time_csr_create, time_add, time_load, time.time() - time_start_tocsr))
     pQueue.put(neighborhood_matrix)

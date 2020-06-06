@@ -161,6 +161,8 @@ def main(args=None):
     hicmatrix_adjusted_objects = [item for sublist in hicmatrix_adjusted_objects_threads for item in sublist]
     keep_matrices_list = [item for sublist in keep_matrices_list_threads for item in sublist]
 
+    # matrix_names_list = []
+    matrix_file_handler_object_list = []
     log.debug('length out {}'.format(len(hicmatrix_adjusted_objects)))
     for i, hic_matrix in enumerate(hicmatrix_adjusted_objects):
         if args.createSubmatrix and i > args.createSubmatrix:
@@ -172,11 +174,16 @@ def main(args=None):
         if keep_matrices_list[i] == 0:
             continue
 
-        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
+        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pMatrixFile=keep_matrices_list[i], pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
 
         matrixFileHandlerOutput.set_matrix_variables(hic_matrix.matrix, hic_matrix.cut_intervals, hic_matrix.nan_bins,
                                                      hic_matrix.correction_factors, hic_matrix.distance_counts)
-        matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
+        # matrix_names_list.append(keep_matrices_list[i])
+        matrix_file_handler_object_list.append(matrixFileHandlerOutput)
+        # matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
 
+    matrixFileHandler = MatrixFileHandler(pFileType='scool')
+    matrixFileHandler.matrixFile.coolObjectsList = matrix_file_handler_object_list
+    matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)
     broken_count = input_count_matrices - np.sum(np.array(keep_matrices_list))
     print('Out of {} matrices, {} were removed because they were broken.'.format(input_count_matrices, broken_count))

@@ -6,7 +6,7 @@ log = logging.getLogger(__name__)
 
 import cooler
 import numpy as np
-
+from scipy.sparse import csr_matrix
 from hicmatrix.lib import MatrixFileHandler
 from schicexplorer._version import __version__
 
@@ -54,18 +54,25 @@ def compute_consensus_matrix(pMatrixName, pClusterMatricesList, pAppend, pQueue)
             append = False
         else:
             append = True
-        for matrix in cluster:
-            matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix)
-            _matrix, cut_intervals, nan_bins, \
-                distance_counts, correction_factors = matrixFileHandlerInput.load()
+        matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + cluster[0])
+        _matrix, cut_intervals, nan_bins, \
+            distance_counts, correction_factors = matrixFileHandlerInput.load()
+        consensus_matrix = _matrix
+        for j, matrix in enumerate(cluster[1:]):
+            # hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=True, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
+            # _matrix = hic_ma.matrix
+            matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix, pLoadMatrixOnly=True)
+            _matrix, _,_,_,_ = matrixFileHandlerInput.load()
+            
+            _matrix = csr_matrix((_matrix[2], (_matrix[0], _matrix[1])),(_matrix[3], _matrix[3] * _matrix[3]), dtype=np.float)
 
-            if consensus_matrix is None:
-                consensus_matrix = _matrix
-            else:
-                consensus_matrix += _matrix
+            # if consensus_matrix is None:
+            #     consensus_matrix = _matrix
+            # else:
+            consensus_matrix += _matrix
 
         hic2CoolVersion = matrixFileHandlerInput.matrixFile.hic2cool_version
-        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=hic2CoolVersion)
+        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile='consensus_matrix_cluster_' + str(i), pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=hic2CoolVersion)
 
         matrixFileHandlerOutput.set_matrix_variables(consensus_matrix, cut_intervals, nan_bins,
                                                      correction_factors, distance_counts)
@@ -164,4 +171,8 @@ def main(args=None):
         mask = np.isinf(matrixFileHandler.matrixFile.matrix.data)
         matrixFileHandler.matrixFile.matrix.data[mask] = 0
         matrixFileHandler.matrixFile.matrix.eliminate_zeros()
-        matrixFileHandler.save(args.outFileName + '::/' + 'consensus_matrix_cluster_' + str(i), pSymmetric=True, pApplyCorrection=False)
+    
+    matrixFileHandler = MatrixFileHandler(pFileType='scool')
+    matrixFileHandler.matrixFile.coolObjectsList = matrixFileHandlerObjects_list
+    matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)
+    # matrixFileHandler.save(args.outFileName + '::/' + 'consensus_matrix_cluster_' + str(i), pSymmetric=True, pApplyCorrection=False)

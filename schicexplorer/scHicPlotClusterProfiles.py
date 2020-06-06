@@ -96,27 +96,46 @@ def parse_arguments(args=None):
 
 def compute_read_distribution(pMatrixName, pMatricesList, pMaximalDistance, pChromosomes, pQueue):
     read_distribution = []
-    resolution = 0
+    # resolution = 0
+    # resolution = hic_ma.getBinSize()
+
+    hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + pMatricesList[0])
+    resolution = hic_ma.getBinSize()
+
     for i, matrix in enumerate(pMatricesList):
+        # if pChromosomes is not None and len(pChromosomes) == 1:
+        #     hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes, )
+        # else:
+        #     hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix)
+        #     if pChromosomes:
+        #         hic_ma.keepOnlyTheseChr(pChromosomes)
+        # _matrix = hic_ma.matrix
+
         if pChromosomes is not None and len(pChromosomes) == 1:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes)
+            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes, pNoIntervalTree=True, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
         else:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix)
+            if not pChromosomes:
+                hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=True, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
+            else:
+                hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=False, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
             if pChromosomes:
                 hic_ma.keepOnlyTheseChr(pChromosomes)
         _matrix = hic_ma.matrix
-        resolution = hic_ma.getBinSize()
+        # resolution = hic_ma.getBinSize()
         maximalDistance = pMaximalDistance // resolution
 
-        instances, features = _matrix.nonzero()
+        # instances, features = _matrix.nonzero()
+        instances = _matrix[0]
+        features = _matrix[1]
+        data = _matrix[2]
 
         relative_distance = np.absolute(instances - features)
         read_distribution_ = np.zeros(maximalDistance)
         sum_of_matrix_within_maximalDistance = 0
         for j, relative_distance_ in enumerate(relative_distance):
             if relative_distance_ < maximalDistance:
-                read_distribution_[relative_distance_] += _matrix.data[j]
-                sum_of_matrix_within_maximalDistance += _matrix.data[j]
+                read_distribution_[relative_distance_] += data[j]
+                sum_of_matrix_within_maximalDistance += data[j]
         read_distribution_ /= sum_of_matrix_within_maximalDistance
         read_distribution.append(read_distribution_)
 
@@ -243,6 +262,8 @@ def main(args=None):
         fig = plt.figure(figsize=(5, 2))
     elif len(matrices_list) > 250:
         fig = plt.figure(figsize=(4, 2))
+    else:
+        fig = plt.figure(figsize=(3, 2))
 
     plt.imshow(all_data.T, cmap='RdYlBu_r', norm=LogNorm(), aspect="auto")
 
