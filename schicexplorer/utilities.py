@@ -2,6 +2,10 @@ import gzip
 import cooler
 import re
 
+import logging
+log = logging.getLogger(__name__)
+
+
 def opener(filename):
     """
     Determines if a file is compressed or not
@@ -18,9 +22,13 @@ def opener(filename):
         return f
 
 def cell_name_list(pScoolUri):
+    log.debug('hiphiphurra')
+    log.debug('pScoolUri: {}'.format(pScoolUri))
+
     try:
         matrices_list = cooler.fileops.list_coolers(pScoolUri)
 
+        log.debug('pScoolUri: {}'.format(pScoolUri))
         # old and non-standard scool format stored all cells in root
         # no '/' in matrices_list and no '/cell/*'
 

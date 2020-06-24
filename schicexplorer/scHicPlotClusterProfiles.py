@@ -110,7 +110,7 @@ def compute_read_distribution(pMatrixName, pMatricesList, pMaximalDistance, pChr
         #     if pChromosomes:
         #         hic_ma.keepOnlyTheseChr(pChromosomes)
         # _matrix = hic_ma.matrix
-
+        log.debug('name of matrix: {}'.format(pMatrixName + '::' + matrix))
         if pChromosomes is not None and len(pChromosomes) == 1:
             hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes, pNoIntervalTree=True, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
         else:
@@ -155,6 +155,7 @@ def main(args=None):
     thread_done = [False] * threads
     length_index = [None] * threads
     length_index[0] = 0
+    # matrices_list = matrices_list[:16]
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
     process = [None] * threads
@@ -243,6 +244,7 @@ def main(args=None):
     all_data = None
     index_clusters = []
     cluster_ticks = []
+    cluster_ticks_top = []
     ticks_position = []
     for i, cluster in enumerate(clusters_list):
         if all_data is None:
@@ -254,16 +256,18 @@ def main(args=None):
             index_clusters.append(index_clusters[i - 1] + len(cluster))
             ticks_position.append(index_clusters[i - 1] + len(cluster) // 2)
 
-        cluster_ticks.append('Cluster {} ({} cells)'.format(i + 1, len(cluster)))
+        cluster_ticks.append('Cluster {}: {} cells'.format((i+1), len(cluster)))
+        cluster_ticks_top.append('Cluster {}'.format(i + 1))
+
 
     if len(matrices_list) > 1000:
-        fig = plt.figure(figsize=(10, 2))
+        fig = plt.figure(figsize=(10, 3))
     elif len(matrices_list) > 5000:
-        fig = plt.figure(figsize=(5, 2))
+        fig = plt.figure(figsize=(5, 3))
     elif len(matrices_list) > 250:
-        fig = plt.figure(figsize=(4, 2))
+        fig = plt.figure(figsize=(4, 3))
     else:
-        fig = plt.figure(figsize=(3, 2))
+        fig = plt.figure(figsize=(3, 3))
 
     plt.imshow(all_data.T, cmap='RdYlBu_r', norm=LogNorm(), aspect="auto")
 
@@ -272,16 +276,45 @@ def main(args=None):
 
     y_ticks = []
     y_labels = []
-    for i in range(0, (args.maximalDistance // resolution) + 1, 1):
-        if i % 10 == 0:
-            y_ticks.append(i)
 
-            y_labels.append(str(i) + 'MB')
+    log.debug('args.maximalDistance {} '.format(args.maximalDistance))
+    unit = 'MB'
+    if args.maximalDistance <= 1000:
+        factor = 100
+        unit = 'kB'
+
+    elif args.maximalDistance <= 10000:
+        factor = 1000
+    elif args.maximalDistance <= 100000:
+        factor = 10000
+    elif args.maximalDistance <= 1000000:
+        factor = 100000
+    elif args.maximalDistance <= 10000000:
+        factor = 1000000
+    elif args.maximalDistance <= 100000000:
+        factor = 10000000
+    else:
+        factor = 100000000
+    # resolution = 1000000
+    for i in range(0, (args.maximalDistance) + 1, resolution):
+        if i % (factor) == 0:
+            log.debug('i {} resolution {}'.format(i // resolution, resolution))
+            y_ticks.append(i // resolution)
+
+            y_labels.append(str(i // factor * 10) + unit)
+        else:
+            log.debug('i {} resolution {} factor {}'.format(i, resolution, factor))
+
     plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=args.fontsize)
 
     plt.gca().invert_yaxis()
     if args.no_ticks:
-        plt.xticks(ticks=ticks_position, labels=cluster_ticks, rotation=args.rotationX, fontsize=args.fontsize)
+        plt.xticks(ticks=ticks_position, labels=cluster_ticks_top, rotation=args.rotationX, fontsize=args.fontsize)
+
+        # secax = plt.secondary_xaxis('top', functions=(deg2rad, rad2deg))
+        # secax.set_xlabel('angle [rad]')
+        # plt.xticks(ticks=ticks_position, labels=cluster_ticks_top, rotation=args.rotationX, fontsize=args.fontsize)
+
     else:
         plt.tick_params(
                 axis='x',          # changes apply to the x-axis
@@ -296,6 +329,19 @@ def main(args=None):
     cbar.ax.set_ylabel('% contacts', rotation=270, fontsize=args.fontsize)
     cbar.ax.invert_yaxis()
     cbar.ax.tick_params(labelsize=5)
+    leg = plt.legend(cluster_ticks, loc='upper center', bbox_to_anchor=(0.5, -0.5),
+          fancybox=True, shadow=False, ncol=3, fontsize=args.fontsize)
+    for item in leg.legendHandles:
+        item.set_visible(False)
+    # plt.text(0.05, 0.95, cluster_ticks, fontsize=args.fontsize,
+    #             bbox_to_anchor=(0.5, -0.5))
+    # props = dict(boxstyle='round', facecolor='white', alpha=0.5)
+    # plt.figtext(0, 0, cluster_ticks, wrap=True,
+    #         horizontalalignment='center', fontsize=args.fontsize, bbox=props)
+
+    # plt.annotate(['Label', 'label2'], xy=(-12, -12), xycoords='axes points',
+    #         size=14, ha='right', va='top',
+    #         bbox=dict(boxstyle='round', fc='w'))
     plt.tight_layout()
     plt.savefig(args.outFileName, dpi=args.dpi)
 
