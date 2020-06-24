@@ -48,6 +48,7 @@ def parse_arguments(args=None):
 
 def compute_consensus_matrix(pMatrixName, pClusterMatricesList, pAppend, pQueue):
     cluster_consensus_matrices_list = []
+    counter = 0
     for i, cluster in enumerate(pClusterMatricesList):
         consensus_matrix = None
         if i == 0 and pAppend:
@@ -58,26 +59,35 @@ def compute_consensus_matrix(pMatrixName, pClusterMatricesList, pAppend, pQueue)
         _matrix, cut_intervals, nan_bins, \
             distance_counts, correction_factors = matrixFileHandlerInput.load()
         consensus_matrix = _matrix
+        # log.debug('Shape consensus init: {}'.format(consensus_matrix.shape))
+
         for j, matrix in enumerate(cluster[1:]):
             # hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=True, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
             # _matrix = hic_ma.matrix
             matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix, pLoadMatrixOnly=True)
             _matrix, _,_,_,_ = matrixFileHandlerInput.load()
             
-            _matrix = csr_matrix((_matrix[2], (_matrix[0], _matrix[1])),(_matrix[3], _matrix[3] * _matrix[3]), dtype=np.float)
+            _matrix = csr_matrix((_matrix[2], (_matrix[0], _matrix[1])),(_matrix[3], _matrix[3]), dtype=np.float)
 
             # if consensus_matrix is None:
             #     consensus_matrix = _matrix
             # else:
-            consensus_matrix += _matrix
+            try:
+                consensus_matrix += _matrix
+                
 
+            except Exception:
+                counter += 1
+                # log.debug('Shape CRASH: {}'.format(_matrix.shape))
+            # log.debug('Shape GOOD: {}'.format(_matrix.shape))
         hic2CoolVersion = matrixFileHandlerInput.matrixFile.hic2cool_version
         matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile='consensus_matrix_cluster_' + str(i), pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=hic2CoolVersion)
 
         matrixFileHandlerOutput.set_matrix_variables(consensus_matrix, cut_intervals, nan_bins,
                                                      correction_factors, distance_counts)
         cluster_consensus_matrices_list.append(matrixFileHandlerOutput)
-
+    if counter > 0:
+        log.info('{} matrices were not considered because of a wrong size.'.format(counter))
     pQueue.put(cluster_consensus_matrices_list)
 
 
@@ -147,6 +157,7 @@ def main(args=None):
 
     matrixFileHandlerObjects_list = [item for sublist in consensus_matrices_threads for item in sublist]
 
+    log.debug('different matrix file objects {}'.format(len(matrixFileHandlerObjects_list)))
     sum_of_all = []
     for i, matrixFileHandler in enumerate(matrixFileHandlerObjects_list):
         sum_of_all.append(matrixFileHandler.matrixFile.matrix.sum())

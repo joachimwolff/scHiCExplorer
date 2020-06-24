@@ -49,3 +49,4 @@ def main(args=None):
     if cooler_file.info is not None:
         for key, value in cooler_file.info.items():
             print(key, value)
+    print('Chromosomes: {}'.format(cooler_file.chromnames))
