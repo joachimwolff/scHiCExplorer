@@ -94,6 +94,8 @@ def parse_arguments(args=None):
 def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pXDimension, pMaximumRegionToConsider, pQueue):
     read_coverage = []
     sparsity = []
+    matrixFileHandlerList = []
+
     log.debug('read covarage and sparsity')
     hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + pMatricesList[0])
     bin_size = hic_ma.getBinSize()
@@ -127,9 +129,15 @@ def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pXDimension, pMax
         mask = distances == 0
         read_coverage_sum -= _matrix[2][mask].sum()
         read_coverage.append(read_coverage_sum)
+        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix, pAppend=False, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
 
+        matrixFileHandlerOutput.set_matrix_variables(_matrix, cut_intervals, nan_bins,
+                                                     correction_factors, distance_counts)
+        # log.debug('\n\nnew read after create foo: {}'.format(np.sum(_matrix.data)))
 
-    pQueue.put([read_coverage, sparsity])
+        matrixFileHandlerList.append(matrixFileHandlerOutput)
+
+    pQueue.put([read_coverage, sparsity, matrixFileHandlerList])
 
 
 def compute_contains_all_chromosomes(pMatrixName, pMatricesList, pChromosomes, pQueue):
@@ -219,6 +227,7 @@ def main(args=None):
     all_data_collected = False
     thread_done = [False] * threads
     length_index = [None] * threads
+    matrixFileObjects_thread = [None] * threads
     length_index[0] = 0
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
@@ -249,7 +258,7 @@ def main(args=None):
                 worker_result = queue[i].get()
                 read_coverage_thread[i] = worker_result[0]
                 sparsity_thread[i] = worker_result[1]
-
+                matrixFileObjects_thread[i] = worker_result[1]
                 queue[i] = None
                 process[i].join()
                 process[i].terminate()
@@ -263,6 +272,8 @@ def main(args=None):
 
     read_coverage = np.array([item for sublist in read_coverage_thread for item in sublist])
     sparsity = np.array([item for sublist in sparsity_thread for item in sublist])
+    matrixFileObjects = np.array([item for sublist in matrixFileObjects_thread for item in sublist])
+
 
     log.debug('read_coverage {}'.format(read_coverage))
     plt.close()
@@ -298,6 +309,9 @@ def main(args=None):
     mask = np.logical_and(mask_read_coverage, mask_sparsity)
     # mask = np.logical_or(mask, matrices_remove)
     matrices_list_filtered = np.array(matrices_list)[mask]
+    matrixFile_objects_filtered = np.array(matrixFileObjects)[mask]
+
+    matrixFileObjects
     sum_read_coverage = np.sum(~mask_read_coverage)
     sum_sparsity = np.sum(~mask_sparsity)
 
@@ -307,9 +321,14 @@ def main(args=None):
 
         if os.path.exists(args.outputScool):
             os.remove(args.outputScool)
-        for matrix in matrices_list_filtered:
+        # for matrix in matrices_list_filtered:
 
-            cooler.fileops.cp(args.matrix + '::' + matrix, args.outputScool + '::' + matrix)
+        #     cooler.fileops.cp(args.matrix + '::' + matrix, args.outputScool + '::' + matrix)
+        matrixFileHandler = MatrixFileHandler(pFileType='scool')
+        matrixFileHandler.matrixFile.coolObjectsList = matrixFile_objects_filtered
+        matrixFileHandler.save(args.outputScool, pSymmetric=True, pApplyCorrection=False)
+  
+
 
     ##################
     # Create QC report

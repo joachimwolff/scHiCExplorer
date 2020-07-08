@@ -56,6 +56,8 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--chromosomes', '-c',
                            help='List of to be plotted chromosomes',
                            nargs='+')
+    parserOpt.add_argument('--region', '-r',
+                           help='Region to be plotted for each consensus matrix. Mutual exclusion with the usage of --chromosomes parameter')
     parserOpt.add_argument('--colorMap',
                            help='Color map to use for the heatmap. Available '
                            'values can be seen here: '
@@ -68,6 +70,9 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--no_header',
                            help='Do not plot a header.',
                            action='store_false')
+    parserOpt.add_argument('--individual_scale',
+                           help='Use an individual value range for all cluster consensus matrices. If not set, the same scale is applied to all.',
+                           action='store_false')
     parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
                            version='%(prog)s {}'.format(__version__))
@@ -77,6 +82,9 @@ def parse_arguments(args=None):
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
+    if args.region is not None and args.chromosomes is not None:
+        raise Exception('--chromosomes and --region are mutual exclusive.')
+        exit(1)
     matrices_list = cell_name_list(args.matrix)
     columns = 4
     if len(matrices_list) < columns:
@@ -98,6 +106,8 @@ def main(args=None):
     for i, matrix in enumerate(matrices_list):
         if args.chromosomes is not None and len(args.chromosomes) == 1:
             hic_ma = hm.hiCMatrix(pMatrixFile=args.matrix + '::' + matrix, pChrnameList=args.chromosomes)
+        elif args.region is not None:
+            hic_ma = hm.hiCMatrix(pMatrixFile=args.matrix + '::' + matrix, pChrnameList=[args.region])
         else:
             hic_ma = hm.hiCMatrix(pMatrixFile=args.matrix + '::' + matrix)
             if args.chromosomes:
