@@ -27,12 +27,12 @@ jobs:
       conda install --yes pathlib
       conda install --yes -c defaults -c conda-forge -c bioconda configparser
       python setup.py install
-      displayName: installing dependencies
+   displayName: installing dependencies
   - script: |
       conda activate schicexplorer$(python.version)
       py.test schicexplorer/test
-      displayName: pytest
+    displayName: pytest
   - script: |
       conda activate schicexplorer$(python.version)
       flake8 . --exclude=.venv,.build,planemo_test_env,build --ignore=E501,F401,F403,E402,F999,F405,E712,W504
-      displayName: linting
+    displayName: linting
