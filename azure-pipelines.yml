@@ -20,16 +20,19 @@ jobs:
   - bash: |
       conda config --set always_yes yes --set changeps1 no
       conda info -a
-      conda install --yes -c conda-forge -c bioconda python=$TRAVIS_PYTHON_VERSION --file requirements.txt
+      conda create -n schicexplorer$(python.version) --yes -c conda-forge -c bioconda python=$(python.version) --file requirements.txt
+      conda activate schicexplorer$(python.version)
       conda install --yes -c conda-forge -c bioconda pytest flake8
       conda install --yes -c conda-forge -c bioconda nose
       conda install --yes pathlib
       conda install --yes -c defaults -c conda-forge -c bioconda configparser
       python setup.py install
-      displayName: 'installing dependencies'
+      displayName: installing dependencies
   - script: |
+      conda activate schicexplorer$(python.version)
       py.test schicexplorer/test
-      displayName: 'pytest'
+      displayName: pytest
   - script: |
+      conda activate schicexplorer$(python.version)
       flake8 . --exclude=.venv,.build,planemo_test_env,build --ignore=E501,F401,F403,E402,F999,F405,E712,W504
-      displayName: 'linting'
+      displayName: linting
