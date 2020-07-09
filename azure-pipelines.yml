@@ -14,14 +14,15 @@ jobs:
         python.version: '3.7'
 
   steps:
-  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+  - bash: |
+      echo "##vso[task.prependpath]$CONDA/bin"
+      hash -r
     displayName: Add conda to PATH
-
   - bash: |
       conda config --set always_yes yes --set changeps1 no
       conda info -a
-      conda create -n schicexplorer$(python.version) --yes -c conda-forge -c bioconda python=$(python.version) --file requirements.txt
-      conda activate schicexplorer$(python.version)
+      conda create -n schicexplorer --yes -c conda-forge -c bioconda python=$(python.version) --file requirements.txt
+      source activate schicexplorer$(python.version)
       conda install --yes -c conda-forge -c bioconda pytest flake8
       conda install --yes -c conda-forge -c bioconda nose
       conda install --yes pathlib
@@ -29,10 +30,10 @@ jobs:
       python setup.py install
     displayName: installing dependencies
   - script: |
-      source activate schicexplorer$(python.version)
+      source activate schicexplorer
       py.test schicexplorer/test
     displayName: pytest
   - script: |
-      source activate schicexplorer$(python.version)
+      source activate schicexplorer
       flake8 . --exclude=.venv,.build,planemo_test_env,build --ignore=E501,F401,F403,E402,F999,F405,E712,W504
     displayName: linting
