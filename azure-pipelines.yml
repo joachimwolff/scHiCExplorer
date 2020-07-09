@@ -22,7 +22,7 @@ jobs:
       conda config --set always_yes yes --set changeps1 no
       conda info -a
       conda create -n schicexplorer --yes -c conda-forge -c bioconda python=$(python.version) --file requirements.txt
-      source activate schicexplorer$(python.version)
+      source activate schicexplorer
       conda install --yes -c conda-forge -c bioconda pytest flake8
       conda install --yes -c conda-forge -c bioconda nose
       conda install --yes pathlib
