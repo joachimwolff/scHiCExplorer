@@ -27,7 +27,7 @@ jobs:
       conda install --yes pathlib
       conda install --yes -c defaults -c conda-forge -c bioconda configparser
       python setup.py install
-   displayName: installing dependencies
+    displayName: installing dependencies
   - script: |
       conda activate schicexplorer$(python.version)
       py.test schicexplorer/test
