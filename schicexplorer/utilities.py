@@ -22,26 +22,27 @@ def opener(filename):
         return f
 
 def cell_name_list(pScoolUri):
-    log.debug('hiphiphurra')
-    log.debug('pScoolUri: {}'.format(pScoolUri))
 
-    try:
-        matrices_list = cooler.fileops.list_coolers(pScoolUri)
-
-        log.debug('pScoolUri: {}'.format(pScoolUri))
-        # old and non-standard scool format stored all cells in root
-        # no '/' in matrices_list and no '/cell/*'
-
-        if not '/' in matrices_list:
-            return matrices_list
-        # new standard scool format, all cells are stored under '/cell/'
+    if cooler.fileops.is_scool_file(pScoolUri):
+        matrices_list = cooler.fileops.list_scool_cells(pScoolUri)
         r = re.compile('/cell/*')
-        if '/' in matrices_list and any(r.match(line) for line in matrices_list):
-            matrices_list.remove('/')
-            return matrices_list
-        raise Exception('Wrong data format. Please use a scool file.')
-        # ['/', '/cells/cell1', '/cells/cell2', '/cells/cell3']
+        # if '/' in matrices_list and any(r.match(line) for line in matrices_list):
+        #     matrices_list.remove('/')
+        return matrices_list
+    else:
+        try:
+            matrices_list = cooler.fileops.list_coolers(pScoolUri)
 
-    except Exception:
-        raise Exception('Wrong data format. Please use a scool file.')
-        exit(1)
+            # old and non-standard scool format stored all cells in root
+            # no '/' in matrices_list and no '/cell/*'
+            log.warning('Please update the scool file to the new file format standard!')
+            if not '/' in matrices_list:
+                return matrices_list
+            # new standard scool format, all cells are stored under '/cell/'
+           
+            raise Exception('Wrong data format. Please use a scool file.')
+            # ['/', '/cells/cell1', '/cells/cell2', '/cells/cell3']
+
+        except Exception:
+            raise Exception('Wrong data format. Please use a scool file.')
+            exit(1)
