@@ -174,7 +174,7 @@ def main(args=None):
         if keep_matrices_list[i] == 0:
             continue
 
-        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pMatrixFile=keep_matrices_list[i], pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
+        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pMatrixFile=matrices_list[i], pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
 
         matrixFileHandlerOutput.set_matrix_variables(hic_matrix.matrix, hic_matrix.cut_intervals, hic_matrix.nan_bins,
                                                      hic_matrix.correction_factors, hic_matrix.distance_counts)

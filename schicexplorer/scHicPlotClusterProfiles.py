@@ -71,9 +71,14 @@ def parse_arguments(args=None):
                            help='Rotation in degrees for the labels of x axis.',
                            type=int,
                            default=0)
-    parserOpt.add_argument('--no_ticks',
-                           help='Do not plot the x ticks. Might be helpful if they overlap.',
-                           action='store_false')
+    parserMutuallyExclusiveGroupFilter = parser.add_mutually_exclusive_group(
+        required=False)
+    parserMutuallyExclusiveGroupFilter.add_argument('--ticks',
+                           help='Plot the cluster names as ticks. Use legend if they overlap.',
+                           action='store_true')
+    parserMutuallyExclusiveGroupFilter.add_argument('--legend',
+                           help='Plot the cluster names as legend.  Might be helpful if the ticks overlap.',
+                           action='store_true')
     parserOpt.add_argument('--outFileName', '-o',
                            help='File name to save the resulting cluster profile.',
                            required=False,
@@ -110,14 +115,14 @@ def compute_read_distribution(pMatrixName, pMatricesList, pMaximalDistance, pChr
         #     if pChromosomes:
         #         hic_ma.keepOnlyTheseChr(pChromosomes)
         # _matrix = hic_ma.matrix
-        log.debug('name of matrix: {}'.format(pMatrixName + '::' + matrix))
+        # log.debug('name of matrix: {}'.format(pMatrixName + '::' + matrix))
         if pChromosomes is not None and len(pChromosomes) == 1:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes, pNoIntervalTree=True, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
+            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes, pNoIntervalTree=True, pUpperTriangleOnly=True, pLoadMatrixOnly=True, pRestoreMaskedBins=False)
         else:
             if not pChromosomes:
-                hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=True, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
+                hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=True, pUpperTriangleOnly=True, pLoadMatrixOnly=True, pRestoreMaskedBins=False)
             else:
-                hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=False, pUpperTriangleOnly=True, pMatrixFormat='raw', pRestoreMaskedBins=False)
+                hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=False, pUpperTriangleOnly=True, pLoadMatrixOnly=True, pRestoreMaskedBins=False)
             if pChromosomes:
                 hic_ma.keepOnlyTheseChr(pChromosomes)
         _matrix = hic_ma.matrix
@@ -308,13 +313,25 @@ def main(args=None):
     plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=args.fontsize)
 
     plt.gca().invert_yaxis()
-    if args.no_ticks:
+    if args.ticks:
         plt.xticks(ticks=ticks_position, labels=cluster_ticks_top, rotation=args.rotationX, fontsize=args.fontsize)
 
+        
         # secax = plt.secondary_xaxis('top', functions=(deg2rad, rad2deg))
         # secax.set_xlabel('angle [rad]')
         # plt.xticks(ticks=ticks_position, labels=cluster_ticks_top, rotation=args.rotationX, fontsize=args.fontsize)
 
+    elif args.legend:
+        plt.tick_params(
+            axis='x',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom=False,      # ticks along the bottom edge are off
+            top=False,         # ticks along the top edge are off
+            labelbottom=False)
+        leg = plt.legend(cluster_ticks, loc='upper center', bbox_to_anchor=(0.5, -0.5),
+          fancybox=True, shadow=False, ncol=3, fontsize=args.fontsize)
+        for item in leg.legendHandles:
+            item.set_visible(False)
     else:
         plt.tick_params(
                 axis='x',          # changes apply to the x-axis
@@ -322,17 +339,14 @@ def main(args=None):
                 bottom=False,      # ticks along the bottom edge are off
                 top=False,         # ticks along the top edge are off
                 labelbottom=False) 
-    
     fig.autofmt_xdate()
 
     cbar = plt.colorbar()
     cbar.ax.set_ylabel('% contacts', rotation=270, fontsize=args.fontsize)
     cbar.ax.invert_yaxis()
     cbar.ax.tick_params(labelsize=5)
-    leg = plt.legend(cluster_ticks, loc='upper center', bbox_to_anchor=(0.5, -0.5),
-          fancybox=True, shadow=False, ncol=3, fontsize=args.fontsize)
-    for item in leg.legendHandles:
-        item.set_visible(False)
+    
+    
     # plt.text(0.05, 0.95, cluster_ticks, fontsize=args.fontsize,
     #             bbox_to_anchor=(0.5, -0.5))
     # props = dict(boxstyle='round', facecolor='white', alpha=0.5)

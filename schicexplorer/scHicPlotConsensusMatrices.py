@@ -92,7 +92,17 @@ def main(args=None):
     rows = int(np.ceil(len(matrices_list) / columns))
     if rows < 1:
         rows = 1
-    f, axes = plt.subplots(rows, columns)
+    
+    if len(matrices_list) > 12:
+        figsize=(5, 5.5)
+    elif len(matrices_list) > 8:
+        figsize=(5, 4.5)
+    elif len(matrices_list) > 4:
+         figsize=(5, 4)
+    else:
+         figsize=(5, 3)
+
+    f, axes = plt.subplots(rows, columns, figsize=figsize)
 
     title_string = 'Consensus matrices of {}'.format(os.path.basename(args.matrix))
     if args.chromosomes:

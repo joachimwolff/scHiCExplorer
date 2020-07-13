@@ -17,7 +17,8 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 from schicexplorer._version import __version__
-from schicexplorer.utilities import cell_name_list
+# from schicexplorer.utilities import cell_name_list
+from schicexplorer.utilities import cell_name_list, create_csr_matrix_all_cells
 
 
 def parse_arguments(args=None):
@@ -77,87 +78,88 @@ def parse_arguments(args=None):
     return parser
 
 
-def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pQueue):
-    neighborhood_matrix = None
-    for i, matrix in enumerate(pMatricesList):
-        if pChromosomes is not None and len(pChromosomes) == 1:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes)
-        else:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix)
-            if pChromosomes:
-                hic_ma.keepOnlyTheseChr(pChromosomes)
+# def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pQueue):
+#     neighborhood_matrix = None
+#     for i, matrix in enumerate(pMatricesList):
+#         if pChromosomes is not None and len(pChromosomes) == 1:
+#             hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes)
+#         else:
+#             hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix)
+#             if pChromosomes:
+#                 hic_ma.keepOnlyTheseChr(pChromosomes)
 
-        _matrix = hic_ma.matrix
+#         _matrix = hic_ma.matrix
 
-        if neighborhood_matrix is None:
-            neighborhood_matrix = csr_matrix((pXDimension, _matrix.shape[0] * _matrix.shape[1]), dtype=np.float)
+#         if neighborhood_matrix is None:
+#             neighborhood_matrix = csr_matrix((pXDimension, _matrix.shape[0] * _matrix.shape[1]), dtype=np.float)
 
-        instances, features = _matrix.nonzero()
+#         instances, features = _matrix.nonzero()
 
-        instances *= _matrix.shape[1]
-        instances += features
-        features = None
-        neighborhood_matrix[pIndex + i, instances] = _matrix.data
+#         instances *= _matrix.shape[1]
+#         instances += features
+#         features = None
+#         neighborhood_matrix[pIndex + i, instances] = _matrix.data
 
-    pQueue.put(neighborhood_matrix)
+#     pQueue.put(neighborhood_matrix)
 
 
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-    matrices_name = args.matrix
-    threads = args.threads
-    matrices_list = cell_name_list(matrices_name)
-    neighborhood_matrix = None
+    # matrices_name = args.matrix
+    # threads = args.threads
+    # matrices_list = cell_name_list(matrices_name)
+    # neighborhood_matrix = None
 
-    all_data_collected = False
-    thread_done = [False] * threads
-    length_index = [None] * threads
-    length_index[0] = 0
-    matricesPerThread = len(matrices_list) // threads
-    queue = [None] * threads
-    process = [None] * threads
-    for i in range(threads):
+    # all_data_collected = False
+    # thread_done = [False] * threads
+    # length_index = [None] * threads
+    # length_index[0] = 0
+    # matricesPerThread = len(matrices_list) // threads
+    # queue = [None] * threads
+    # process = [None] * threads
+    # for i in range(threads):
 
-        if i < threads - 1:
-            matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
-            length_index[i + 1] = length_index[i] + len(matrices_name_list)
-        else:
-            matrices_name_list = matrices_list[i * matricesPerThread:]
+    #     if i < threads - 1:
+    #         matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
+    #         length_index[i + 1] = length_index[i] + len(matrices_name_list)
+    #     else:
+    #         matrices_name_list = matrices_list[i * matricesPerThread:]
 
-        queue[i] = Queue()
-        process[i] = Process(target=open_and_store_matrix, kwargs=dict(
-            pMatrixName=matrices_name,
-            pMatricesList=matrices_name_list,
-            pIndex=length_index[i],
-            pXDimension=len(matrices_list),
-            pChromosomes=args.chromosomes,
-            pQueue=queue[i]
-        )
-        )
+    #     queue[i] = Queue()
+    #     process[i] = Process(target=open_and_store_matrix, kwargs=dict(
+    #         pMatrixName=matrices_name,
+    #         pMatricesList=matrices_name_list,
+    #         pIndex=length_index[i],
+    #         pXDimension=len(matrices_list),
+    #         pChromosomes=args.chromosomes,
+    #         pQueue=queue[i]
+    #     )
+    #     )
 
-        process[i].start()
+    #     process[i].start()
 
-    while not all_data_collected:
-        for i in range(threads):
-            if queue[i] is not None and not queue[i].empty():
-                csr_matrix_worker = queue[i].get()
-                if neighborhood_matrix is None:
-                    neighborhood_matrix = csr_matrix_worker
-                else:
-                    neighborhood_matrix += csr_matrix_worker
+    # while not all_data_collected:
+    #     for i in range(threads):
+    #         if queue[i] is not None and not queue[i].empty():
+    #             csr_matrix_worker = queue[i].get()
+    #             if neighborhood_matrix is None:
+    #                 neighborhood_matrix = csr_matrix_worker
+    #             else:
+    #                 neighborhood_matrix += csr_matrix_worker
 
-                queue[i] = None
-                process[i].join()
-                process[i].terminate()
-                process[i] = None
-                thread_done[i] = True
-        all_data_collected = True
-        for thread in thread_done:
-            if not thread:
-                all_data_collected = False
-        time.sleep(1)
+    #             queue[i] = None
+    #             process[i].join()
+    #             process[i].terminate()
+    #             process[i] = None
+    #             thread_done[i] = True
+    #     all_data_collected = True
+    #     for thread in thread_done:
+    #         if not thread:
+    #             all_data_collected = False
+    #     time.sleep(1)
+    neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes)
 
     reduce_to_dimension = neighborhood_matrix.shape[0] - 1
     if args.dimensionReductionMethod == 'knn':

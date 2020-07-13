@@ -71,26 +71,7 @@ def main(args=None):
     _matrix, cut_intervals_all, nan_bins, \
         distance_counts, correction_factors = matrixFileHandlerInput.load()
 
-    # matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix)
-    # for i, matrix in enumerate(args.matrices):
-    #     matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix, pNoCutIntervals=True)
-
-    #     _matrix, cut_intervals, nan_bins, \
-    #         distance_counts, correction_factors = matrixFileHandlerInput.load()
-
-    #     matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix)
-
-    #     matrixFileHandlerOutput.set_matrix_variables(_matrix,
-    #                                                  cut_intervals_all,
-    #                                                  nan_bins,
-    #                                                  correction_factors,
-    #                                                  distance_counts)
-    #     cut_intervals = None
-    #     #   matrixFileHandlerOutput.set_matrix_variables(hic_matrix.matrix, hic_matrix.cut_intervals, hic_matrix.nan_bins,
-    #     #                                              hic_matrix.correction_factors, hic_matrix.distance_counts)
-    #     # matrix_names_list.append(keep_matrices_list[i])
-    #     matrix_file_handler_object_list.append(matrixFileHandlerOutput)
-    #     # matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
+  
 
 
     matrices_list = args.matrices
