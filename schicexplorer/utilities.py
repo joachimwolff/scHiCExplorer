@@ -107,7 +107,7 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
     
 
     neighborhood_matrix = csr_matrix((data, (instances, features)),(pXDimension, max_shape * max_shape), dtype=np.float)
-    log.debug('time_all {}, time_csr {}, time_add {} time_load {} time_tocsr {}'.format(time_all, time_csr_create, time_add, time_load, time.time() - time_start_tocsr))
+    # log.debug('time_all {}, time_csr {}, time_add {} time_load {} time_tocsr {}'.format(time_all, time_csr_create, time_add, time_load, time.time() - time_start_tocsr))
     pQueue.put(neighborhood_matrix)
 
 def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes):
@@ -115,13 +115,13 @@ def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes):
     matrices_name = pMatrixName
     threads = pThreads
     matrices_list = cell_name_list(matrices_name)
-    log.debug('len(matrices_list) {}'.format(matrices_list))
+    # log.debug('len(matrices_list) {}'.format(matrices_list))
     neighborhood_matrix = None
     neighborhood_matrix_threads = [None] * threads
 
     all_data_collected = False
     thread_done = [False] * threads
-    log.debug('matrix read, starting processing')
+    # log.debug('matrix read, starting processing')
     length_index = [None] * threads
     length_index[0] = 0
     matricesPerThread = len(matrices_list) // threads
