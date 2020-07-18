@@ -283,9 +283,11 @@ def main(args=None):
     plt.hist(read_coverage, bins=100)
 
     plt.suptitle('Read coverage of {}'.format(os.path.basename(args.matrix)), fontsize=12)
-    plt.title('Matrices with a read coverage < {} are removed.'.format(args.minimumReadCoverage), fontsize=10)
     plt.grid(True)
-    plt.axvline(args.minimumReadCoverage, color='r', linestyle='dashed', linewidth=1)
+    if args.minimumReadCoverage > 0:
+        plt.axvline(args.minimumReadCoverage, color='r', linestyle='dashed', linewidth=1)
+        plt.title('Matrices with a read coverage < {} are removed.'.format(args.minimumReadCoverage), fontsize=10)
+
     plt.xlabel('Read coverage')
     plt.ylabel('Frequency')
     plt.savefig(args.outFileNameReadCoverage, dpi=args.dpi)
@@ -293,12 +295,13 @@ def main(args=None):
 
     plt.hist(sparsity, bins=100)
     plt.suptitle('Density of {}'.format(os.path.basename(args.matrix)), fontsize=12)
-    plt.title('Matrices with a density < {} are removed.'.format(args.minimumDensity), fontsize=10)
+    if args.minimumDensity > 0:
+        plt.title('Matrices with a density < {} are removed.'.format(args.minimumDensity), fontsize=10)
     plt.grid(True)
     plt.xlabel('Density')
     plt.ylabel('Frequency')
-
-    plt.axvline(args.minimumDensity, color='r', linestyle='dashed', linewidth=1)
+    if args.minimumDensity > 0:
+        plt.axvline(args.minimumDensity, color='r', linestyle='dashed', linewidth=1)
 
     plt.savefig(args.outFileNameDensity, dpi=args.dpi)
     plt.close()
