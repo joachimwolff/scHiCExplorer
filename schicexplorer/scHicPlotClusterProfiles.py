@@ -251,6 +251,7 @@ def main(args=None):
     cluster_ticks = []
     cluster_ticks_top = []
     ticks_position = []
+    log.debug('len(clusters_list) {}'.format(len(clusters_list)))
     for i, cluster in enumerate(clusters_list):
         if all_data is None:
             all_data = cluster
@@ -261,13 +262,19 @@ def main(args=None):
             index_clusters.append(index_clusters[i - 1] + len(cluster))
             ticks_position.append(index_clusters[i - 1] + len(cluster) // 2)
 
-        cluster_ticks.append('Cluster {}: {} cells'.format((i+1), len(cluster)))
-        cluster_ticks_top.append('Cluster {}'.format(i + 1))
+        cluster_ticks.append('Cluster {}: {} cells'.format((i), len(cluster)))
+        cluster_ticks_top.append('Cluster {}'.format(i))
+
+    log.debug('len(all_data) {}'.format(len(all_data)))
+    log.debug('len(index_clusters) {}'.format(len(index_clusters)))
+    log.debug('len(cluster_ticks_top) {}'.format(len(cluster_ticks_top)))
+    log.debug('len(ticks_position) {}'.format(len(ticks_position)))
+    log.debug('len(cluster_ticks) {}'.format(len(cluster_ticks)))
 
 
     if len(matrices_list) > 1000:
-        fig = plt.figure(figsize=(10, 3))
-    elif len(matrices_list) > 5000:
+        fig = plt.figure(figsize=(8, 3))
+    elif len(matrices_list) > 500:
         fig = plt.figure(figsize=(5, 3))
     elif len(matrices_list) > 250:
         fig = plt.figure(figsize=(4, 3))
@@ -276,9 +283,9 @@ def main(args=None):
 
     plt.imshow(all_data.T, cmap='RdYlBu_r', norm=LogNorm(), aspect="auto")
 
-    for index in index_clusters[:-1]:
-        plt.axvline(index, color='black', linewidth=0.4)
-
+    for index in index_clusters:
+        plt.axvline(index-1, color='black', linewidth=0.4)
+    log.debug('index_clusters {}'.format(index_clusters))
     y_ticks = []
     y_labels = []
 
@@ -303,12 +310,12 @@ def main(args=None):
     # resolution = 1000000
     for i in range(0, (args.maximalDistance) + 1, resolution):
         if i % (factor) == 0:
-            log.debug('i {} resolution {}'.format(i // resolution, resolution))
+            # log.debug('i {} resolution {}'.format(i // resolution, resolution))
             y_ticks.append(i // resolution)
 
             y_labels.append(str(i // factor * 10) + unit)
-        else:
-            log.debug('i {} resolution {} factor {}'.format(i, resolution, factor))
+        # else:
+        #     log.debug('i {} resolution {} factor {}'.format(i, resolution, factor))
 
     plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=args.fontsize)
 
@@ -328,7 +335,7 @@ def main(args=None):
             bottom=False,      # ticks along the bottom edge are off
             top=False,         # ticks along the top edge are off
             labelbottom=False)
-        leg = plt.legend(cluster_ticks, loc='upper center', bbox_to_anchor=(0.5, -0.5),
+        leg = plt.legend(cluster_ticks, loc='upper center', bbox_to_anchor=(0.5, -0.01),
           fancybox=True, shadow=False, ncol=3, fontsize=args.fontsize)
         for item in leg.legendHandles:
             item.set_visible(False)
@@ -343,8 +350,9 @@ def main(args=None):
 
     cbar = plt.colorbar()
     cbar.ax.set_ylabel('% contacts', rotation=270, fontsize=args.fontsize)
+    cbar.ax.yaxis.set_label_coords(args.fontsize, 0.5)
     cbar.ax.invert_yaxis()
-    cbar.ax.tick_params(labelsize=5)
+    cbar.ax.tick_params(labelsize=args.fontsize)
     
     
     # plt.text(0.05, 0.95, cluster_ticks, fontsize=args.fontsize,
