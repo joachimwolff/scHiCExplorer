@@ -112,12 +112,12 @@ setup(
              'bin/scHicMergeToSCool', 'bin/scHicQualityControl', 'bin/scHicCorrectMatrices',
              'bin/scHicPlotClusterProfiles', 'bin/scHicPlotConsensusMatrices', 'bin/scHicConsensusMatrices',
              'bin/scHicMergeMatrixBins', 'bin/scHicCluster', 'bin/scHicAdjustMatrix', 'bin/scHicNormalize',
-             'bin/scHicInfo', 'bin/scHicCreateBulkMatrix', 'bin/scHicManageScool'
+             'bin/scHicInfo', 'bin/scHicCreateBulkMatrix', 'bin/scHicManageScool', 'bin/scHicConvertFormat'
              ],
     include_package_data=True,
     package_dir={'schicexplorer': 'schicexplorer'},
     # package_data={'hicexplorer': ['qc_template.html']},
-    # url='http://hicexplorer.readthedocs.io',
+    url='http://schicexplorer.readthedocs.io',
     license='LICENSE.txt',
     description='Set of programs to preprocess single-cell Hi-C data',
     long_description=open('README.rst').read(),

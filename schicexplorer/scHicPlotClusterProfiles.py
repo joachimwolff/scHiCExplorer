@@ -47,16 +47,16 @@ def parse_arguments(args=None):
                            help='List of to be plotted chromosomes',
                            nargs='+')
     parserOpt.add_argument('--maximalDistance', '-md',
-                           help='maximal distance in bases',
+                           help='Maximal distance in bases to consider for ratio computation.',
                            required=False,
                            default=50000000,
                            type=int)
     parserOpt.add_argument('--distanceShortRange', '-ds',
-                           help='Distance which should be considered as short range. Default 2MB.',
+                           help='Distance which should be considered as lower distance for svl ordering. Values from distances smaller this value are not considered. Default 2MB.',
                            default=2000000,
                            type=int)
     parserOpt.add_argument('--distanceLongRange', '-dl',
-                           help='Distance which should be considered as short range. Default 12MB.',
+                           help='Distance which should be considered as upper distance for svl ordering. Values from distances greater this value are not considered. Default 12MB.',
                            default=12000000,
                            type=int)
     parserOpt.add_argument('--orderBy', '-ob',
@@ -295,6 +295,7 @@ def main(args=None):
         factor = 100
         unit = 'kB'
 
+
     elif args.maximalDistance <= 10000:
         factor = 1000
     elif args.maximalDistance <= 100000:
@@ -313,7 +314,7 @@ def main(args=None):
             # log.debug('i {} resolution {}'.format(i // resolution, resolution))
             y_ticks.append(i // resolution)
 
-            y_labels.append(str(i // factor * 10) + unit)
+            y_labels.append(str(i // factor) + unit)
         # else:
         #     log.debug('i {} resolution {} factor {}'.format(i, resolution, factor))
 

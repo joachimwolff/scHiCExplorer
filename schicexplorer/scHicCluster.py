@@ -53,7 +53,9 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--chromosomes',
                            help='List of to be plotted chromosomes',
                            nargs='+')
-
+    parserOpt.add_argument('--intraChromosomalContactsOnly', '-ic',
+                           help='This option loads only the intra-chromosomal contacts. Can improve the cluster result if data is very noisy.',
+                           action='store_true')
     parserOpt.add_argument('--dimensionReductionMethod', '-drm',
                            help='Dimension reduction methods, knn with euclidean distance, pca',
                            choices=['none', 'knn', 'pca'],
@@ -82,8 +84,12 @@ def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-  
-    neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes)
+    outputFolder = os.path.dirname(os.path.abspath(args.outFileName)) + '/'
+    log.debug('outputFolder {}'.format(outputFolder))
+
+    raw_file_name = os.path.splitext(os.path.basename(args.outFileName))[0]
+    neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes, outputFolder, raw_file_name, args.intraChromosomalContactsOnly)
+    # neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes)
 
     reduce_to_dimension = neighborhood_matrix.shape[0] - 1
     if args.dimensionReductionMethod == 'knn':

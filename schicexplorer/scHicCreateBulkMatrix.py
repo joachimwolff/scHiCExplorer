@@ -38,7 +38,7 @@ def parse_arguments(args=None):
                                 required=True)
 
     parserRequired.add_argument('--outFileName', '-o',
-                                help='File name to save the exported matrix.',
+                                help='File name to save the exported cooler matrix. Please add .cool appendix.',
                                 required=True)
 
     parserOpt = parser.add_argument_group('Optional arguments')

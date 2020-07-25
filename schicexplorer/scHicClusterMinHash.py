@@ -61,6 +61,9 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--exactModeMinHash', '-em',
                            help='This option increases the runtime significantly, from a few minutes to half an hour or longer. If set, the number of hash collisions is only used for candidate set creation and the euclidean distance is considered too.',
                            action='store_false')
+    parserOpt.add_argument('--intraChromosomalContactsOnly', '-ic',
+                           help='This option loads only the intra-chromosomal contacts. Can improve the cluster result if data is very noisy.',
+                           action='store_true')
     parserOpt.add_argument('--saveIntermediateRawMatrix', '-sm',
                            help='This option activates the save of the intermediate raw scHi-C matrix.',
                            required=False)
@@ -99,7 +102,11 @@ def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-    neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes)
+    outputFolder = os.path.dirname(os.path.abspath(args.outFileName)) + '/'
+    log.debug('outputFolder {}'.format(outputFolder))
+
+    raw_file_name = os.path.splitext(os.path.basename(args.outFileName))[0]
+    neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes, outputFolder, raw_file_name, args.intraChromosomalContactsOnly)
     if args.saveIntermediateRawMatrix:
         save_npz(args.saveIntermediateRawMatrix, neighborhood_matrix)
     if args.clusterMethod == 'spectral':

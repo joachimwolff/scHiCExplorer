@@ -70,6 +70,9 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--no_header',
                            help='Do not plot a header.',
                            action='store_false')
+    parserOpt.add_argument('--log1p',
+                           help='Apply log1p operation to plot the matrices.',
+                           action='store_true')
     parserOpt.add_argument('--individual_scale',
                            help='Use an individual value range for all cluster consensus matrices. If not set, the same scale is applied to all.',
                            action='store_false')
@@ -104,9 +107,11 @@ def main(args=None):
 
     f, axes = plt.subplots(rows, columns, figsize=figsize)
 
-    title_string = 'Consensus matrices of {}'.format(os.path.basename(args.matrix))
+    title_string = 'Consensus matrices of {}'.format(os.path.basename(args.matrix.split('.scool')[0]))
     if args.chromosomes:
         title_string += ' on chromosome: {}'.format(' '.join(args.chromosomes))
+    elif args.region:
+        title_string += ' for {}'.format(args.region)
     else:
         title_string += ' on all chromosomes'
     
@@ -137,15 +142,20 @@ def main(args=None):
             matrix_data[mask_inf] = np.nanmin(matrix_data[mask_inf == False])
         matrix_data += 1
 
+        if args.log1p:
+            matrix_data += 1
+            norm = LogNorm()
+        else:
+            norm = None
         if rows == 1:
-            im = axes[i % columns].imshow(matrix_data, cmap=args.colorMap, norm=LogNorm())
+            im = axes[i % columns].imshow(matrix_data, cmap=args.colorMap, norm=norm)
             axes[i % columns].get_xaxis().set_ticks([])
             axes[i % columns].get_yaxis().set_ticks([])
 
             axes[i % columns].yaxis.set_visible(False)
             axes[i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
         else:
-            im = axes[i // columns, i % columns].imshow(matrix_data, cmap=args.colorMap, norm=LogNorm())
+            im = axes[i // columns, i % columns].imshow(matrix_data, cmap=args.colorMap, norm=norm)
             axes[i // columns, i % columns].get_xaxis().set_ticks([])
             axes[i // columns, i % columns].get_yaxis().set_ticks([])
 
