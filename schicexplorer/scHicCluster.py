@@ -11,6 +11,7 @@ import cooler
 
 from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.neighbors import NearestNeighbors
+from sklearn.decomposition import PCA
 from hicmatrix import HiCMatrix as hm
 
 import numpy as np
@@ -56,6 +57,13 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--intraChromosomalContactsOnly', '-ic',
                            help='This option loads only the intra-chromosomal contacts. Can improve the cluster result if data is very noisy.',
                            action='store_true')
+    parserOpt.add_argument('--additionalPCA', '-pca',
+                           help='Computes PCA on top of a k-nn. Can improve the cluster result.',
+                           action='store_true')
+    parserOpt.add_argument('--dimensionsPCA', '-dim_pca',
+                           help='The number of dimensions from the PCA matrix that should be considered for clustering. Can improve the cluster result.',
+                           default=20,
+                           type=int)
     parserOpt.add_argument('--dimensionReductionMethod', '-drm',
                            help='Dimension reduction methods, knn with euclidean distance, pca',
                            choices=['none', 'knn', 'pca'],
@@ -99,11 +107,23 @@ def main(args=None):
         nbrs = NearestNeighbors(n_neighbors=args.numberOfNearestNeighbors, algorithm='ball_tree', n_jobs=args.threads).fit(neighborhood_matrix)
         neighborhood_matrix = nbrs.kneighbors_graph(mode='distance')
 
+        if args.additionalPCA:
+            pca = PCA(n_components = min(neighborhood_matrix.shape) - 1)
+            neighborhood_matrix = pca.fit_transform(neighborhood_matrix.todense())
+            if args.dimensionsPCA:
+                args.dimensionsPCA = min(args.dimensionsPCA, neighborhood_matrix.shape[0])
+                neighborhood_matrix = neighborhood_matrix[:, :args.dimensionsPCA]
+            # corrmatrix = np.cov(neighborhood_matrix.todense())
+            # evals, eigs = linalg.eig(corrmatrix)
+            # neighborhood_matrix = eigs[:, :20].transpose()
     elif args.dimensionReductionMethod == 'pca':
         corrmatrix = np.cov(neighborhood_matrix.todense())
         evals, eigs = linalg.eig(corrmatrix)
         neighborhood_matrix = eigs[:, :reduce_to_dimension].transpose()
 
+
+    
+        
     if args.clusterMethod == 'spectral':
         spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
                                                        n_neighbors=reduce_to_dimension, affinity='nearest_neighbors', random_state=0)
