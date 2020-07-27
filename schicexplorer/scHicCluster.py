@@ -8,7 +8,10 @@ import logging
 log = logging.getLogger(__name__)
 from scipy import linalg
 import cooler
-
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.cm import get_cmap
 from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
@@ -68,11 +71,29 @@ def parse_arguments(args=None):
                            help='Dimension reduction methods, knn with euclidean distance, pca',
                            choices=['none', 'knn', 'pca'],
                            default='none')
+    parserOpt.add_argument('--createScatterPlot', '-csp',
+                           help='Create a scatter plot for the clustering, the x and y are the first and second principal component of the computed k-nn graph.',
+                           required=False,
+                           default='scatterPlot.pdf')
     parserOpt.add_argument('--numberOfNearestNeighbors', '-k',
                            help='Number of to be used computed nearest neighbors for the knn graph. Default is either the default value or the number of the provided cells, whatever is smaller.',
                            required=False,
                            default=100,
                            type=int)
+    parserOpt.add_argument('--colorMap',
+                           help='Color map to use for the heatmap. Available '
+                           'values can be seen here: '
+                           'http://matplotlib.org/examples/color/colormaps_reference.html',
+                           default='tab20')
+    parserOpt.add_argument('--dpi', '-d',
+                           help='The dpi of the scatter plot.',
+                           required=False,
+                           default=300,
+                           type=int)
+    parserOpt.add_argument('--fontsize',
+                           help='Fontsize in the plot for x and y axis.',
+                           type=float,
+                           default=10)
     parserOpt.add_argument('--outFileName', '-o',
                            help='File name to save the resulting clusters',
                            required=True,
@@ -132,6 +153,58 @@ def main(args=None):
     elif args.clusterMethod == 'kmeans':
         kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
         labels_clustering = kmeans_object.fit_predict(neighborhood_matrix)
+
+
+    if args.createScatterPlot:
+        if args.dimensionReductionMethod == 'none':
+            log.warning('Raw matrix clustering scatter plot needs to compute a PCA and can request large amount (> 100 GB) of memory.')
+
+        log.debug('args.additionalPCA  {}'.format(args.additionalPCA))
+        log.debug('args.dimensionReductionMethod  {}'.format(args.dimensionReductionMethod))
+
+        if args.dimensionReductionMethod == 'none' or (args.dimensionReductionMethod == 'knn' and not args.additionalPCA):
+            log.debug('compute pca')
+
+            pca = PCA(n_components = min(neighborhood_matrix.shape) - 1)
+            neighborhood_matrix_knn = pca.fit_transform(neighborhood_matrix.todense())
+            log.debug('compute pca')
+        else:
+            log.debug('already computed pca')
+
+            neighborhood_matrix_knn = neighborhood_matrix
+        plt.figure(figsize=(15, 8))
+
+        list(set(labels_clustering))
+        plt.figure(figsize=(15, 8), dpi=80)
+        cmap = get_cmap(args.colorMap)
+        colors = cmap.colors
+        for i, color in enumerate(colors[:args.numberOfClusters]):
+            mask = labels_clustering == i
+            plt.scatter(neighborhood_matrix_knn[:,0].T[mask], neighborhood_matrix_knn[:,1].T[mask], color=color, label=str(i), s=50, alpha=0.7)
+        # plt.scatter(neighborhood_matrix_knn[:,0].T, neighborhood_matrix_knn[:,1].T, c = labels_clustering, s=50, alpha=0.7)
+        # labels_text  = list(set(labels_clustering))
+        plt.legend(fontsize=args.fontsize)
+        plt.xticks([])
+        plt.yticks([])
+        plt.xlabel('PC1', fontsize=args.fontsize)
+        plt.ylabel('PC2', fontsize=args.fontsize)
+        scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc1_pc2.' + args.createScatterPlot.split('.')[-1]
+        plt.savefig(scatter_plot_name, dpi=args.dpi)
+        plt.close()
+
+        for i, color in enumerate(colors[:args.numberOfClusters]):
+            mask = labels_clustering == i
+            plt.scatter(neighborhood_matrix_knn[:,1].T[mask], neighborhood_matrix_knn[:,2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
+        # plt.scatter(neighborhood_matrix_knn[:,0].T, neighborhood_matrix_knn[:,1].T, c = labels_clustering, s=50, alpha=0.7)
+        # labels_text  = list(set(labels_clustering))
+        plt.legend(fontsize=args.fontsize)
+        plt.xticks([])
+        plt.yticks([])
+        plt.xlabel('PC2', fontsize=args.fontsize)
+        plt.ylabel('PC3', fontsize=args.fontsize)
+        scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc2_pc3.' + args.createScatterPlot.split('.')[-1]
+        plt.savefig(scatter_plot_name, dpi=args.dpi)
+        plt.close()
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
     np.savetxt(args.outFileName, matrices_cluster, fmt="%s")

@@ -88,6 +88,11 @@ def parse_arguments(args=None):
                            required=False,
                            default=300,
                            type=int)
+    parserOpt.add_argument('--colorMap',
+                           help='Color map to use for the heatmap. Available '
+                           'values can be seen here: '
+                           'http://matplotlib.org/examples/color/colormaps_reference.html',
+                           default='RdYlBu_r')
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
@@ -281,7 +286,7 @@ def main(args=None):
     else:
         fig = plt.figure(figsize=(3, 3))
 
-    plt.imshow(all_data.T, cmap='RdYlBu_r', norm=LogNorm(), aspect="auto")
+    plt.imshow(all_data.T, cmap=args.colorMap, norm=LogNorm(), aspect="auto")
 
     for index in index_clusters:
         plt.axvline(index-1, color='black', linewidth=0.4)
