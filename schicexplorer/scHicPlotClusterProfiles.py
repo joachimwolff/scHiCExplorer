@@ -294,29 +294,48 @@ def main(args=None):
 
     log.debug('args.maximalDistance {} '.format(args.maximalDistance))
     unit = 'MB'
-    if args.maximalDistance <= 1000:
-        factor = 100
-        unit = 'kB'
+    # if args.maximalDistance <= 1000:
+    #     factor = 100
+    #     unit = 'kB'
 
 
-    elif args.maximalDistance <= 10000:
-        factor = 1000
-    elif args.maximalDistance <= 100000:
-        factor = 10000
-    elif args.maximalDistance <= 1000000:
-        factor = 100000
-    elif args.maximalDistance <= 10000000:
-        factor = 1000000
-    elif args.maximalDistance <= 100000000:
-        factor = 10000000
+    # elif args.maximalDistance <= 10000:
+    #     factor = 1000
+    # elif args.maximalDistance <= 100000:
+    #     factor = 10000
+    # elif args.maximalDistance <= 1000000:
+    #     factor = 100000
+    # elif args.maximalDistance <= 10000000:
+    #     factor = 1000000
+    # elif args.maximalDistance <= 100000000:
+    #     factor = 10000000
+    # else:
+    #     factor = 100000000
+    # # resolution = 1000000
+
+    factor = args.maximalDistance // 10
+
+    if factor >= 1000000:
+        unit = 'MB'
+    elif factor >= 1000:
+        unit = 'kb'
     else:
-        factor = 100000000
-    # resolution = 1000000
+        unit = 'b'
+
+
     for i in range(0, (args.maximalDistance) + 1, resolution):
         if i % (factor) == 0:
             y_ticks.append(i // resolution)
 
-            y_labels.append(str(i // resolution) + unit)
+            label = ''
+            if factor >= 1000000:
+                label = str(i // 1000000)
+            elif factor >= 1000:
+                label = str(i // 1000)
+            else:
+                label = str(i)
+
+            y_labels.append(label + unit)
 
 
     plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=args.fontsize)
