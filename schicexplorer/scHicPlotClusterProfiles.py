@@ -7,6 +7,7 @@ import logging
 log = logging.getLogger(__name__)
 
 import cooler
+import pandas as pd
 
 from hicmatrix import HiCMatrix as hm
 from hicmatrix.lib import MatrixFileHandler
@@ -106,38 +107,32 @@ def parse_arguments(args=None):
 
 def compute_read_distribution(pMatrixName, pMatricesList, pMaximalDistance, pChromosomes, pQueue):
     read_distribution = []
-    # resolution = 0
-    # resolution = hic_ma.getBinSize()
-
-    hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + pMatricesList[0])
-    resolution = hic_ma.getBinSize()
-
+ 
     for i, matrix in enumerate(pMatricesList):
-        # if pChromosomes is not None and len(pChromosomes) == 1:
-        #     hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes, )
-        # else:
-        #     hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix)
-        #     if pChromosomes:
-        #         hic_ma.keepOnlyTheseChr(pChromosomes)
-        # _matrix = hic_ma.matrix
-        # log.debug('name of matrix: {}'.format(pMatrixName + '::' + matrix))
-        if pChromosomes is not None and len(pChromosomes) == 1:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes, pNoIntervalTree=True, pUpperTriangleOnly=True, pLoadMatrixOnly=True, pRestoreMaskedBins=False)
-        else:
-            if not pChromosomes:
-                hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=True, pUpperTriangleOnly=True, pLoadMatrixOnly=True, pRestoreMaskedBins=False)
-            else:
-                hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=False, pUpperTriangleOnly=True, pLoadMatrixOnly=True, pRestoreMaskedBins=False)
-            if pChromosomes:
-                hic_ma.keepOnlyTheseChr(pChromosomes)
-        _matrix = hic_ma.matrix
-        # resolution = hic_ma.getBinSize()
-        maximalDistance = pMaximalDistance // resolution
+        cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
+        shape = cooler_obj.shape
+        resolution = cooler_obj.binsize
+        chromosome_dataframes_list = [] 
 
-        # instances, features = _matrix.nonzero()
-        instances = _matrix[0]
-        features = _matrix[1]
-        data = _matrix[2]
+        if pChromosomes is None:
+            pChromosomes = cooler_obj.chromnames
+        for chromosome in pChromosomes:
+            
+            pixels_chromosome = cooler_obj.pixels().fetch(chromosome)
+            
+            chromosome_dataframes_list.append(pixels_chromosome)
+
+        
+        pixels_chromosome = pd.concat(chromosome_dataframes_list)
+
+
+        if 'bin1_id' in pixels_chromosome.columns and 'bin2_id' in pixels_chromosome.columns  and 'count' in pixels_chromosome.columns :
+            instances = pixels_chromosome['bin1_id'].values
+            features = pixels_chromosome['bin2_id'].values
+            data = pixels_chromosome['count'].values
+        else:
+            continue
+        maximalDistance = pMaximalDistance // resolution
 
         relative_distance = np.absolute(instances - features)
         read_distribution_ = np.zeros(maximalDistance)
@@ -163,8 +158,8 @@ def main(args=None):
 
     all_data_collected = False
     thread_done = [False] * threads
-    length_index = [None] * threads
-    length_index[0] = 0
+    # length_index = [None] * threads
+    # length_index[0] = 0
     # matrices_list = matrices_list[:16]
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
@@ -173,7 +168,7 @@ def main(args=None):
 
         if i < threads - 1:
             matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
-            length_index[i + 1] = length_index[i] + len(matrices_name_list)
+            # length_index[i + 1] = length_index[i] + len(matrices_name_list)
         else:
             matrices_name_list = matrices_list[i * matricesPerThread:]
 
@@ -216,12 +211,14 @@ def main(args=None):
     clusters_svl = {}
     short_range_distance = args.distanceShortRange // resolution
     long_range_distance = args.distanceLongRange // resolution
-
+    log.debug('matrices_list[:10] {}'.format(matrices_list[:10]))
     with open(args.clusters, 'r') as cluster_file:
 
         for i, line in enumerate(cluster_file.readlines()):
             line = line.strip()
             line_ = line.split(' ')[1]
+            if i < 10:
+                log.debug('line {}'.format(line))
             if int(line_) in clusters:
                 clusters[int(line_)].append(read_distributions[i])
                 clusters_svl[int(line_)].append(np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:long_range_distance]))
@@ -239,7 +236,8 @@ def main(args=None):
 
     clusters_list = []
     cluster_size = []
-    for i, key in enumerate(clusters):
+    key_list_cluster = sorted(clusters.keys())
+    for i, key in enumerate(key_list_cluster):
         cluster_to_plot = []
 
         for cluster_item in clusters[key]:
@@ -316,12 +314,10 @@ def main(args=None):
     # resolution = 1000000
     for i in range(0, (args.maximalDistance) + 1, resolution):
         if i % (factor) == 0:
-            # log.debug('i {} resolution {}'.format(i // resolution, resolution))
             y_ticks.append(i // resolution)
 
-            y_labels.append(str(i // factor) + unit)
-        # else:
-        #     log.debug('i {} resolution {} factor {}'.format(i, resolution, factor))
+            y_labels.append(str(i // resolution) + unit)
+
 
     plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=args.fontsize)
 
@@ -329,10 +325,6 @@ def main(args=None):
     if args.ticks:
         plt.xticks(ticks=ticks_position, labels=cluster_ticks_top, rotation=args.rotationX, fontsize=args.fontsize)
 
-        
-        # secax = plt.secondary_xaxis('top', functions=(deg2rad, rad2deg))
-        # secax.set_xlabel('angle [rad]')
-        # plt.xticks(ticks=ticks_position, labels=cluster_ticks_top, rotation=args.rotationX, fontsize=args.fontsize)
 
     elif args.legend:
         plt.tick_params(
@@ -361,15 +353,6 @@ def main(args=None):
     cbar.ax.tick_params(labelsize=args.fontsize)
     
     
-    # plt.text(0.05, 0.95, cluster_ticks, fontsize=args.fontsize,
-    #             bbox_to_anchor=(0.5, -0.5))
-    # props = dict(boxstyle='round', facecolor='white', alpha=0.5)
-    # plt.figtext(0, 0, cluster_ticks, wrap=True,
-    #         horizontalalignment='center', fontsize=args.fontsize, bbox=props)
-
-    # plt.annotate(['Label', 'label2'], xy=(-12, -12), xycoords='axes points',
-    #         size=14, ha='right', va='top',
-    #         bbox=dict(boxstyle='round', fc='w'))
     plt.tight_layout()
     plt.savefig(args.outFileName, dpi=args.dpi)
 

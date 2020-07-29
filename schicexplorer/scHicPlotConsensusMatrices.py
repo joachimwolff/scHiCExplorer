@@ -89,6 +89,7 @@ def main(args=None):
         raise Exception('--chromosomes and --region are mutual exclusive.')
         exit(1)
     matrices_list = cell_name_list(args.matrix)
+    log.debug('matrices_list {}'.format(matrices_list))
     columns = 4
     if len(matrices_list) < columns:
         columns = len(matrices_list)
@@ -162,6 +163,7 @@ def main(args=None):
             axes[i // columns, i % columns].yaxis.set_visible(False)
             axes[i // columns, i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
 
+        log.debug('str(matrix.split(\'/\')[-1].split(\'cluster_\')[-1]) {}'.format(str(matrix.split('/')[-1].split('cluster_')[-1])))
     number_of_plots = len(matrices_list)
     i = -1
     while rows * columns > number_of_plots:

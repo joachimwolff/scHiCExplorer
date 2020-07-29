@@ -115,12 +115,12 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--fontsize',
                            help='Fontsize in the plot for x and y axis.',
                            type=float,
-                           default=10)
+                           default=15)
     parserOpt.add_argument('--figuresize',
                            help='Fontsize in the plot for x and y axis.',
                            type=float,
                            nargs=2,
-                           default=(15,8),
+                           default=(10,5),
                            metavar=('x-size', 'y-size'))
     parserOpt.add_argument('--chromosomes',
                            help='List of to be computed chromosomes',

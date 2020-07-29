@@ -122,49 +122,6 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
 
             data.extend(_matrix[2])
             features_length.append(len(_matrix[2]))
-
-
-                # pixels_chromosome['bin1_id'] = pixels_chromosome['bin1_id'] - chromosome_indices[0]
-                # pixels_chromosome['bin2_id'] = pixels_chromosome['bin2_id'] - chromosome_indices[0]
-            
-        # else:
-        #     if pChromosomes is not None and len(pChromosomes) == 1:
-        #         hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes, pNoIntervalTree=True, pUpperTriangleOnly=True, pLoadMatrixOnly=True, pRestoreMaskedBins=False)
-        #     else:
-        #         if not pChromosomes:
-        #             hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=True, pUpperTriangleOnly=True, pLoadMatrixOnly=True, pRestoreMaskedBins=False)
-        #         else:
-        #             hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pNoIntervalTree=False, pUpperTriangleOnly=True, pLoadMatrixOnly=True, pRestoreMaskedBins=False)
-        #         if pChromosomes:
-        #             hic_ma.keepOnlyTheseChr(pChromosomes)
-        #     _matrix = hic_ma.matrix
-
-        #     if len(_matrix[2]) == 0:
-        #         valid_matrix_list.append(False)
-        #         continue
-        #     valid_matrix_list.append(True)
-        #     time_load += time.time() - time_start_load
-        #     time_csr_create_start = time.time()
-
-        #     time_csr_create += time.time() - time_csr_create_start 
-        #     time_add_start = time.time()
-        #     if max_shape < _matrix[3]:
-        #         max_shape = _matrix[3]
-            
-
-        #     _matrix[0] = _matrix[0].astype(index_datatype)
-        #     _matrix[1] = _matrix[1].astype(index_datatype)
-
-        #     _matrix[0] *= np.int64(_matrix[3]) # matrix[0] are the instance ids, matrix[3] is the shape
-        #     _matrix[0] += _matrix[1] # matrix[3] is the shape, matrix[1] are the feature ids
-        #     features.extend(_matrix[0])
-        #     _matrix[1] = None
-
-        #     data.extend(_matrix[2])
-        #     features_length.append(len(_matrix[2]))
-        #     time_add += time.time() - time_add_start
-        #     del _matrix
-        #     time_all += time.time() - time_start_all
     
 
     time_start_tocsr = time.time()
