@@ -18,7 +18,6 @@ from schicexplorer._version import __version__
 from schicexplorer.utilities import cell_name_list
 
 
-
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
@@ -36,7 +35,6 @@ def parse_arguments(args=None):
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting matrix, please add the scool prefix.',
                                 required=True)
-    # parserRequired.a
     parserOpt = parser.add_argument_group('Optional arguments')
 
     parserOpt.add_argument('--threads', '-t',
@@ -119,11 +117,8 @@ def main(args=None):
             if not thread:
                 all_data_collected = False
         time.sleep(1)
-    log.debug('merge it')
 
     merged_matrices = [item for sublist in merged_matrices for item in sublist]
-    log.debug('len(merged_matrices) {}'.format(len(merged_matrices)))
-    log.debug('len(matrices_list) {}'.format(len(matrices_list)))
 
     for i, hic_matrix in enumerate(merged_matrices):
         append = False

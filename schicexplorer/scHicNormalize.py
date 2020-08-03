@@ -73,7 +73,6 @@ def compute_sum(pMatrixName, pMatricesList, pMaxDistance, pQueue):
         matrixFileHandler = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix, pLoadMatrixOnly=True)
         _matrix, cut_intervals, nan_bins, \
             distance_counts, correction_factors = matrixFileHandler.load()
-        # try:
         instances = _matrix[0]
         features = _matrix[1]
 
@@ -81,25 +80,6 @@ def compute_sum(pMatrixName, pMatricesList, pMaxDistance, pQueue):
         mask = distances <= pMaxDistance
 
         sum_of_matrix = _matrix[2][mask].sum()
-        # instances = _matrix[0]
-        # features = _matrix[1]
-
-        # distances = np.absolute(instances - features)
-        # mask = distances == 0
-
-        # # remove the double diagonal values
-        # sum_of_matrix -= _matrix[2][mask].sum()
-        # except:
-        # sum_list.append()
-
-        # instances = _matrix[0]
-        # features = _matrix[1]
-
-        # distances = np.absolute(instances - features)
-        # mask = distances <= max_distance
-        # sparsity_length = len(_matrix[2][mask])
-
-        # sparsity.append(sparsity_length / (shape_x * max_distance))
 
         sum_list.append(sum_of_matrix)
         del _matrix
@@ -109,7 +89,6 @@ def compute_sum(pMatrixName, pMatricesList, pMaxDistance, pQueue):
 def compute_normalize(pMatrixName, pMatricesList, pNormalizeMax, pSumOfAll, pThreshold, pMultiplicative, pQueue):
 
     pixelList = []
-    log.debug('multiplicative {}'.format(pMultiplicative))
 
     for i, matrix in enumerate(pMatricesList):
 
@@ -131,10 +110,6 @@ def compute_normalize(pMatrixName, pMatricesList, pNormalizeMax, pSumOfAll, pThr
         else:
             adjust_factor = pMultiplicative
 
-        # log.debug('pSumOfAll[i] {}'.format(pSumOfAll[i]))
-        # log.debug('pNormalizeMax {}'.format(pNormalizeMax))
-        # log.debug('adjust_factor {}'.format(adjust_factor))
-
         if pMultiplicative is None:
             data /= adjust_factor
         else:
@@ -155,7 +130,6 @@ def compute_normalize(pMatrixName, pMatricesList, pNormalizeMax, pSumOfAll, pThr
         data = data[~mask]
 
         pixels = pd.DataFrame({'bin1_id': instances, 'bin2_id': features, 'count': data})
-        # log.debug('dtyoes: {}'.format(pixels.dtypes))
         pixelList.append(pixels)
 
     pQueue.put(pixelList)
@@ -167,7 +141,6 @@ def main(args=None):
 
     matrices_name = args.matrix
     matrices_list = cell_name_list(matrices_name)
-    # log.debug('size of matrices_list: {}'.format(len(matrices_list)))
 
     threads = args.threads
 
@@ -179,11 +152,7 @@ def main(args=None):
     process = [None] * args.threads
     queue = [None] * args.threads
 
-    # all_threads_done = False
     thread_done = [False] * args.threads
-    # count_output = 0
-    # count_call_of_read_input = 0
-    # computed_pairs = 0
     matricesPerThread = len(matrices_list) // threads
 
     for i in range(args.threads):
@@ -221,8 +190,6 @@ def main(args=None):
     sum_of_all = [item for sublist in sum_list_threads for item in sublist]
     sum_of_all = np.array(sum_of_all)
     foo = sum_of_all[sum_of_all < 100000]
-    log.debug('len(foo_ {}'.format(len(foo)))
-    # log.debug('size of sum_all: {}'.format(len(sum_of_all)))
     argmin = np.argmin(sum_of_all)
     if args.normalize == 'smallest':
         normalizeMax = sum_of_all[argmin]
@@ -234,21 +201,14 @@ def main(args=None):
     else:
         normalizeMax = None
         multiplicative = args.value
-        log.debug('multiplicative')
-
-    log.debug('sum_of_all[:10] {}'.format(sum_of_all[:10]))
-    log.debug('argmin {}'.format(argmin))
-    log.debug('argminSum {}'.format(normalizeMax))
 
     matricesPerThread = len(matrices_list) // threads
 
     pixelsListThreads = [None] * args.threads
     process = [None] * args.threads
-    # all_data_processed = False
     queue = [None] * args.threads
 
     thread_done = [False] * args.threads
-    # args.threads = 1
     for i in range(args.threads):
         if i < args.threads - 1:
             matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]

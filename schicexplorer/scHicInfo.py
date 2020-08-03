@@ -12,7 +12,6 @@ from schicexplorer._version import __version__
 from schicexplorer.utilities import cell_name_list
 
 
-
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(

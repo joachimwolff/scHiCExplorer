@@ -30,7 +30,6 @@ def parse_arguments(args=None):
 
     parserRequired = parser.add_argument_group('Required arguments')
 
-    # define the arguments
     parserRequired.add_argument('--matrix', '-m',
                                 help='The single cell Hi-C interaction matrices to investigate for QC. Needs to be in scool format',
                                 metavar='scool scHi-C matrix',
@@ -96,7 +95,6 @@ def parse_arguments(args=None):
 def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pXDimension, pMaximumRegionToConsider, pQueue):
     read_coverage = []
     sparsity = []
-    # matrixFileHandlerList = []
 
     log.debug('read covarage and sparsity')
     hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + pMatricesList[0])
@@ -104,18 +102,10 @@ def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pXDimension, pMax
     shape_x = hic_ma.matrix.shape[0]
     for i, matrix in enumerate(pMatricesList):
 
-        # _matrix = hic_ma.matrix
-
         matrixFileHandler = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix, pLoadMatrixOnly=True)
         _matrix, cut_intervals, nan_bins, \
             distance_counts, correction_factors = matrixFileHandler.load()
         max_distance = pMaximumRegionToConsider // bin_size
-
-
-        # if (_matrix.data.sum()) < 100000:
-        #     log.debug('smaller 100000: {}'.format(_matrix.data.sum()))
-        # if np.sum(_matrix.data) < 100000:
-        #     log.debug('II smaller 100000: {}'.format(_matrix.data.sum()))
         instances = _matrix[0]
         features = _matrix[1]
 
@@ -124,21 +114,13 @@ def compute_read_coverage_sparsity(pMatrixName, pMatricesList, pXDimension, pMax
         sparsity_length = len(_matrix[2][mask])
 
         sparsity.append(sparsity_length / (shape_x * max_distance))
-        
+
         # only upper half is loaded --> times 2
-        read_coverage_sum = _matrix[2].sum()*2 
+        read_coverage_sum = _matrix[2].sum() * 2
         # minus the double main diagonal
         mask = distances == 0
         read_coverage_sum -= _matrix[2][mask].sum()
         read_coverage.append(read_coverage_sum)
-        # matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix, pAppend=False, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
-
-        # _matrix = csr_matrix((_matrix[2], (_matrix[0], _matrix[1])),(_matrix[3], _matrix[3]), dtype=np.float)
-        # matrixFileHandlerOutput.set_matrix_variables(_matrix, cut_intervals, nan_bins,
-        #                                              correction_factors, distance_counts)
-        # log.debug('\n\nnew read after create foo: {}'.format(np.sum(_matrix.data)))
-
-        # matrixFileHandlerList.append(matrixFileHandlerOutput)
 
     pQueue.put([read_coverage, sparsity])
 
@@ -220,7 +202,6 @@ def main(args=None):
         matrices_list = matrices_name_chromosome_names[keep_matrices_chromosome_names]
 
         matrices_remove = matrices_name_chromosome_names[~keep_matrices_chromosome_names]
-    # log.debug('matrices_remove {}'.format(matrices_remove[:10]))
 
     #######################################
 
@@ -261,7 +242,6 @@ def main(args=None):
                 worker_result = queue[i].get()
                 read_coverage_thread[i] = worker_result[0]
                 sparsity_thread[i] = worker_result[1]
-                # matrixFileObjects_thread[i] = worker_result[2]
                 queue[i] = None
                 process[i].join()
                 process[i].terminate()
@@ -275,10 +255,7 @@ def main(args=None):
 
     read_coverage = np.array([item for sublist in read_coverage_thread for item in sublist])
     sparsity = np.array([item for sublist in sparsity_thread for item in sublist])
-    # matrixFileObjects = np.array([item for sublist in matrixFileObjects_thread for item in sublist])
 
-
-    log.debug('read_coverage {}'.format(read_coverage))
     plt.close()
     plt.hist(read_coverage, bins=100)
 
@@ -309,17 +286,8 @@ def main(args=None):
     mask_read_coverage = read_coverage >= args.minimumReadCoverage
     mask_sparsity = sparsity >= args.minimumDensity
 
-    log.debug('len(mask_read_coverage) {}'.format(len(mask_read_coverage)))
-    log.debug('len(mask_sparsity) {}'.format(len(mask_sparsity)))
-
     mask = np.logical_and(mask_read_coverage, mask_sparsity)
-    # mask = np.logical_or(mask, matrices_remove)
     matrices_list_filtered = np.array(matrices_list)[mask]
-    # matrixFile_objects_filtered = np.array(matrixFileObjects)[mask]
-
-
-    # log.debug('matrixFile_objects_filtered {}'.format(matrixFile_objects_filtered))
-    # matrixFileObjects
     sum_read_coverage = np.sum(~mask_read_coverage)
     sum_sparsity = np.sum(~mask_sparsity)
 
@@ -329,15 +297,9 @@ def main(args=None):
 
         if os.path.exists(args.outputScool):
             os.remove(args.outputScool)
-        log.debug('matrices_list_filtered {}'.format(matrices_list_filtered[:10]))
 
         cooler.fileops.cp(args.matrix + '::/bins', args.outputScool + '::/bins')
         cooler.fileops.cp(args.matrix + '::/chroms', args.outputScool + '::/chroms')
-
-        
-        # with cooler.util.open_hdf5(path) as h5:
-        
-
 
         with cooler.util.open_hdf5(args.matrix) as source:
             attributes_dict = {}
@@ -350,25 +312,23 @@ def main(args=None):
                 h5 = f['/']
                 h5.attrs.update(attributes_dict)
 
-        content_bins_ln =  ['chrom', 'start', 'end']
+        content_bins_ln = ['chrom', 'start', 'end']
         for matrix in matrices_list_filtered:
-            
+
             cooler.fileops.cp(args.matrix + '::' + matrix + '/pixels', args.outputScool + '::' + matrix + '/pixels')
-            cooler.fileops.cp(args.matrix + '::' + matrix + '/indexes', args.outputScool + '::' + matrix+ '/indexes')
-            cooler.fileops.ln(args.outputScool + '::' + '/chroms', args.outputScool + '::' + matrix+ '/chroms')
-            cooler.fileops.ln(args.outputScool + '::' + '/bins/chrom', args.outputScool + '::' + matrix+ '/bins/chrom')
-            cooler.fileops.ln(args.outputScool + '::' + '/bins/start', args.outputScool + '::' + matrix+ '/bins/start')
-            cooler.fileops.ln(args.outputScool + '::' + '/bins/end', args.outputScool + '::' + matrix+ '/bins/end')
+            cooler.fileops.cp(args.matrix + '::' + matrix + '/indexes', args.outputScool + '::' + matrix + '/indexes')
+            cooler.fileops.ln(args.outputScool + '::' + '/chroms', args.outputScool + '::' + matrix + '/chroms')
+            cooler.fileops.ln(args.outputScool + '::' + '/bins/chrom', args.outputScool + '::' + matrix + '/bins/chrom')
+            cooler.fileops.ln(args.outputScool + '::' + '/bins/start', args.outputScool + '::' + matrix + '/bins/start')
+            cooler.fileops.ln(args.outputScool + '::' + '/bins/end', args.outputScool + '::' + matrix + '/bins/end')
 
             group_dataset_list = cooler.fileops.ls(args.matrix + '::' + matrix + '/bins/')
             for datatype in group_dataset_list:
                 last_element = datatype.split('/')[-1]
                 if not (last_element) in content_bins_ln and last_element != '':
-                    cooler.fileops.cp(args.matrix + '::' + matrix + '/bins/'+last_element, args.outputScool + '::' + matrix+ '/bins/'+last_element)
+                    cooler.fileops.cp(args.matrix + '::' + matrix + '/bins/' + last_element, args.outputScool + '::' + matrix + '/bins/' + last_element)
 
-
-            with cooler.util.open_hdf5(args.matrix) as source:#, cooler.util.open_hdf5(args.outputScool + '::' + matrix) as destination:
-                # attributes_dict = source.attrs
+            with cooler.util.open_hdf5(args.matrix) as source:  # , cooler.util.open_hdf5(args.outputScool + '::' + matrix) as destination:
 
                 attributes_dict = {}
                 for k, v in source[matrix].attrs.items():
@@ -376,16 +336,6 @@ def main(args=None):
                 with h5py.File(args.outputScool, "r+") as f:
                     h5 = f[matrix]
                     h5.attrs.update(attributes_dict)
-                # attributes_dict['ncells'] = len(matrices_list_filtered)
-                # attributes_dict['creation-date'] = datetime.now().isoformat()
-                # destination.attrs.update(attributes_dict)
-
-
-        # matrixFileHandler = MatrixFileHandler(pFileType='scool')
-        # matrixFileHandler.matrixFile.coolObjectsList = matrixFile_objects_filtered
-        # matrixFileHandler.save(args.outputScool, pSymmetric=True, pApplyCorrection=False)
-  
-
 
     ##################
     # Create QC report

@@ -27,23 +27,24 @@ def parse_arguments(args=None):
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the exported matrix.',
                                 required=True)
-                            
+
     parserOpt = parser.add_argument_group('Optional arguments')
     parserOpt.add_argument('--threads', '-t',
-                                help='Number of threads. Using the python multiprocessing module.',
-                                required=False,
-                                default=4,
-                                type=int)
+                           help='Number of threads. Using the python multiprocessing module.',
+                           required=False,
+                           default=4,
+                           type=int)
     parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
                            version='%(prog)s {}'.format(__version__))
     return parser
 
+
 def load_cool_files(pMatricesList, pCutIntervals, pQueue):
 
     matrixFileHandlerList = []
     for i, matrix in enumerate(pMatricesList):
-       
+
         matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix, pNoCutIntervals=True)
 
         _matrix, cut_intervals, nan_bins, \
@@ -62,6 +63,7 @@ def load_cool_files(pMatricesList, pCutIntervals, pQueue):
 
     pQueue.put(matrixFileHandlerList)
 
+
 def main(args=None):
     args = parse_arguments().parse_args(args)
     log.debug(args)
@@ -71,25 +73,15 @@ def main(args=None):
     _matrix, cut_intervals_all, nan_bins, \
         distance_counts, correction_factors = matrixFileHandlerInput.load()
 
-  
-
-
     matrices_list = args.matrices
-    # matrices_list = cell_name_list(matrices_name)
-    # log.debug('size of matrices_list: {}'.format(len(matrices_list)))
 
     threads = args.threads
 
-    
     matrixFileHandler_list = [None] * args.threads
     process = [None] * args.threads
     queue = [None] * args.threads
 
-    # all_threads_done = False
     thread_done = [False] * args.threads
-    # count_output = 0
-    # count_call_of_read_input = 0
-    # computed_pairs = 0
     matricesPerThread = len(matrices_list) // threads
 
     for i in range(args.threads):
@@ -100,7 +92,6 @@ def main(args=None):
 
         queue[i] = Queue()
         process[i] = Process(target=load_cool_files, kwargs=dict(
-            # pMatrixName=matrices_name,
             pMatricesList=matrices_name_list,
             pCutIntervals=cut_intervals_all,
             pQueue=queue[i]
@@ -129,5 +120,3 @@ def main(args=None):
     matrixFileHandler = MatrixFileHandler(pFileType='scool')
     matrixFileHandler.matrixFile.coolObjectsList = matrix_file_handler_object_list
     matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)
-        # path_name = ''.join(matrix.split('/')[-1].split('.')[:-1])
-        # matrixFileHandlerOutput.save(args.outFileName + '::/' + path_name, pApplyCorrection=True, pSymmetric=True)

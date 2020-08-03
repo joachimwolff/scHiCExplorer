@@ -24,8 +24,8 @@ def test_adjust_matrices_keep():
     scHicAdjustMatrix.main(args)
 
     test_data_matrix = ROOT + 'scHicAdjustMatrix/test_matrix_adjusted.scool'
-    matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
-    matrices_list_created = cooler.fileops.list_coolers(outfile.name)
+    matrices_list_test_data = cooler.fileops.list_scool_cells(test_data_matrix)
+    matrices_list_created = cooler.fileops.list_scool_cells(outfile.name)
 
     matrices_list_test_data = sorted(matrices_list_test_data)
     matrices_list_created = sorted(matrices_list_created)
@@ -57,8 +57,8 @@ def test_adjust_matrices_remove():
     scHicAdjustMatrix.main(args)
 
     test_data_matrix = ROOT + 'scHicAdjustMatrix/test_matrix_adjusted_remove.scool'
-    matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
-    matrices_list_created = cooler.fileops.list_coolers(outfile.name)
+    matrices_list_test_data = cooler.fileops.list_scool_cells(test_data_matrix)
+    matrices_list_created = cooler.fileops.list_scool_cells(outfile.name)
 
     matrices_list_test_data = sorted(matrices_list_test_data)
     matrices_list_created = sorted(matrices_list_created)

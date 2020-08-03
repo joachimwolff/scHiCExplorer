@@ -1,0 +1,3 @@
+Diploid_1_CGTACTAG_CTAAGCCT_R1fastqgz
+Diploid_1_CGTACTAG_CTCTCTAT_R1fastqgz
+Diploid_1_CGTACTAG_GTAAGGAG_R1fastqgz

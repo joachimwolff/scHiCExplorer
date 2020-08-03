@@ -21,7 +21,6 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 from schicexplorer._version import __version__
-# from schicexplorer.utilities import cell_name_list
 from schicexplorer.utilities import cell_name_list, create_csr_matrix_all_cells
 
 
@@ -74,7 +73,7 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--createScatterPlot', '-csp',
                            help='Create a scatter plot for the clustering, the x and y are the first and second principal component of the computed k-nn graph.',
                            required=False,
-                           default='scatterPlot.pdf')
+                           default=None)
     parserOpt.add_argument('--numberOfNearestNeighbors', '-k',
                            help='Number of to be used computed nearest neighbors for the knn graph. Default is either the default value or the number of the provided cells, whatever is smaller.',
                            required=False,
@@ -118,7 +117,6 @@ def main(args=None):
 
     raw_file_name = os.path.splitext(os.path.basename(args.outFileName))[0]
     neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes, outputFolder, raw_file_name, args.intraChromosomalContactsOnly)
-    # neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes)
 
     reduce_to_dimension = neighborhood_matrix.shape[0] - 1
     if args.dimensionReductionMethod == 'knn':
@@ -129,22 +127,16 @@ def main(args=None):
         neighborhood_matrix = nbrs.kneighbors_graph(mode='distance')
 
         if args.additionalPCA:
-            pca = PCA(n_components = min(neighborhood_matrix.shape) - 1)
+            pca = PCA(n_components=min(neighborhood_matrix.shape) - 1)
             neighborhood_matrix = pca.fit_transform(neighborhood_matrix.todense())
             if args.dimensionsPCA:
                 args.dimensionsPCA = min(args.dimensionsPCA, neighborhood_matrix.shape[0])
                 neighborhood_matrix = neighborhood_matrix[:, :args.dimensionsPCA]
-            # corrmatrix = np.cov(neighborhood_matrix.todense())
-            # evals, eigs = linalg.eig(corrmatrix)
-            # neighborhood_matrix = eigs[:, :20].transpose()
     elif args.dimensionReductionMethod == 'pca':
         corrmatrix = np.cov(neighborhood_matrix.todense())
         evals, eigs = linalg.eig(corrmatrix)
         neighborhood_matrix = eigs[:, :reduce_to_dimension].transpose()
 
-
-    
-        
     if args.clusterMethod == 'spectral':
         spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
                                                        n_neighbors=reduce_to_dimension, affinity='nearest_neighbors', random_state=0)
@@ -153,7 +145,6 @@ def main(args=None):
     elif args.clusterMethod == 'kmeans':
         kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
         labels_clustering = kmeans_object.fit_predict(neighborhood_matrix)
-
 
     if args.createScatterPlot:
         if args.dimensionReductionMethod == 'none':
@@ -165,7 +156,7 @@ def main(args=None):
         if args.dimensionReductionMethod == 'none' or (args.dimensionReductionMethod == 'knn' and not args.additionalPCA):
             log.debug('compute pca')
 
-            pca = PCA(n_components = min(neighborhood_matrix.shape) - 1)
+            pca = PCA(n_components=min(neighborhood_matrix.shape) - 1)
             neighborhood_matrix_knn = pca.fit_transform(neighborhood_matrix.todense())
             log.debug('compute pca')
         else:
@@ -180,23 +171,23 @@ def main(args=None):
         colors = cmap.colors
         for i, color in enumerate(colors[:args.numberOfClusters]):
             mask = labels_clustering == i
-            plt.scatter(neighborhood_matrix_knn[:,0].T[mask], neighborhood_matrix_knn[:,1].T[mask], color=color, label=str(i), s=50, alpha=0.7)
-        # plt.scatter(neighborhood_matrix_knn[:,0].T, neighborhood_matrix_knn[:,1].T, c = labels_clustering, s=50, alpha=0.7)
-        # labels_text  = list(set(labels_clustering))
+            plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(i), s=50, alpha=0.7)
         plt.legend(fontsize=args.fontsize)
         plt.xticks([])
         plt.yticks([])
         plt.xlabel('PC1', fontsize=args.fontsize)
         plt.ylabel('PC2', fontsize=args.fontsize)
+        log.debug('args.createScatterPlot {}'.format(args.createScatterPlot))
+        if '.' not in args.createScatterPlot:
+            args.createScatterPlot += '.png'
         scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc1_pc2.' + args.createScatterPlot.split('.')[-1]
+        log.debug('scatter_plot_name {}'.format(scatter_plot_name))
         plt.savefig(scatter_plot_name, dpi=args.dpi)
         plt.close()
 
         for i, color in enumerate(colors[:args.numberOfClusters]):
             mask = labels_clustering == i
-            plt.scatter(neighborhood_matrix_knn[:,1].T[mask], neighborhood_matrix_knn[:,2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
-        # plt.scatter(neighborhood_matrix_knn[:,0].T, neighborhood_matrix_knn[:,1].T, c = labels_clustering, s=50, alpha=0.7)
-        # labels_text  = list(set(labels_clustering))
+            plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
         plt.legend(fontsize=args.fontsize)
         plt.xticks([])
         plt.yticks([])

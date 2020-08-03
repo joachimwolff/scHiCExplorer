@@ -4,9 +4,11 @@ warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
 import pytest
 import os
 from tempfile import NamedTemporaryFile, mkdtemp
+from matplotlib.testing.compare import compare_images
 
 from schicexplorer import scHicCluster
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
+tolerance = 30
 
 
 def are_files_equal(file1, file2, delta=2, skip=0):
@@ -41,6 +43,9 @@ def are_files_equal_clustering(file1, file2, number_of_clusters=3, delta=2, skip
             x = x.split(' ')
             y = y.split(' ')
             numberOfClusters.add(y[1])
+            x[0] = x[0].lstrip('/cells/')
+            y[0] = y[0].lstrip('/cells/')
+
             if x[0] != y[0]:
                 if delta:
                     mismatches += 1
@@ -57,7 +62,7 @@ def are_files_equal_clustering(file1, file2, number_of_clusters=3, delta=2, skip
     return equal
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_kmeans():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -66,10 +71,10 @@ def test_kmeans():
         --outFileName {} -t {}".format(ROOT + 'test_matrix.scool',
                                        3, 'kmeans', outfile.name, 1).split()
     scHicCluster.main(args)
-    assert are_files_equal(ROOT + "scHicCluster/cluster_kmeans.txt", outfile.name)
+    assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans.txt", outfile.name)
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_kmeans_chromosomes():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -78,10 +83,10 @@ def test_kmeans_chromosomes():
         --outFileName {} -t {} --chromosomes {}".format(ROOT + 'test_matrix.scool',
                                                         3, 'kmeans', outfile.name, 1, "chr1 chr2").split()
     scHicCluster.main(args)
-    assert are_files_equal(ROOT + "scHicCluster/cluster_kmeans_chromosomes.txt", outfile.name)
+    assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans_chromosomes.txt", outfile.name)
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_spectral():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -90,10 +95,10 @@ def test_spectral():
         --outFileName {} -t {}".format(ROOT + 'test_matrix.scool',
                                        3, 'spectral', outfile.name, 1).split()
     scHicCluster.main(args)
-    assert are_files_equal(ROOT + "scHicCluster/cluster_spectral.txt", outfile.name)
+    assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral.txt", outfile.name)
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_spectral_knn():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -102,10 +107,10 @@ def test_spectral_knn():
         --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'spectral', outfile.name, 1, "knn").split()
     scHicCluster.main(args)
-    assert are_files_equal(ROOT + "scHicCluster/cluster_spectral_knn.txt", outfile.name)
+    assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral_knn.txt", outfile.name)
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_spectral_pca():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -114,10 +119,10 @@ def test_spectral_pca():
         --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'spectral', outfile.name, 4, "pca").split()
     scHicCluster.main(args)
-    assert are_files_equal(ROOT + "scHicCluster/cluster_spectral_pca.txt", outfile.name)
+    assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral_pca.txt", outfile.name)
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_kmeans_knn():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -126,10 +131,10 @@ def test_kmeans_knn():
         --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'kmeans', outfile.name, 2, "knn").split()
     scHicCluster.main(args)
-    assert are_files_equal(ROOT + "scHicCluster/cluster_kmeans_knn.txt", outfile.name)
+    assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans_knn.txt", outfile.name)
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_kmeans_pca():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -138,7 +143,7 @@ def test_kmeans_pca():
         --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
                                                3, 'kmeans', outfile.name, 3, "pca").split()
     scHicCluster.main(args)
-    assert are_files_equal(ROOT + "scHicCluster/cluster_kmeans_pca.txt", outfile.name)
+    assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans_pca.txt", outfile.name)
 
 
 def test_kmeans_clustering():
@@ -163,18 +168,24 @@ def test_kmeans_chromosomes_clustering():
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans_chromosomes.txt", outfile.name)
 
 
-def test_spectral_clustering():
+def test_spectral_clustering_csp():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
+    outfile_plot = NamedTemporaryFile(prefix='pca_plot_', delete=False)
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {}".format(ROOT + 'test_matrix.scool',
-                                       3, 'spectral', outfile.name, 1).split()
+        --outFileName {} -t {} -csp {} --colorMap {} --dpi {} --fontsize {} ".format(ROOT + 'test_matrix.scool',
+                                       3, 'spectral', outfile.name, 1, outfile_plot.name,
+                                        'tab10', 100, 5).split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral.txt", outfile.name)
+    res = compare_images(ROOT + "scHicCluster/plot_pc1_pc2.png", outfile_plot.name + '_pc1_pc2.png', tolerance)
+    assert res is None, res
+    res = compare_images(ROOT + "scHicCluster/plot_pc2_pc3.png", outfile_plot.name + '_pc2_pc3.png', tolerance)
+    assert res is None, res
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_spectral_knn_clustering():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
@@ -186,27 +197,41 @@ def test_spectral_knn_clustering():
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral_knn.txt", outfile.name)
 
 
-def test_spectral_pca_clustering():
+def test_spectral_pca_clustering_csp():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
+    outfile_plot = NamedTemporaryFile(prefix='pca_plot_', delete=False)
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
-                                               3, 'spectral', outfile.name, 4, "pca").split()
+        --outFileName {} -t {} -drm {} -csp {} --colorMap {} --dpi {} --fontsize {} ".format(ROOT + 'test_matrix.scool',
+                                               3, 'spectral', outfile.name, 4, "pca", outfile_plot.name,
+                                        'tab10', 100, 5).split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral_pca.txt", outfile.name)
+    assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral.txt", outfile.name)
+    res = compare_images(ROOT + "scHicCluster/plot_pc1_pc2.png", outfile_plot.name + '_pc1_pc2.png', tolerance)
+    assert res is None, res
+    res = compare_images(ROOT + "scHicCluster/plot_pc2_pc3.png", outfile_plot.name + '_pc2_pc3.png', tolerance)
+    assert res is None, res
 
 
-@pytest.mark.xfail
-def test_kmeans_knn_clustering():
+# @pytest.mark.xfail
+def test_kmeans_knn_clustering_intra_chromosomal_plot():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
+    outfile_plot = NamedTemporaryFile(prefix='pca_plot_', delete=False)
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
-                                               3, 'kmeans', outfile.name, 2, "knn").split()
+        --outFileName {} -t {} -drm {} -ic -csp {} --colorMap {} --dpi {} --fontsize {} ".format(ROOT + 'test_matrix.scool',
+                                                                                                 3, 'kmeans', outfile.name, 2, "knn", outfile_plot.name,
+                                                                                                 'tab10', 100, 5).split()
     scHicCluster.main(args)
-    assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans_knn.txt", outfile.name)
+    assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans_ic_knn.txt", outfile.name)
+
+    res = compare_images(ROOT + "scHicCluster/plot_pc1_pc2.png", outfile_plot.name + '_pc1_pc2.png', tolerance)
+    assert res is None, res
+    res = compare_images(ROOT + "scHicCluster/plot_pc2_pc3.png", outfile_plot.name + '_pc2_pc3.png', tolerance)
+    assert res is None, res
 
 
 def test_kmeans_pca_clustering():
@@ -214,8 +239,8 @@ def test_kmeans_pca_clustering():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {}".format(ROOT + 'test_matrix.scool',
-                                               3, 'kmeans', outfile.name, 3, "pca").split()
+        --outFileName {} -t {} -drm {} ".format(ROOT + 'test_matrix.scool',
+                                                3, 'kmeans', outfile.name, 3, "pca").split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans_pca.txt", outfile.name)
 

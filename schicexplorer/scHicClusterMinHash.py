@@ -30,6 +30,7 @@ from schicexplorer.utilities import cell_name_list, create_csr_matrix_all_cells
 
 import time
 
+
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
@@ -44,7 +45,6 @@ def parse_arguments(args=None):
 
     parserRequired = parser.add_argument_group('Required arguments')
 
-    # define the arguments
     parserRequired.add_argument('--matrix', '-m',
                                 help='The single cell Hi-C interaction matrices to cluster. Needs to be in scool format',
                                 metavar='scool scHi-C matrix',
@@ -64,7 +64,7 @@ def parse_arguments(args=None):
                                 default='clusters.txt')
     parserOpt = parser.add_argument_group('Optional arguments')
 
-    parserOpt.add_argument('--exactModeMinHash', '-em',
+    parserOpt.add_argument('--euclideanModeMinHash', '-em',
                            help='This option uses the number of hash collisions is only for a candidate set selection and computes on them the euclidean distance.',
                            action='store_false')
     parserOpt.add_argument('--intraChromosomalContactsOnly', '-ic',
@@ -104,9 +104,6 @@ def parse_arguments(args=None):
                            help='The number of dimensions from the PCA matrix that should be considered for clustering. Can improve the cluster result.',
                            default=20,
                            type=int)
-    # parserOpt.add_argument('--perChromosome', '-pc',
-    #                        help='Computes the knn per chromosome and merge the different knns for clustering.',
-    #                        action='store_true')
     parserOpt.add_argument('--colorMap',
                            help='Color map to use for the heatmap. Available '
                            'values can be seen here: '
@@ -120,7 +117,7 @@ def parse_arguments(args=None):
                            help='Fontsize in the plot for x and y axis.',
                            type=float,
                            nargs=2,
-                           default=(10,5),
+                           default=(10, 5),
                            metavar=('x-size', 'y-size'))
     parserOpt.add_argument('--chromosomes',
                            help='List of to be computed chromosomes',
@@ -143,76 +140,86 @@ def main(args=None):
     outputFolder = os.path.dirname(os.path.abspath(args.outFileName)) + '/'
 
     raw_file_name = os.path.splitext(os.path.basename(args.outFileName))[0]
-        
+
     neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes, outputFolder, raw_file_name, args.intraChromosomalContactsOnly)
     if args.saveIntermediateRawMatrix:
         save_npz(args.saveIntermediateRawMatrix, neighborhood_matrix)
     minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                shingle_size=4, fast=args.exactModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False)
+                             shingle_size=4, fast=args.euclideanModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False)
     if args.clusterMethod == 'spectral':
-        log.debug('spectral clustering')
         spectral_object = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads, random_state=0)
-        log.debug('spectral clustering fit predict')
-        
+
         minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=spectral_object)
 
-        labels_clustering = minHashClustering.fit_predict(neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
+        minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
+        mask = np.isnan(minHashClustering._precomputed_graph.data)
+        minHashClustering._precomputed_graph.data[mask] = 0 
+        mask = np.isinf(minHashClustering._precomputed_graph.data)
+        minHashClustering._precomputed_graph.data[mask] = 0 
+        labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
     elif args.clusterMethod == 'kmeans':
-        log.debug('kmeans clustering')
         kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
         minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=kmeans_object)
 
-        labels_clustering = minHashClustering.fit_predict(neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
-    
+        minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
+        mask = np.isnan(minHashClustering._precomputed_graph.data)
+        minHashClustering._precomputed_graph.data[mask] = 0 
+        mask = np.isinf(minHashClustering._precomputed_graph.data)
+        minHashClustering._precomputed_graph.data[mask] = 0 
+        labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
+
     elif args.clusterMethod.startswith('agglomerative'):
         for linkage in ['ward', 'complete', 'average', 'single']:
             if linkage in args.clusterMethod:
                 agglomerative_shift_object = AgglomerativeClustering(n_clusters=args.numberOfClusters, linkage=linkage)
                 break
         minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=agglomerative_shift_object)
-
-        labels_clustering = minHashClustering.fit_predict(neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
-
+        minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
+        mask = np.isnan(minHashClustering._precomputed_graph.data)
+        minHashClustering._precomputed_graph.data[mask] = 0 
+        mask = np.isinf(minHashClustering._precomputed_graph.data)
+        minHashClustering._precomputed_graph.data[mask] = 0  
+        labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
+       
     elif args.clusterMethod == 'birch':
         birch_object = Birch(n_clusters=args.numberOfClusters)
         minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=birch_object)
 
-        labels_clustering = minHashClustering.fit_predict(neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
-    
+        minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
+        mask = np.isnan(minHashClustering._precomputed_graph.data)
+        minHashClustering._precomputed_graph.data[mask] = 0 
+        mask = np.isinf(minHashClustering._precomputed_graph.data)
+        minHashClustering._precomputed_graph.data[mask] = 0 
+        labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
+        
     if args.createScatterPlot:
         if not args.additionalPCA:
-            pca = PCA(n_components = min(minHashClustering._precomputed_graph.shape) - 1)
+            pca = PCA(n_components=min(minHashClustering._precomputed_graph.shape) - 1)
             neighborhood_matrix_knn = pca.fit_transform(minHashClustering._precomputed_graph.todense())
         else:
             neighborhood_matrix_knn = minHashClustering._precomputed_graph
         plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
 
         list(set(labels_clustering))
-        # plt.figure(figsize=(15, 8), dpi=80)
         cmap = get_cmap(args.colorMap)
         colors = cmap.colors
         for i, color in enumerate(colors[:args.numberOfClusters]):
             mask = labels_clustering == i
-            plt.scatter(neighborhood_matrix_knn[:,0].T[mask], neighborhood_matrix_knn[:,1].T[mask], color=color, label=str(i), s=50, alpha=0.7)
-        # plt.scatter(neighborhood_matrix_knn[:,0].T, neighborhood_matrix_knn[:,1].T, c = labels_clustering, s=50, alpha=0.7)
-        # labels_text  = list(set(labels_clustering))
-        # plt.legend()
+            plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(i), s=50, alpha=0.7)
         plt.legend(fontsize=args.fontsize)
         plt.xticks([])
         plt.yticks([])
         plt.xlabel('PC1', fontsize=args.fontsize)
         plt.ylabel('PC2', fontsize=args.fontsize)
-
+        if '.' not in args.createScatterPlot:
+            args.createScatterPlot += '.png'
         scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc1_pc2.' + args.createScatterPlot.split('.')[-1]
         plt.savefig(scatter_plot_name, dpi=args.dpi)
         plt.close()
         plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
         for i, color in enumerate(colors[:args.numberOfClusters]):
             mask = labels_clustering == i
-            plt.scatter(neighborhood_matrix_knn[:,1].T[mask], neighborhood_matrix_knn[:,2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
-        # plt.scatter(neighborhood_matrix_knn[:,0].T, neighborhood_matrix_knn[:,1].T, c = labels_clustering, s=50, alpha=0.7)
-        # labels_text  = list(set(labels_clustering))
-        # plt.legend()
+            plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
         plt.legend(fontsize=args.fontsize)
         plt.xticks([])
         plt.yticks([])
@@ -221,8 +228,6 @@ def main(args=None):
         scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc2_pc3.' + args.createScatterPlot.split('.')[-1]
         plt.savefig(scatter_plot_name, dpi=args.dpi)
         plt.close()
-
-
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
     np.savetxt(args.outFileName, matrices_cluster, fmt="%s")

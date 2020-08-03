@@ -21,7 +21,6 @@ from copy import deepcopy
 from schicexplorer.utilities import cell_name_list
 
 
-
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
@@ -38,15 +37,21 @@ def parse_arguments(args=None):
                                 required=True)
     parserRequired.add_argument('--outputFolder', '-of',
                                 help='Folder name to save the files',
-                                required=True)
+                                required=True,
+                                default='.',
+                                type=str)
     parserRequired.add_argument('--outputCellNameFile', '-oc',
                                 help='File name to save the cell names and their location',
-                                required=False)
+                                required=False,
+                                default='cellNameFile.txt',
+                                type=str)
     parserRequired.add_argument('--outputChromosomeSize', '-os',
                                 help='File name to save the chromosome sizes',
-                                required=False)
+                                required=False,
+                                default='chromosomeSize.txt',
+                                type=str)
     parserOpt = parser.add_argument_group('Optional arguments')
-   
+
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
@@ -60,19 +65,19 @@ def parse_arguments(args=None):
 
 def convert_to_schicluster(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder, pQueue):
     cell_name_array = []
-    
+
     for i, matrix in enumerate(pMatricesList):
-      
+
         try:
             cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
-        
+
             pixels = cooler_obj.pixels()[:]
-            
+
             chromosome_indices = None
             for chromosome in cooler_obj.chromnames:
-                chromosome_indices = np.array(pBinsDataFrame.index[pBinsDataFrame['chrom'] == chromosome].tolist())    
+                chromosome_indices = np.array(pBinsDataFrame.index[pBinsDataFrame['chrom'] == chromosome].tolist())
 
-                # get pixels from one chromosome, but only intra chromosomal contacts       
+                # get pixels from one chromosome, but only intra chromosomal contacts
                 mask = pixels['bin1_id'].apply(lambda x: x in chromosome_indices) & pixels['bin2_id'].apply(lambda x: x in chromosome_indices)
                 pixels_chromosome = pixels[mask].reset_index(drop=True)
                 pixels_chromosome['bin1_id'] = pixels_chromosome['bin1_id'] - chromosome_indices[0]
@@ -86,7 +91,6 @@ def convert_to_schicluster(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFo
             log.debug('exception: {}'.format(e))
             log.debug('pixels {}'.format(pixels[:5]))
             continue
-        
 
     pQueue.put(cell_name_array)
     return
@@ -98,7 +102,7 @@ def main(args=None):
     matrices_name = args.matrix
     threads = args.threads
     matrices_list = cell_name_list(matrices_name)
-    
+
     if not os.path.exists(args.outputFolder + '/cells'):
         try:
             os.makedirs(args.outputFolder + '/cells')
@@ -116,7 +120,6 @@ def main(args=None):
     all_data_collected = False
     thread_done = [False] * threads
     cell_name_array_thread = [None] * threads
-   
 
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
@@ -132,7 +135,7 @@ def main(args=None):
         process[i] = Process(target=convert_to_schicluster, kwargs=dict(
             pMatrixName=matrices_name,
             pMatricesList=matrices_name_list,
-            pBinsDataFrame=bins, 
+            pBinsDataFrame=bins,
             pOutputFolder=args.outputFolder,
             pQueue=queue[i]
         )

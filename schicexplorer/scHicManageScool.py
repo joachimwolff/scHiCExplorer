@@ -28,79 +28,70 @@ def parse_arguments(args=None):
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the exported matrix, in case of extract the folder name',
                                 required=True)
-                            
+
     parserOpt = parser.add_argument_group('Optional arguments')
     parserOpt.add_argument('--update', '-u',
-                                help='Update the scool file from the old format of scHiCExplorer until version 4 to the one used since version 5.',
-                                required=False,
-                                action='store_true')
+                           help='Update the scool file from the old format of scHiCExplorer until version 4 to the one used since version 5.',
+                           required=False,
+                           action='store_true')
     parserOpt.add_argument('--extract', '-e',
-                                help='Path to a file with the cell names to be extracted into an individual cool file',
-                                required=False,
-                                type=str)
+                           help='Path to a file with the cell names to be extracted into an individual cool file',
+                           required=False,
+                           type=str)
     parserOpt.add_argument('--threads', '-t',
-                                help='Number of threads. Using the python multiprocessing module.',
-                                required=False,
-                                default=4,
-                                type=int)
+                           help='Number of threads. Using the python multiprocessing module.',
+                           required=False,
+                           default=4,
+                           type=int)
     parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
                            version='%(prog)s {}'.format(__version__))
     return parser
+
 
 def load_cool_files(pMatrixName, pMatricesList, pCutIntervals, pQueue):
 
     matrixFileHandlerList = []
     try:
         for i, matrix in enumerate(pMatricesList):
-        
-            matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName+ "::" +matrix, pNoCutIntervals=True)
+
+            matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + "::" + matrix, pNoCutIntervals=True)
 
             _matrix, cut_intervals, nan_bins, \
                 distance_counts, correction_factors = matrixFileHandlerInput.load()
 
-        
-            # log.debug('matrix.split()[-1] {}'.format(matrix.split('/')[-1]))
             matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix.split('/')[-1])
 
             matrixFileHandlerOutput.set_matrix_variables(_matrix,
-                                                        pCutIntervals,
-                                                        nan_bins,
-                                                        correction_factors,
-                                                        distance_counts)
+                                                         pCutIntervals,
+                                                         nan_bins,
+                                                         correction_factors,
+                                                         distance_counts)
             cut_intervals = None
-            # log.debug('append')
 
             matrixFileHandlerList.append(matrixFileHandlerOutput)
     except Exception as exp:
         pQueue.put('Fail: ' + str(exp) + traceback.format_exc())
         return
-    # log.debug('Succesful, return to main')
     pQueue.put(matrixFileHandlerList)
+
 
 def main(args=None):
     args = parse_arguments().parse_args(args)
     log.debug(args)
     matrix_file_handler_object_list = []
-    # matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=args.matrices[0])
 
-    # _matrix, cut_intervals_all, nan_bins, \
-    #     distance_counts, correction_factors = matrixFileHandlerInput.load()
-
-   
     matrices_list = cell_name_list(args.matrix)
-    # log.debug('matrices_list[:5] {}'.format(matrices_list[:5]))
     if args.extract is not None:
         matrix_list_tmp = []
         with open(args.extract, 'r') as file:
             for line in file:
                 values = line.strip()
-                # log.debug('values {}'.format(values))
                 if not values.startswith('/cells'):
-                    values = '/cells/' + values 
+                    values = '/cells/' + values
                 if values in matrices_list:
                     matrix_list_tmp.append(values)
-                
+
         matrices_list = matrix_list_tmp
 
     if len(matrices_list) == 0:
@@ -108,28 +99,19 @@ def main(args=None):
         exit(1)
     if len(matrices_list) < args.threads:
         args.threads = len(matrices_list)
-    
-    matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=args.matrix+"::"+matrices_list[0])
+
+    matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=args.matrix + "::" + matrices_list[0])
 
     _matrix, cut_intervals_all, nan_bins, \
         distance_counts, correction_factors = matrixFileHandlerInput.load()
 
-    # matrices_list = args.matrices
-    # matrices_list = cell_name_list(matrices_name)
-    # log.debug('size of matrices_list: {}'.format(len(matrices_list)))
-
     threads = args.threads
 
-    
     matrixFileHandler_list = [None] * args.threads
     process = [None] * args.threads
     queue = [None] * args.threads
 
-    # all_threads_done = False
     thread_done = [False] * args.threads
-    # count_output = 0
-    # count_call_of_read_input = 0
-    # computed_pairs = 0
     matricesPerThread = len(matrices_list) // threads
 
     for i in range(args.threads):
@@ -186,7 +168,4 @@ def main(args=None):
                 if exc.errno != errno.EEXIST:
                     raise
         for matrixFileHandler in matrix_file_handler_object_list:
-            # log.debug('matrixFileHandler.matrixFile.matrix {}'.format(matrixFileHandler.matrixFile.matrixFileName))
             matrixFileHandler.save(args.outFileName + '/' + matrixFileHandler.matrixFile.matrixFileName + '.cool', pApplyCorrection=True, pSymmetric=True)
-        # path_name = ''.join(matrix.split('/')[-1].split('.')[:-1])
-        # matrixFileHandlerOutput.save(args.outFileName + '::/' + path_name, pApplyCorrection=True, pSymmetric=True)

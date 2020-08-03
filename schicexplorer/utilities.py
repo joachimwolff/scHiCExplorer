@@ -12,13 +12,14 @@ from hicmatrix import HiCMatrix as hm
 from schicexplorer._version import __version__
 
 from scipy.sparse import csr_matrix
+
+
 def opener(filename):
     """
     Determines if a file is compressed or not
     """
 
     f = open(filename, 'rb')
-    # print("gzip or not?", f.read(2))
 
     if f.read(2) == b'\x1f\x8b':
         f.seek(0)
@@ -27,13 +28,12 @@ def opener(filename):
         f.seek(0)
         return f
 
+
 def cell_name_list(pScoolUri):
 
     if cooler.fileops.is_scool_file(pScoolUri):
         matrices_list = cooler.fileops.list_scool_cells(pScoolUri)
         r = re.compile('/cell/*')
-        # if '/' in matrices_list and any(r.match(line) for line in matrices_list):
-        #     matrices_list.remove('/')
         return matrices_list
     else:
         try:
@@ -45,13 +45,13 @@ def cell_name_list(pScoolUri):
             if not '/' in matrices_list:
                 return matrices_list
             # new standard scool format, all cells are stored under '/cell/'
-           
+
             raise Exception('Wrong data format. Please use a scool file.')
-            # ['/', '/cells/cell1', '/cells/cell2', '/cells/cell3']
 
         except Exception:
             raise Exception('Wrong data format. Please use a scool file.')
             exit(1)
+
 
 def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices, pQueue):
     neighborhood_matrix = None
@@ -67,25 +67,21 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
     valid_matrix_list = []
     for i, matrix in enumerate(pMatricesList):
         time_start_load = time.time()
-        time_start_all = time.time() 
+        time_start_all = time.time()
 
         cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
         shape = cooler_obj.shape
-        # pixels = cooler_obj.pixels()[:]
-        
         chromosome_indices = None
         mask = None
         chromosome_dataframes_list = []
 
-        # pChromosomes 
         if pChromosomes is None:
             pChromosomes = cooler_obj.chromnames
         for chromosome in pChromosomes:
-            
+
             pixels_chromosome = cooler_obj.pixels().fetch(chromosome)
-            # get pixels from one chromosome, but only intra chromosomal contacts       
-            # mask_chromosome = pixels['bin1_id'].apply(lambda x: x in pChromosomeIndices[chromosome]) & pixels['bin2_id'].apply(lambda x: x in pChromosomeIndices[chromosome])
-            
+            # get pixels from one chromosome, but only intra chromosomal contacts
+
             # per defintion the bin1_id should belong only to the fetched chromosome, therefore only bin2_id needs to be cleaned
             if pIntraChromosomalContactsOnly:
                 mask_chromosome = pixels_chromosome['bin2_id'].apply(lambda x: x in pChromosomeIndices[chromosome])
@@ -93,18 +89,13 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
             else:
                 chromosome_dataframes_list.append(pixels_chromosome)
 
-            # if mask is None:
-            #     mask = mask_chromosome
-            # else:
-            #     mask = mask | mask_chromosome
-        
         pixels_chromosome = pd.concat(chromosome_dataframes_list)
 
         if max_shape < shape[0]:
             max_shape = shape[0]
-        
+
         _matrix = [None, None, None]
-        if 'bin1_id' in pixels_chromosome.columns and 'bin2_id' in pixels_chromosome.columns  and 'count' in pixels_chromosome.columns :
+        if 'bin1_id' in pixels_chromosome.columns and 'bin2_id' in pixels_chromosome.columns and 'count' in pixels_chromosome.columns:
             _matrix[0] = pixels_chromosome['bin1_id'].values
             _matrix[1] = pixels_chromosome['bin2_id'].values
             _matrix[2] = pixels_chromosome['count'].values
@@ -115,39 +106,35 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
             _matrix[0] = _matrix[0].astype(index_datatype)
             _matrix[1] = _matrix[1].astype(index_datatype)
 
-            _matrix[0] *= np.int64(shape[0]) # matrix[0] are the instance ids, matrix[3] is the shape
-            _matrix[0] += _matrix[1] # matrix[3] is the shape, matrix[1] are the feature ids
+            _matrix[0] *= np.int64(shape[0])  # matrix[0] are the instance ids, matrix[3] is the shape
+            _matrix[0] += _matrix[1]  # matrix[3] is the shape, matrix[1] are the feature ids
             features.extend(_matrix[0])
             _matrix[1] = None
 
             data.extend(_matrix[2])
             features_length.append(len(_matrix[2]))
-    
 
     time_start_tocsr = time.time()
     instances = []
     log.debug('')
     for i, instance_length in enumerate(features_length):
         instances.extend([pIndex + i] * instance_length)
-    
 
-    neighborhood_matrix = csr_matrix((data, (instances, features)),(pXDimension, max_shape * max_shape), dtype=np.float)
-    # log.debug('time_all {}, time_csr {}, time_add {} time_load {} time_tocsr {}'.format(time_all, time_csr_create, time_add, time_load, time.time() - time_start_tocsr))
+    neighborhood_matrix = csr_matrix((data, (instances, features)), (pXDimension, max_shape * max_shape), dtype=np.float)
     pQueue.put([neighborhood_matrix, valid_matrix_list])
+
 
 def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes, pOutputFolder, pRawFileName, pIntraChromosomalContactsOnly=None):
 
     matrices_name = pMatrixName
     threads = pThreads
     matrices_list = cell_name_list(matrices_name)
-    # log.debug('len(matrices_list) {}'.format(matrices_list))
     neighborhood_matrix = None
     neighborhood_matrix_threads = [None] * threads
-    valid_matrix_list_threads  = [None] * threads
+    valid_matrix_list_threads = [None] * threads
 
     all_data_collected = False
     thread_done = [False] * threads
-    # log.debug('matrix read, starting processing')
     length_index = [None] * threads
     length_index[0] = 0
     matricesPerThread = len(matrices_list) // threads
@@ -160,8 +147,7 @@ def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes, pOutputFold
         binsDataFrame = cooler_obj.bins()[:]
         chromosome_indices = {}
         for chromosome in cooler_obj.chromnames:
-            chromosome_indices[chromosome] = np.array(binsDataFrame.index[binsDataFrame['chrom'] == chromosome].tolist())    
-
+            chromosome_indices[chromosome] = np.array(binsDataFrame.index[binsDataFrame['chrom'] == chromosome].tolist())
 
     for i in range(threads):
 
@@ -178,7 +164,7 @@ def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes, pOutputFold
             pIndex=length_index[i],
             pXDimension=len(matrices_list),
             pChromosomes=pChromosomes,
-            pIntraChromosomalContactsOnly = pIntraChromosomalContactsOnly,
+            pIntraChromosomalContactsOnly=pIntraChromosomalContactsOnly,
             pChromosomeIndices=chromosome_indices,
             pQueue=queue[i]
         )
@@ -207,16 +193,4 @@ def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes, pOutputFold
             if not thread:
                 all_data_collected = False
         time.sleep(1)
-    # neighborhood_matrix = neighborhood_matrix[neighborhood_matrix.getnnz(1)>0]
-    # valid_matrix_list = [item for sublist in valid_matrix_list_threads for item in sublist]
-    
-    # valid_matrix_list = np.array(valid_matrix_list)
-    # matrices_list = np.array(matrices_list)
-    # matrices_list_valid = matrices_list[valid_matrix_list]
-
-    # if len(matrices_list_valid) != len(matrices_list):
-    #     with open(pOutputFolder + pRawFileName + '_removed_matrices.txt', 'w') as file:
-    #         file.write('# Created by scHiCExplorer.utilities version {}\n'.format(__version__))
-    #         file.write('# The following cells have not been considered for clustering because they contained no data.\n\n')
-    #         file.write("{}".format('\n'.join(matrices_list[~valid_matrix_list])))
     return neighborhood_matrix, matrices_list

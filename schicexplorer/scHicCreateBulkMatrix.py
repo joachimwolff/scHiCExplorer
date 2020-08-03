@@ -30,8 +30,6 @@ def parse_arguments(args=None):
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
-
-    # define the arguments
     parserRequired.add_argument('--matrix', '-m',
                                 help='The single cell Hi-C interaction matrices to cluster. Needs to be in scool format',
                                 metavar='scool scHi-C matrix',
@@ -121,6 +119,4 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
-    #  hic.setMatrixValues(summed_matrix)
-    # .maskBins(sorted(nan_bins))
     bulk_matrix.save(args.outFileName)

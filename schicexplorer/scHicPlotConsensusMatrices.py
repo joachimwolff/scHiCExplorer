@@ -31,7 +31,6 @@ def parse_arguments(args=None):
 
     parserRequired = parser.add_argument_group('Required arguments')
 
-    # define the arguments
     parserRequired.add_argument('--matrix', '-m',
                                 help='The consensus matrix created by scHicConsensusMatrices',
                                 metavar='scool scHi-C matrix',
@@ -89,22 +88,21 @@ def main(args=None):
         raise Exception('--chromosomes and --region are mutual exclusive.')
         exit(1)
     matrices_list = cell_name_list(args.matrix)
-    log.debug('matrices_list {}'.format(matrices_list))
     columns = 4
     if len(matrices_list) < columns:
         columns = len(matrices_list)
     rows = int(np.ceil(len(matrices_list) / columns))
     if rows < 1:
         rows = 1
-    
+
     if len(matrices_list) > 12:
-        figsize=(5, 5.5)
+        figsize = (5, 5.5)
     elif len(matrices_list) > 8:
-        figsize=(5, 4.5)
+        figsize = (5, 4.5)
     elif len(matrices_list) > 4:
-         figsize=(5, 4)
+        figsize = (5, 4)
     else:
-         figsize=(5, 3)
+        figsize = (5, 3)
 
     f, axes = plt.subplots(rows, columns, figsize=figsize)
 
@@ -115,7 +113,7 @@ def main(args=None):
         title_string += ' for {}'.format(args.region)
     else:
         title_string += ' on all chromosomes'
-    
+
     if args.no_header:
         plt.suptitle(title_string, fontsize=args.fontsize)
 
@@ -163,7 +161,6 @@ def main(args=None):
             axes[i // columns, i % columns].yaxis.set_visible(False)
             axes[i // columns, i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
 
-        log.debug('str(matrix.split(\'/\')[-1].split(\'cluster_\')[-1]) {}'.format(str(matrix.split('/')[-1].split('cluster_')[-1])))
     number_of_plots = len(matrices_list)
     i = -1
     while rows * columns > number_of_plots:

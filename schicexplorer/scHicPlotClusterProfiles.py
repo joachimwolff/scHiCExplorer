@@ -33,7 +33,6 @@ def parse_arguments(args=None):
 
     parserRequired = parser.add_argument_group('Required arguments')
 
-    # define the arguments
     parserRequired.add_argument('--matrix', '-m',
                                 help='The single cell Hi-C interaction matrices to investigate for QC. Needs to be in scool format',
                                 metavar='scool scHi-C matrix',
@@ -75,11 +74,11 @@ def parse_arguments(args=None):
     parserMutuallyExclusiveGroupFilter = parser.add_mutually_exclusive_group(
         required=False)
     parserMutuallyExclusiveGroupFilter.add_argument('--ticks',
-                           help='Plot the cluster names as ticks. Use legend if they overlap.',
-                           action='store_true')
+                                                    help='Plot the cluster names as ticks. Use legend if they overlap.',
+                                                    action='store_true')
     parserMutuallyExclusiveGroupFilter.add_argument('--legend',
-                           help='Plot the cluster names as legend.  Might be helpful if the ticks overlap.',
-                           action='store_true')
+                                                    help='Plot the cluster names as legend.  Might be helpful if the ticks overlap.',
+                                                    action='store_true')
     parserOpt.add_argument('--outFileName', '-o',
                            help='File name to save the resulting cluster profile.',
                            required=False,
@@ -107,26 +106,24 @@ def parse_arguments(args=None):
 
 def compute_read_distribution(pMatrixName, pMatricesList, pMaximalDistance, pChromosomes, pQueue):
     read_distribution = []
- 
+
     for i, matrix in enumerate(pMatricesList):
         cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
         shape = cooler_obj.shape
         resolution = cooler_obj.binsize
-        chromosome_dataframes_list = [] 
+        chromosome_dataframes_list = []
 
         if pChromosomes is None:
             pChromosomes = cooler_obj.chromnames
         for chromosome in pChromosomes:
-            
+
             pixels_chromosome = cooler_obj.pixels().fetch(chromosome)
-            
+
             chromosome_dataframes_list.append(pixels_chromosome)
 
-        
         pixels_chromosome = pd.concat(chromosome_dataframes_list)
 
-
-        if 'bin1_id' in pixels_chromosome.columns and 'bin2_id' in pixels_chromosome.columns  and 'count' in pixels_chromosome.columns :
+        if 'bin1_id' in pixels_chromosome.columns and 'bin2_id' in pixels_chromosome.columns and 'count' in pixels_chromosome.columns:
             instances = pixels_chromosome['bin1_id'].values
             features = pixels_chromosome['bin2_id'].values
             data = pixels_chromosome['count'].values
@@ -158,9 +155,6 @@ def main(args=None):
 
     all_data_collected = False
     thread_done = [False] * threads
-    # length_index = [None] * threads
-    # length_index[0] = 0
-    # matrices_list = matrices_list[:16]
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
     process = [None] * threads
@@ -168,7 +162,6 @@ def main(args=None):
 
         if i < threads - 1:
             matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
-            # length_index[i + 1] = length_index[i] + len(matrices_name_list)
         else:
             matrices_name_list = matrices_list[i * matricesPerThread:]
 
@@ -211,14 +204,11 @@ def main(args=None):
     clusters_svl = {}
     short_range_distance = args.distanceShortRange // resolution
     long_range_distance = args.distanceLongRange // resolution
-    log.debug('matrices_list[:10] {}'.format(matrices_list[:10]))
     with open(args.clusters, 'r') as cluster_file:
 
         for i, line in enumerate(cluster_file.readlines()):
             line = line.strip()
             line_ = line.split(' ')[1]
-            if i < 10:
-                log.debug('line {}'.format(line))
             if int(line_) in clusters:
                 clusters[int(line_)].append(read_distributions[i])
                 clusters_svl[int(line_)].append(np.sum(read_distributions[i][:short_range_distance]) / np.sum(read_distributions[i][short_range_distance:long_range_distance]))
@@ -254,7 +244,6 @@ def main(args=None):
     cluster_ticks = []
     cluster_ticks_top = []
     ticks_position = []
-    log.debug('len(clusters_list) {}'.format(len(clusters_list)))
     for i, cluster in enumerate(clusters_list):
         if all_data is None:
             all_data = cluster
@@ -268,13 +257,6 @@ def main(args=None):
         cluster_ticks.append('Cluster {}: {} cells'.format((i), len(cluster)))
         cluster_ticks_top.append('Cluster {}'.format(i))
 
-    log.debug('len(all_data) {}'.format(len(all_data)))
-    log.debug('len(index_clusters) {}'.format(len(index_clusters)))
-    log.debug('len(cluster_ticks_top) {}'.format(len(cluster_ticks_top)))
-    log.debug('len(ticks_position) {}'.format(len(ticks_position)))
-    log.debug('len(cluster_ticks) {}'.format(len(cluster_ticks)))
-
-
     if len(matrices_list) > 1000:
         fig = plt.figure(figsize=(8, 3))
     elif len(matrices_list) > 500:
@@ -287,31 +269,11 @@ def main(args=None):
     plt.imshow(all_data.T, cmap=args.colorMap, norm=LogNorm(), aspect="auto")
 
     for index in index_clusters:
-        plt.axvline(index-1, color='black', linewidth=0.4)
-    log.debug('index_clusters {}'.format(index_clusters))
+        plt.axvline(index - 1, color='black', linewidth=0.4)
     y_ticks = []
     y_labels = []
 
-    log.debug('args.maximalDistance {} '.format(args.maximalDistance))
     unit = 'MB'
-    # if args.maximalDistance <= 1000:
-    #     factor = 100
-    #     unit = 'kB'
-
-
-    # elif args.maximalDistance <= 10000:
-    #     factor = 1000
-    # elif args.maximalDistance <= 100000:
-    #     factor = 10000
-    # elif args.maximalDistance <= 1000000:
-    #     factor = 100000
-    # elif args.maximalDistance <= 10000000:
-    #     factor = 1000000
-    # elif args.maximalDistance <= 100000000:
-    #     factor = 10000000
-    # else:
-    #     factor = 100000000
-    # # resolution = 1000000
 
     factor = args.maximalDistance // 10
 
@@ -321,7 +283,6 @@ def main(args=None):
         unit = 'kb'
     else:
         unit = 'b'
-
 
     for i in range(0, (args.maximalDistance) + 1, resolution):
         if i % (factor) == 0:
@@ -337,13 +298,11 @@ def main(args=None):
 
             y_labels.append(label + unit)
 
-
     plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=args.fontsize)
 
     plt.gca().invert_yaxis()
     if args.ticks:
         plt.xticks(ticks=ticks_position, labels=cluster_ticks_top, rotation=args.rotationX, fontsize=args.fontsize)
-
 
     elif args.legend:
         plt.tick_params(
@@ -353,16 +312,16 @@ def main(args=None):
             top=False,         # ticks along the top edge are off
             labelbottom=False)
         leg = plt.legend(cluster_ticks, loc='upper center', bbox_to_anchor=(0.5, -0.01),
-          fancybox=True, shadow=False, ncol=3, fontsize=args.fontsize)
+                         fancybox=True, shadow=False, ncol=3, fontsize=args.fontsize)
         for item in leg.legendHandles:
             item.set_visible(False)
     else:
         plt.tick_params(
-                axis='x',          # changes apply to the x-axis
-                which='both',      # both major and minor ticks are affected
-                bottom=False,      # ticks along the bottom edge are off
-                top=False,         # ticks along the top edge are off
-                labelbottom=False) 
+            axis='x',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom=False,      # ticks along the bottom edge are off
+            top=False,         # ticks along the top edge are off
+            labelbottom=False)
     fig.autofmt_xdate()
 
     cbar = plt.colorbar()
@@ -370,8 +329,7 @@ def main(args=None):
     cbar.ax.yaxis.set_label_coords(args.fontsize, 0.5)
     cbar.ax.invert_yaxis()
     cbar.ax.tick_params(labelsize=args.fontsize)
-    
-    
+
     plt.tight_layout()
     plt.savefig(args.outFileName, dpi=args.dpi)
 

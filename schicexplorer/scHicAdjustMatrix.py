@@ -21,7 +21,6 @@ from copy import deepcopy
 from schicexplorer.utilities import cell_name_list
 
 
-
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
@@ -62,47 +61,33 @@ def parse_arguments(args=None):
 
 
 def compute_adjust_matrix(pMatrixName, pMatricesList, pArgs, pListIds, pInvertedMap, pInvertedLogic, pQueue):
-    # log.debug('compute adjust matrix')
     hicmatrices_adjusted_objects = []
     pixels_list = []
     keep_matrices = []
-    # pArgs_local = deepcopy(pArgs)
-
-    
 
     for i, matrix in enumerate(pMatricesList):
         if i % 1 == 0:
             log.debug('processed {} out of {}'.format(i, len(pMatricesList)))
         try:
             cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
-        
-            pixels = cooler_obj.pixels()[:]
-            indices = pixels['bin1_id'].apply(lambda x: x in pListIds) 
-            if pInvertedLogic:
-                indices = ~indices
-            pixels = pixels[indices].reset_index(drop=True)
-            
-            indices = pixels['bin2_id'].apply(lambda x: x in pListIds) 
-            if pInvertedLogic:
-                indices = ~indices
-            pixels = pixels[indices].reset_index(drop=True)
-        
 
-            # log.debug('6')
+            pixels = cooler_obj.pixels()[:]
+            indices = pixels['bin1_id'].apply(lambda x: x in pListIds)
+            if pInvertedLogic:
+                indices = ~indices
+            pixels = pixels[indices].reset_index(drop=True)
+
+            indices = pixels['bin2_id'].apply(lambda x: x in pListIds)
+            if pInvertedLogic:
+                indices = ~indices
+            pixels = pixels[indices].reset_index(drop=True)
 
             for key, value in pInvertedMap.items():
 
                 pixels['bin1_id'].replace(to_replace=key, value=value, inplace=True)
                 pixels['bin2_id'].replace(to_replace=key, value=value, inplace=True)
 
-            # log.debug('6')
-
-            # pixels['bin2_id'].replace(pInvertedMap, inplace=True)
-            # log.debug('7')
-
             pixels_list.append(pixels)
-            # log.debug('8')
-
             keep_matrices.append(True)
 
         except Exception as e:
@@ -110,17 +95,12 @@ def compute_adjust_matrix(pMatrixName, pMatricesList, pArgs, pListIds, pInverted
             log.debug('exception: {}'.format(e))
             log.debug('pixels {}'.format(pixels[:5]))
             continue
-        
-        # del cooler_obj
-        # del indices
-        # gc.collect()
 
     pQueue.put([pixels_list, keep_matrices])
     return
 
 
 def main(args=None):
-    # args_string
     args = parse_arguments().parse_args(args)
     hicmatrix_adjusted_objects = []
     matrices_name = args.matrix
@@ -132,20 +112,16 @@ def main(args=None):
         exit(0)
 
     input_count_matrices = len(matrices_list)
-    # log.debug('args.createSubmatrix {}, args.action {}, args.chromosomes {}'.format(args.createSubmatrix, args.action, args.chromosomes ))
-    # exit()
     if threads > len(matrices_list):
         threads = len(matrices_list)
-
-
 
     # load bin ids only once
     cooler_obj_external = cooler.Cooler(matrices_name + '::' + matrices_list[0])
     bins = cooler_obj_external.bins()[:]
 
     # apply the inverted operation if the number of values is less
-    # the idea is that for 
-    # indices = pixels['bin1_id'].apply(lambda x: x in pListIds) 
+    # the idea is that for
+    # indices = pixels['bin1_id'].apply(lambda x: x in pListIds)
     # the search time is less if the list pListIds is shorter
     # therefore the drop must be inverted too
     apply_inverted = False
@@ -157,13 +133,12 @@ def main(args=None):
 
     else:
         list_ids = bins.index[bins['chrom'].apply(lambda x: x not in args.chromosomes)].tolist()
-        list_inverted_logic_ids = bins.index[bins['chrom'].apply(lambda x: x  in args.chromosomes)].tolist()
+        list_inverted_logic_ids = bins.index[bins['chrom'].apply(lambda x: x in args.chromosomes)].tolist()
         bins_new = bins[bins['chrom'].apply(lambda x: x not in args.chromosomes)].reset_index()
 
     if len(list_inverted_logic_ids) < len(list_ids):
-            apply_inverted = True
-            list_ids = list_inverted_logic_ids
-
+        apply_inverted = True
+        list_ids = list_inverted_logic_ids
 
     dict_values = bins_new['index'].to_dict()
     inv_map = {}
@@ -171,17 +146,13 @@ def main(args=None):
         if k == v:
             continue
         inv_map[v] = k
-    # inv_map = {v: k for k, v in dict_values.items()}
     bins_new.drop(['index'], axis=1, inplace=True)
-
-
 
     all_data_collected = False
     thread_done = [False] * threads
     bins_thread = [None] * threads
     pixels_thread = [None] * threads
     keep_thread = [None] * threads
-
 
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
@@ -198,7 +169,7 @@ def main(args=None):
             pMatrixName=matrices_name,
             pMatricesList=matrices_name_list,
             pArgs=args,
-            pListIds=list_ids, 
+            pListIds=list_ids,
             pInvertedMap=inv_map,
             pInvertedLogic=apply_inverted,
             pQueue=queue[i]
@@ -206,11 +177,10 @@ def main(args=None):
         )
 
         process[i].start()
-    log.debug("foo")
     while not all_data_collected:
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
-                pixels_thread[i] , keep_thread[i]= queue[i].get()
+                pixels_thread[i], keep_thread[i] = queue[i].get()
 
                 queue[i] = None
                 process[i].join()
@@ -223,19 +193,13 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
-    # TODO: implement this!
     pixels_list = [item for sublist in pixels_thread for item in sublist]
     keep_list = [item for sublist in keep_thread for item in sublist]
 
-   
-
     matrices_list = np.array(matrices_list)
-    # log.debug('keep_list {}'.format(keep_list))
     mask = np.array(keep_list)
     matrices_list = matrices_list[mask]
-    # log.debug('mask {}'.format(mask))
 
-    
     matrixFileHandler = MatrixFileHandler(pFileType='scool')
     matrixFileHandler.matrixFile.bins = bins_new
     matrixFileHandler.matrixFile.pixel_list = pixels_list
