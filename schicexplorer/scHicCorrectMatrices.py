@@ -119,14 +119,15 @@ def main(args=None):
         time.sleep(1)
 
     merged_matrices = [item for sublist in merged_matrices for item in sublist]
-
+    matrixFileHandlerObjects_list = []
     for i, hic_matrix in enumerate(merged_matrices):
-        append = False
-        if i > 0:
-            append = True
-        matrixFileHandlerOutput = MatrixFileHandler(
-            pFileType='cool', pAppend=append, pFileWasH5=False)
+        matrixFileHandlerOutput = MatrixFileHandler(pMatrixFile=matrices_list[i],
+                                                    pFileType='cool', pFileWasH5=False)
 
         matrixFileHandlerOutput.set_matrix_variables(hic_matrix.matrix, hic_matrix.cut_intervals, hic_matrix.nan_bins,
                                                      hic_matrix.correction_factors, hic_matrix.distance_counts)
-        matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
+        # matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
+        matrixFileHandlerObjects_list.append(matrixFileHandlerOutput)
+    matrixFileHandler = MatrixFileHandler(pFileType='scool')
+    matrixFileHandler.matrixFile.coolObjectsList = matrixFileHandlerObjects_list
+    matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)

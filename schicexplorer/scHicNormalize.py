@@ -189,7 +189,6 @@ def main(args=None):
 
     sum_of_all = [item for sublist in sum_list_threads for item in sublist]
     sum_of_all = np.array(sum_of_all)
-    foo = sum_of_all[sum_of_all < 100000]
     argmin = np.argmin(sum_of_all)
     if args.normalize == 'smallest':
         normalizeMax = sum_of_all[argmin]

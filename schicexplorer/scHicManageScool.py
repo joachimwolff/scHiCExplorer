@@ -5,6 +5,8 @@ from multiprocessing import Process, Queue
 import time
 import os
 import logging
+import traceback
+import errno
 log = logging.getLogger(__name__)
 from schicexplorer._version import __version__
 from schicexplorer.utilities import cell_name_list
@@ -67,7 +69,6 @@ def load_cool_files(pMatrixName, pMatricesList, pCutIntervals, pQueue):
                                                          nan_bins,
                                                          correction_factors,
                                                          distance_counts)
-            cut_intervals = None
 
             matrixFileHandlerList.append(matrixFileHandlerOutput)
     except Exception as exp:

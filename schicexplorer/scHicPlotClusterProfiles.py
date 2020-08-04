@@ -109,7 +109,6 @@ def compute_read_distribution(pMatrixName, pMatricesList, pMaximalDistance, pChr
 
     for i, matrix in enumerate(pMatricesList):
         cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
-        shape = cooler_obj.shape
         resolution = cooler_obj.binsize
         chromosome_dataframes_list = []
 
@@ -311,8 +310,12 @@ def main(args=None):
             bottom=False,      # ticks along the bottom edge are off
             top=False,         # ticks along the top edge are off
             labelbottom=False)
+        if len(cluster_ticks) < 5:
+            ncols = 1
+        else:
+            ncols = 3
         leg = plt.legend(cluster_ticks, loc='upper center', bbox_to_anchor=(0.5, -0.01),
-                         fancybox=True, shadow=False, ncol=3, fontsize=args.fontsize)
+                         fancybox=True, shadow=False, ncol=ncols, fontsize=args.fontsize)
         for item in leg.legendHandles:
             item.set_visible(False)
     else:

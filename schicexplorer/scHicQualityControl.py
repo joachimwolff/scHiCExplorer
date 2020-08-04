@@ -211,7 +211,6 @@ def main(args=None):
     all_data_collected = False
     thread_done = [False] * threads
     length_index = [None] * threads
-    matrixFileObjects_thread = [None] * threads
     length_index[0] = 0
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads

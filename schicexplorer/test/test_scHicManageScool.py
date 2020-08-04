@@ -69,7 +69,7 @@ def test_extract_matrix():
 def test_version():
     args = "--version".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        scHicConsensusMatrices.main(args)
+        scHicManageScool.main(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
@@ -77,6 +77,6 @@ def test_version():
 def test_help():
     args = "--help".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        scHicConsensusMatrices.main(args)
+        scHicManageScool.main(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0

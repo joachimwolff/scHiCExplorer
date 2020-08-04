@@ -11,7 +11,6 @@ import cooler
 import numpy as np
 import gc
 from hicmatrix import HiCMatrix as hm
-import cooler
 import pandas as pd
 from schicexplorer._version import __version__
 from hicmatrix.lib import MatrixFileHandler
@@ -61,7 +60,6 @@ def parse_arguments(args=None):
 
 
 def compute_adjust_matrix(pMatrixName, pMatricesList, pArgs, pListIds, pInvertedMap, pInvertedLogic, pQueue):
-    hicmatrices_adjusted_objects = []
     pixels_list = []
     keep_matrices = []
 
@@ -102,7 +100,6 @@ def compute_adjust_matrix(pMatrixName, pMatricesList, pArgs, pListIds, pInverted
 
 def main(args=None):
     args = parse_arguments().parse_args(args)
-    hicmatrix_adjusted_objects = []
     matrices_name = args.matrix
     threads = args.threads
     matrices_list = cell_name_list(matrices_name)
@@ -150,7 +147,6 @@ def main(args=None):
 
     all_data_collected = False
     thread_done = [False] * threads
-    bins_thread = [None] * threads
     pixels_thread = [None] * threads
     keep_thread = [None] * threads
 

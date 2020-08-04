@@ -3,7 +3,7 @@ import argparse
 import os
 from multiprocessing import Process, Queue
 import time
-
+import errno
 import logging
 log = logging.getLogger(__name__)
 
@@ -11,7 +11,6 @@ import cooler
 import numpy as np
 import gc
 from hicmatrix import HiCMatrix as hm
-import cooler
 import pandas as pd
 from schicexplorer._version import __version__
 from hicmatrix.lib import MatrixFileHandler
@@ -98,7 +97,6 @@ def convert_to_schicluster(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFo
 
 def main(args=None):
     args = parse_arguments().parse_args(args)
-    hicmatrix_adjusted_objects = []
     matrices_name = args.matrix
     threads = args.threads
     matrices_list = cell_name_list(matrices_name)
@@ -110,7 +108,6 @@ def main(args=None):
             if exc.errno != errno.EEXIST:
                 raise
 
-    input_count_matrices = len(matrices_list)
     if threads > len(matrices_list):
         threads = len(matrices_list)
     # load bin ids only once

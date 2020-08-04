@@ -50,7 +50,6 @@ def parse_arguments(args=None):
 
 
 def compute_consensus_matrix(pMatrixName, pClusterMatricesList, pClusterName, pQueue):
-    cluster_consensus_matrices_list = []
     counter = 0
     consensus_matrix = None
     try:
@@ -104,8 +103,6 @@ def main(args=None):
     if len(clusters) < threads:
         threads = len(clusters)
 
-    consensus_matrices_threads = [None] * threads
-    all_data_collected = False
     thread_done = [False] * threads
     length_index = [None] * threads
     length_index[0] = 0

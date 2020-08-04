@@ -40,7 +40,6 @@ def are_files_equal_clustering(file1, file2, number_of_clusters=3, delta=2, skip
     return equal
 
 
-
 def test_kmeans():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 

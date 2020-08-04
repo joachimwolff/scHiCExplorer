@@ -11,6 +11,7 @@ from schicexplorer import scHicClusterMinHash
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
 tolerance = 30
 
+
 def are_files_equal(file1, file2, delta=2, skip=0):
     equal = True
     if delta:
@@ -29,6 +30,7 @@ def are_files_equal(file1, file2, delta=2, skip=0):
                     equal = False
                     break
     return equal
+
 
 def are_files_equal_clustering(file1, file2, number_of_clusters=3, delta=2, skip=0):
     equal = True
@@ -60,33 +62,36 @@ def are_files_equal_clustering(file1, file2, number_of_clusters=3, delta=2, skip
         return False
     return equal
 
+
 def test_kmeans():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {}".format(ROOT + 'test_matrix.scool',
-                                              3, 'kmeans', outfile.name, 3, 800).split()
+        --outFileName {} -t {} -nh {} -dim_pca 100".format(ROOT + 'test_matrix.scool',
+                                                                3, 'kmeans', outfile.name, 3, 800).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_kmeans.txt", outfile.name)
+
 
 def test_agglomerative_ward():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {}".format(ROOT + 'test_matrix.scool',
+        --outFileName {} -t {} -nh {} --noPCA".format(ROOT + 'test_matrix.scool',
                                               3, 'agglomerative_ward', outfile.name, 3, 800).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_kmeans.txt", outfile.name)
+
 
 def test_agglomerative_complete():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {}".format(ROOT + 'test_matrix.scool',
-                                              3, 'kmeans', outfile.name, 3, 800).split()
+        --outFileName {} -t {} -nh {} --noPCA ".format(ROOT + 'test_matrix.scool',
+                                              3, 'agglomerative_complete', outfile.name, 3, 800).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_kmeans.txt", outfile.name)
 
@@ -96,28 +101,30 @@ def test_agglomerative_average():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {}".format(ROOT + 'test_matrix.scool',
-                                              3, 'agglomerative_complete', outfile.name, 3, 800).split()
+        --outFileName {} -t {} -nh {} --noPCA ".format(ROOT + 'test_matrix.scool',
+                                              3, 'agglomerative_average', outfile.name, 3, 800).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_kmeans.txt", outfile.name)
+
 
 def test_agglomerative_single():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {} -pca".format(ROOT + 'test_matrix.scool',
+        --outFileName {} -t {} -nh {} --noPCA ".format(ROOT + 'test_matrix.scool',
                                               3, 'agglomerative_single', outfile.name, 3, 800).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_kmeans.txt", outfile.name)
+
 
 def test_birch():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {} -pca -dim_pca 1".format(ROOT + 'test_matrix.scool',
-                                              3, 'birch', outfile.name, 3, 800).split()
+        --outFileName {} -t {} -nh {} -dim_pca 50".format(ROOT + 'test_matrix.scool',
+                                                               3, 'birch', outfile.name, 3, 800).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_kmeans.txt", outfile.name)
 
@@ -149,8 +156,8 @@ def test_kmeans_euclidean():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {} --euclideanModeMinHash -s 0.5".format(ROOT + 'test_matrix.scool',
-                                                                 3, 'kmeans', outfile.name, 2, 800).split()
+        --outFileName {} -t {} -nh {} --euclideanModeMinHash ".format(ROOT + 'test_matrix.scool',
+                                                                     3, 'kmeans', outfile.name, 2, 800).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_kmeans_exact.txt", outfile.name)
 
@@ -161,8 +168,8 @@ def test_spectral_euclidean():
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
         --outFileName {} -t {} -nh {} --euclideanModeMinHash -csp {} --colorMap {} --dpi {} --fontsize {} ".format(ROOT + 'test_matrix.scool',
-                                            3, 'spectral', outfile.name, 2, 800, outfile_plot.name,
-                                        'tab10', 100, 5).split()
+                                                                                                                   3, 'spectral', outfile.name, 2, 800, outfile_plot.name,
+                                                                                                                   'tab10', 100, 5).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_spectral_euclidean.txt", outfile.name)
 

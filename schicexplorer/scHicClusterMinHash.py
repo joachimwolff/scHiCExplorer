@@ -14,7 +14,6 @@ log = logging.getLogger(__name__)
 import cooler
 from sklearn.cluster import SpectralClustering, KMeans, AgglomerativeClustering, Birch
 
-
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -22,13 +21,10 @@ from matplotlib.cm import get_cmap
 from sparse_neighbors_search import MinHash
 from sparse_neighbors_search import MinHashClustering
 
-
 from hicmatrix import HiCMatrix as hm
 
 from schicexplorer._version import __version__
 from schicexplorer.utilities import cell_name_list, create_csr_matrix_all_cells
-
-import time
 
 
 def parse_arguments(args=None):
@@ -97,12 +93,12 @@ def parse_arguments(args=None):
                            required=False,
                            default=0.25,
                            type=float)
-    parserOpt.add_argument('--additionalPCA', '-pca',
-                           help='Computes PCA on top of a k-nn. Can improve the cluster result.',
-                           action='store_true')
+    parserOpt.add_argument('--noPCA', 
+                           help='Do not computes PCA on top of a k-nn. Can improve the cluster result.',
+                           action='store_false')
     parserOpt.add_argument('--dimensionsPCA', '-dim_pca',
                            help='The number of dimensions from the PCA matrix that should be considered for clustering. Can improve the cluster result.',
-                           default=20,
+                           default=100,
                            type=int)
     parserOpt.add_argument('--colorMap',
                            help='Color map to use for the heatmap. Available '
@@ -147,53 +143,35 @@ def main(args=None):
     minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
                              shingle_size=4, fast=args.euclideanModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False)
     if args.clusterMethod == 'spectral':
-        spectral_object = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads, random_state=0)
-
-        minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=spectral_object)
-
-        minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
-        mask = np.isnan(minHashClustering._precomputed_graph.data)
-        minHashClustering._precomputed_graph.data[mask] = 0 
-        mask = np.isinf(minHashClustering._precomputed_graph.data)
-        minHashClustering._precomputed_graph.data[mask] = 0 
-        labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
+        cluster_object = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads, random_state=0)
     elif args.clusterMethod == 'kmeans':
-        kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
-        minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=kmeans_object)
-
-        minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
-        mask = np.isnan(minHashClustering._precomputed_graph.data)
-        minHashClustering._precomputed_graph.data[mask] = 0 
-        mask = np.isinf(minHashClustering._precomputed_graph.data)
-        minHashClustering._precomputed_graph.data[mask] = 0 
-        labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
-
+        cluster_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
     elif args.clusterMethod.startswith('agglomerative'):
         for linkage in ['ward', 'complete', 'average', 'single']:
             if linkage in args.clusterMethod:
-                agglomerative_shift_object = AgglomerativeClustering(n_clusters=args.numberOfClusters, linkage=linkage)
+                cluster_object = AgglomerativeClustering(n_clusters=args.numberOfClusters, linkage=linkage)
                 break
-        minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=agglomerative_shift_object)
-        minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
-        mask = np.isnan(minHashClustering._precomputed_graph.data)
-        minHashClustering._precomputed_graph.data[mask] = 0 
-        mask = np.isinf(minHashClustering._precomputed_graph.data)
-        minHashClustering._precomputed_graph.data[mask] = 0  
-        labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
-       
     elif args.clusterMethod == 'birch':
-        birch_object = Birch(n_clusters=args.numberOfClusters)
-        minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=birch_object)
+        cluster_object = Birch(n_clusters=args.numberOfClusters)
+    else:
+        log.error('No valid cluster method given: {}'.format(args.clusterMethod))
 
-        minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
+    minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=cluster_object)
+    minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.noPCA, pPcaDimensions=args.dimensionsPCA)
+    # log.debug('minHashClustering._precomputed_graph.data: {}'.format(minHashClustering._precomputed_graph.data))
+
+    if not args.noPCA:
         mask = np.isnan(minHashClustering._precomputed_graph.data)
-        minHashClustering._precomputed_graph.data[mask] = 0 
+        minHashClustering._precomputed_graph.data[mask] = 0
+        log.debug('minHashClustering._precomputed_graph.data: {}'.format(minHashClustering._precomputed_graph.data))
+
         mask = np.isinf(minHashClustering._precomputed_graph.data)
-        minHashClustering._precomputed_graph.data[mask] = 0 
-        labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.additionalPCA, pPcaDimensions=args.dimensionsPCA)
-        
+        minHashClustering._precomputed_graph.data[mask] = 0
+
+    labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.noPCA, pPcaDimensions=args.dimensionsPCA)
+
     if args.createScatterPlot:
-        if not args.additionalPCA:
+        if args.noPCA:
             pca = PCA(n_components=min(minHashClustering._precomputed_graph.shape) - 1)
             neighborhood_matrix_knn = pca.fit_transform(minHashClustering._precomputed_graph.todense())
         else:

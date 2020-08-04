@@ -57,7 +57,6 @@ def load_cool_files(pMatricesList, pCutIntervals, pQueue):
                                                      nan_bins,
                                                      correction_factors,
                                                      distance_counts)
-        cut_intervals = None
 
         matrixFileHandlerList.append(matrixFileHandlerOutput)
 

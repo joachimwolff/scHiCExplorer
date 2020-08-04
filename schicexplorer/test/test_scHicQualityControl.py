@@ -48,13 +48,13 @@ def test_plot():
     args = "--matrix {} --outputScool {} -t {} --dpi {} --outFileNameDensity {} \
             --outFileNameReadCoverage {} --outFileNameQCReport {} \
             --minimumReadCoverage {} --minimumDensity {} \
-            --maximumRegionToConsider {}".format(ROOT + 'test_matrix.scool',
-                                                        outfile_matrix.name, 1, 300,
-                                                        outfile_density.name,
-                                                        outfile_coverage.name,
-                                                        outfile_qc_report.name,
-                                                        100000, 0.001, 30000000
-                                                 ).split()
+            --maximumRegionToConsider {} --runChromosomeCheck".format(ROOT + 'test_matrix.scool',
+                                                                      outfile_matrix.name, 1, 300,
+                                                                      outfile_density.name,
+                                                                      outfile_coverage.name,
+                                                                      outfile_qc_report.name,
+                                                                      100000, 0.001, 30000000
+                                                                      ).split()
     scHicQualityControl.main(args)
 
     test_image_density = ROOT + 'scHicQualityControl/density.png'
@@ -68,8 +68,8 @@ def test_plot():
     assert are_files_equal(ROOT + "scHicQualityControl/qc_report.txt", outfile_qc_report.name)
 
     test_data_matrix = ROOT + 'scHicQualityControl/qc_matrix.scool'
-    matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
-    matrices_list_created = cooler.fileops.list_coolers(outfile_matrix.name)
+    matrices_list_test_data = cooler.fileops.list_scool_cells(test_data_matrix)
+    matrices_list_created = cooler.fileops.list_scool_cells(outfile_matrix.name)
 
     matrices_list_test_data = sorted(matrices_list_test_data)
     matrices_list_created = sorted(matrices_list_created)
@@ -79,11 +79,6 @@ def test_plot():
         created = hm.hiCMatrix(outfile_matrix.name + '::' + created_matrix)
         nt.assert_almost_equal(test.matrix.data, created.matrix.data, decimal=5)
         nt.assert_equal(test.cut_intervals, created.cut_intervals)
-
-    # os.unlink(outfile_matrix.name)
-    # os.unlink(outfile_density.name)
-    # os.unlink(outfile_coverage.name)
-    # os.unlink(outfile_qc_report.name)
 
 
 def test_plot_chromosomes():
@@ -118,8 +113,8 @@ def test_plot_chromosomes():
     assert are_files_equal(ROOT + "scHicQualityControl/qc_report_chr1_chr2.txt", outfile_qc_report.name)
 
     test_data_matrix = ROOT + 'scHicQualityControl/qc_matrix_chr1_chr2.scool'
-    matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
-    matrices_list_created = cooler.fileops.list_coolers(outfile_matrix.name)
+    matrices_list_test_data = cooler.fileops.list_scool_cells(test_data_matrix)
+    matrices_list_created = cooler.fileops.list_scool_cells(outfile_matrix.name)
 
     matrices_list_test_data = sorted(matrices_list_test_data)
     matrices_list_created = sorted(matrices_list_created)
@@ -129,11 +124,6 @@ def test_plot_chromosomes():
         created = hm.hiCMatrix(outfile_matrix.name + '::' + created_matrix)
         nt.assert_almost_equal(test.matrix.data, created.matrix.data, decimal=5)
         nt.assert_equal(test.cut_intervals, created.cut_intervals)
-
-    # os.unlink(outfile_matrix.name)
-    # os.unlink(outfile_density.name)
-    # os.unlink(outfile_coverage.name)
-    # os.unlink(outfile_qc_report.name)
 
 
 def test_version():

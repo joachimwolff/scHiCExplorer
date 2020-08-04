@@ -1,6 +1,5 @@
 import gzip
 import cooler
-import re
 import os
 import time
 from multiprocessing import Process, Queue
@@ -33,7 +32,6 @@ def cell_name_list(pScoolUri):
 
     if cooler.fileops.is_scool_file(pScoolUri):
         matrices_list = cooler.fileops.list_scool_cells(pScoolUri)
-        r = re.compile('/cell/*')
         return matrices_list
     else:
         try:
@@ -42,7 +40,7 @@ def cell_name_list(pScoolUri):
             # old and non-standard scool format stored all cells in root
             # no '/' in matrices_list and no '/cell/*'
             log.warning('Please update the scool file to the new file format standard!')
-            if not '/' in matrices_list:
+            if '/' not in matrices_list:
                 return matrices_list
             # new standard scool format, all cells are stored under '/cell/'
 
@@ -55,10 +53,6 @@ def cell_name_list(pScoolUri):
 
 def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices, pQueue):
     neighborhood_matrix = None
-    time_load = 0.0
-    time_all = 0.0
-    time_csr_create = 0.0
-    time_add = 0.0
     features = []
     data = []
     features_length = []
@@ -66,13 +60,9 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
     index_datatype = np.int64
     valid_matrix_list = []
     for i, matrix in enumerate(pMatricesList):
-        time_start_load = time.time()
-        time_start_all = time.time()
 
         cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
         shape = cooler_obj.shape
-        chromosome_indices = None
-        mask = None
         chromosome_dataframes_list = []
 
         if pChromosomes is None:
@@ -114,7 +104,6 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
             data.extend(_matrix[2])
             features_length.append(len(_matrix[2]))
 
-    time_start_tocsr = time.time()
     instances = []
     log.debug('')
     for i, instance_length in enumerate(features_length):

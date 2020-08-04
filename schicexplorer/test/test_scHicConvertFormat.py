@@ -8,8 +8,30 @@ import cooler
 import numpy.testing as nt
 from hicmatrix import HiCMatrix as hm
 
-from schicexplorer import scHicConsensusMatrices
+from schicexplorer import scHicConvertFormat
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
+
+
+def are_files_equal(file1, file2, delta=2, skip=0):
+    equal = True
+    if delta:
+        mismatches = 0
+    with open(file1) as textfile1, open(file2) as textfile2:
+        for i, (x, y) in enumerate(zip(textfile1, textfile2)):
+            if i < skip:
+                continue
+            if x[-10:] == y[-10:]:
+                continue
+            else:
+                if delta:
+                    mismatches += 1
+                    if mismatches > delta:
+                        equal = False
+                        break
+                else:
+                    equal = False
+                    break
+    return equal
 
 
 def test_consensus_matrices():
@@ -17,32 +39,22 @@ def test_consensus_matrices():
     outfile_chromosome_sizes = NamedTemporaryFile(prefix='.txt', delete=False)
     output_folder = mkdtemp(prefix="output_")
 
-    outfile.close()
-    args = "--matrix {} --outFileName {} -t {} -c {}".format(ROOT + 'test_matrix.scool',
-                                                             outfile.name, 4, ROOT + 'scHicConsensusMatrices/cluster_kmeans.txt').split()
-    scHicConsensusMatrices.main(args)
+    outfile_cell_names.close()
+    outfile_chromosome_sizes.close()
 
-    test_data_matrix = ROOT + 'scHicConsensusMatrices/consensus_matrix.scool'
-    matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
-    matrices_list_created = cooler.fileops.list_coolers(outfile.name)
+    args = "--matrix {} -t {} -of {} -oc {} -os {}".format(ROOT + 'test_matrix.scool', 4,
+                                                           output_folder, outfile_cell_names.name, outfile_chromosome_sizes.name).split()
+    scHicConvertFormat.main(args)
 
-    matrices_list_test_data = sorted(matrices_list_test_data)
-    matrices_list_created = sorted(matrices_list_created)
-
-    assert len(matrices_list_test_data) == len(matrices_list_created)
-    for test_matrix, created_matrix in zip(matrices_list_test_data, matrices_list_created):
-        test = hm.hiCMatrix(test_data_matrix + '::' + test_matrix)
-        created = hm.hiCMatrix(outfile.name + '::' + created_matrix)
-        nt.assert_almost_equal(test.matrix.data, created.matrix.data, decimal=5)
-        nt.assert_equal(test.cut_intervals, created.cut_intervals)
-
-    os.unlink(outfile.name)
+    assert set(os.listdir(ROOT + "scHicConvertFormat/scHiCluster/cells/")) == set(os.listdir(output_folder + '/cells/'))
+    assert are_files_equal(ROOT + 'scHicConvertFormat/scHiCluster/cellNameFile.txt', outfile_cell_names.name, delta=2, skip=0)
+    assert are_files_equal(ROOT + 'scHicConvertFormat/scHiCluster/chromosomeSize.txt', outfile_chromosome_sizes.name, delta=2, skip=0)
 
 
 def test_version():
     args = "--version".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        scHicConsensusMatrices.main(args)
+        scHicConvertFormat.main(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0
 
@@ -50,6 +62,6 @@ def test_version():
 def test_help():
     args = "--help".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
-        scHicConsensusMatrices.main(args)
+        scHicConvertFormat.main(args)
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 0

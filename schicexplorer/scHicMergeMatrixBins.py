@@ -64,21 +64,24 @@ def parse_arguments(args=None):
 def compute_merge(pMatrixName, pMatrixList, pRunningWindow, pNumBins, pQueue):
 
     out_queue_list = []
-    for matrix in pMatrixList:
-        hic = hm.hiCMatrix(pMatrixName + '::' + matrix)
+    try:
+        for matrix in pMatrixList:
+            hic = hm.hiCMatrix(pMatrixName + '::' + matrix)
 
-        if pRunningWindow:
-            merged_matrix = running_window_merge(hic, pNumBins)
-        else:
-            merged_matrix = merge_bins(hic, pNumBins)
+            if pRunningWindow:
+                merged_matrix = running_window_merge(hic, pNumBins)
+            else:
+                merged_matrix = merge_bins(hic, pNumBins)
 
-        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix, pAppend=append, pEnforceInteger=False, pFileWasH5=False)
+            matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix, pEnforceInteger=False, pFileWasH5=False)
 
-        matrixFileHandlerOutput.set_matrix_variables(merged_matrix.matrix, merged_matrix.cut_intervals, merged_matrix.nan_bins,
-                                                     merged_matrix.correction_factors, merged_matrix.distance_counts)
-        out_queue_list.append(matrixFileHandlerOutput)
+            matrixFileHandlerOutput.set_matrix_variables(merged_matrix.matrix, merged_matrix.cut_intervals, merged_matrix.nan_bins,
+                                                         merged_matrix.correction_factors, merged_matrix.distance_counts)
+            out_queue_list.append(matrixFileHandlerOutput)
 
-    pQueue.put(out_queue_list)
+        pQueue.put(out_queue_list)
+    except Exception as exp:
+        pQueue.put(["Fail: {}".format(str(exp))])
     return
 
 
@@ -117,16 +120,19 @@ def main(args=None):
         )
 
         process[i].start()
-
+    fail_flag = False
+    fail_message = ''
     while not all_data_collected:
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
-                log.debug('i {}'.format(i))
-                log.debug('len(queue) {}'.format(len(queue)))
-                log.debug('len(merged_matrices) {}'.format(len(merged_matrices)))
+                # log.debug('i {}'.format(i))
+                # log.debug('len(queue) {}'.format(len(queue)))
+                # log.debug('len(merged_matrices) {}'.format(len(merged_matrices)))
 
                 merged_matrices[i] = queue[i].get()
-
+                if isinstance(merged_matrices[i][0], str) and merged_matrices[i][0].startswith('Fail: '):
+                    fail_flag = True
+                    fail_message = merged_matrices[i][0]
                 queue[i] = None
                 process[i].join()
                 process[i].terminate()
@@ -138,6 +144,9 @@ def main(args=None):
                 all_data_collected = False
             time.sleep(1)
 
+    if fail_flag:
+        log.error('{}'.format(fail_message))
+        exit(1)
     matrixFileHandlerObjects_list = [item for sublist in merged_matrices for item in sublist]
 
     matrixFileHandler = MatrixFileHandler(pFileType='scool')

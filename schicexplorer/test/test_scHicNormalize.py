@@ -14,12 +14,13 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
 from schicexplorer import scHicNormalize
 from schicexplorer.utilities import cell_name_list
 
+
 def test_normalize():
     outfile = NamedTemporaryFile(suffix='.scool', delete=False)
 
     outfile.close()
     args = "--matrix {} --outFileName {} -t {} --setToZeroThreshold {} --normalize smallest".format(ROOT + 'test_matrix.scool',
-                                                                               outfile.name, 1, 0).split()
+                                                                                                    outfile.name, 1, 0).split()
     scHicNormalize.main(args)
 
     test_data_matrix = ROOT + 'scHicNormalize/test_matrix_normalized.scool'
