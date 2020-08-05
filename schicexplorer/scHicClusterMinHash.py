@@ -93,7 +93,7 @@ def parse_arguments(args=None):
                            required=False,
                            default=0.25,
                            type=float)
-    parserOpt.add_argument('--noPCA', 
+    parserOpt.add_argument('--noPCA',
                            help='Do not computes PCA on top of a k-nn. Can improve the cluster result.',
                            action='store_false')
     parserOpt.add_argument('--dimensionsPCA', '-dim_pca',
