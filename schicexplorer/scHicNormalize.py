@@ -6,11 +6,13 @@ log = logging.getLogger(__name__)
 
 import cooler
 import numpy as np
+import pandas as pd
 
 from hicmatrix import HiCMatrix
 from hicmatrix.lib import MatrixFileHandler
 
 from schicexplorer._version import __version__
+from schicexplorer.utilities import cell_name_list
 
 
 def parse_arguments(args=None):
@@ -30,7 +32,7 @@ def parse_arguments(args=None):
                                 required=True)
 
     parserRequired.add_argument('--outFileName', '-o',
-                                help='File name of the consensus scool matrix.',
+                                help='File name of the normalized scool matrix.',
                                 required=True)
 
     parserRequired.add_argument('--threads', '-t',
@@ -38,78 +40,99 @@ def parse_arguments(args=None):
                                 required=False,
                                 default=4,
                                 type=int)
+    parserRequired.add_argument('--normalize', '-n',
+                                help='Normalize to a) all matrices to the lowest read count of the given matrices, b) all to a given read coverage value or c) to a multiplicative value',
+                                choices=['smallest', 'read_count', 'multiplicative'],
+                                default='smallest',
+                                required=True)
+
     parserOpt = parser.add_argument_group('Optional arguments')
     parserOpt.add_argument('--setToZeroThreshold', '-z',
                            help='Values smaller as this threshold are set to 0.',
                            required=False,
                            default=1.0,
                            type=float)
+    parserOpt.add_argument('--value', '-v', default=1,
+                           type=float,
+                           help='This value is used to either be interpreted as the desired read_count or the multiplicative value. This depends on the value for --normalize')
+    parserOpt.add_argument('--maximumRegionToConsider',
+                           help='To compute the normalization factor for the normalization mode \'smallest\' and \'read_count\', consider only this genomic distance around the diagonal.',
+                           required=False,
+                           default=30000000,
+                           type=int)
     parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
                            version='%(prog)s {}'.format(__version__))
     return parser
 
 
-def compute_sum(pMatrixName, pMatricesList, pThread, pQueue):
+def compute_sum(pMatrixName, pMatricesList, pMaxDistance, pQueue):
     sum_list = []
     for i, matrix in enumerate(pMatricesList):
 
-        matrixFileHandler = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix)
+        matrixFileHandler = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix, pLoadMatrixOnly=True)
         _matrix, cut_intervals, nan_bins, \
             distance_counts, correction_factors = matrixFileHandler.load()
-        # try:
-        sum_of_matrix = _matrix.sum()
-        # except:
-        # sum_list.append()
+        instances = _matrix[0]
+        features = _matrix[1]
+
+        distances = np.absolute(instances - features)
+        mask = distances <= pMaxDistance
+
+        sum_of_matrix = _matrix[2][mask].sum()
+
         sum_list.append(sum_of_matrix)
+        del _matrix
     pQueue.put(sum_list)
 
 
-def compute_normalize(pMatrixName, pMatricesList, pArgminSum, pSumOfAll, pAppend, pThreshold, pQueue):
+def compute_normalize(pMatrixName, pMatricesList, pNormalizeMax, pSumOfAll, pThreshold, pMultiplicative, pQueue):
 
-    matrixFileHandlerList = []
+    pixelList = []
+
     for i, matrix in enumerate(pMatricesList):
-        if i == 0 and pAppend:
-            append = False
-        else:
-            append = True
-        matrixFileHandler = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix)
+
+        matrixFileHandler = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix, pLoadMatrixOnly=True)
         _matrix, cut_intervals, nan_bins, \
             distance_counts, correction_factors = matrixFileHandler.load()
-        _matrix.data = _matrix.data.astype(np.float32)
-        mask = np.isnan(_matrix.data)
-        _matrix.data[mask] = 0
 
-        mask = np.isinf(_matrix.data)
-        _matrix.data[mask] = 0
-        adjust_factor = pSumOfAll[i] / pArgminSum
+        data = np.array(_matrix[2]).astype(np.float32)
+        instances = np.array(_matrix[0])
+        features = np.array(_matrix[1])
 
-        log.debug('pSumOfAll[i] {}'.format(pSumOfAll[i]))
-        log.debug('pArgminSum {}'.format(pArgminSum))
-        log.debug('adjust_factor {}'.format(adjust_factor))
+        mask = np.isnan(data)
+        data[mask] = 0
+        mask = np.isinf(data)
+        data[mask] = 0
 
-        _matrix.data /= adjust_factor
-        mask = np.isnan(_matrix.data)
+        if pMultiplicative is None:
+            adjust_factor = pSumOfAll[i] / pNormalizeMax
+        else:
+            adjust_factor = pMultiplicative
 
-        mask = np.isnan(_matrix.data)
-        _matrix.data[mask] = 0
+        if pMultiplicative is None:
+            data /= adjust_factor
+        else:
+            data *= adjust_factor
 
-        mask = np.isinf(_matrix.data)
-        _matrix.data[mask] = 0
+        mask = np.isnan(data)
+        data[mask] = 0
 
-        mask = _matrix.data < pThreshold
-        _matrix.data[mask] = 0
-        _matrix.eliminate_zeros()
+        mask = np.isinf(data)
+        data[mask] = 0
 
-        log.debug('new read coverage: {}\n\n'.format(np.sum(_matrix.data)))
-        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
+        mask = data < pThreshold
+        data[mask] = 0
 
-        matrixFileHandlerOutput.set_matrix_variables(_matrix, cut_intervals, nan_bins,
-                                                     None, distance_counts)
+        mask = data == 0
+        instances = instances[~mask]
+        features = features[~mask]
+        data = data[~mask]
 
-        matrixFileHandlerList.append(matrixFileHandlerOutput)
+        pixels = pd.DataFrame({'bin1_id': instances, 'bin2_id': features, 'count': data})
+        pixelList.append(pixels)
 
-    pQueue.put(matrixFileHandlerList)
+    pQueue.put(pixelList)
 
 
 def main(args=None):
@@ -117,20 +140,19 @@ def main(args=None):
     args = parse_arguments().parse_args(args)
 
     matrices_name = args.matrix
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
-    # log.debug('size of matrices_list: {}'.format(len(matrices_list)))
+    matrices_list = cell_name_list(matrices_name)
 
     threads = args.threads
+
+    # get bin size
+    cooler_obj = cooler.Cooler(matrices_name + '::' + matrices_list[0])
+    bin_size = cooler_obj.binsize
 
     sum_list_threads = [None] * args.threads
     process = [None] * args.threads
     queue = [None] * args.threads
 
-    # all_threads_done = False
     thread_done = [False] * args.threads
-    # count_output = 0
-    # count_call_of_read_input = 0
-    # computed_pairs = 0
     matricesPerThread = len(matrices_list) // threads
 
     for i in range(args.threads):
@@ -143,7 +165,7 @@ def main(args=None):
         process[i] = Process(target=compute_sum, kwargs=dict(
             pMatrixName=matrices_name,
             pMatricesList=matrices_name_list,
-            pThread=i,
+            pMaxDistance=args.maximumRegionToConsider // bin_size,
             pQueue=queue[i]
         )
         )
@@ -167,25 +189,25 @@ def main(args=None):
 
     sum_of_all = [item for sublist in sum_list_threads for item in sublist]
     sum_of_all = np.array(sum_of_all)
-    foo = sum_of_all[sum_of_all < 100000]
-    log.debug('len(foo_ {}'.format(len(foo)))
-    # log.debug('size of sum_all: {}'.format(len(sum_of_all)))
     argmin = np.argmin(sum_of_all)
-    argminSum = sum_of_all[argmin]
+    if args.normalize == 'smallest':
+        normalizeMax = sum_of_all[argmin]
+        multiplicative = None
+    elif args.normalize == 'read_count':
+        normalizeMax = args.value
+        multiplicative = None
 
-    log.debug('sum_of_all[:10] {}'.format(sum_of_all[:10]))
-    log.debug('argmin {}'.format(argmin))
-    log.debug('argminSum {}'.format(argminSum))
+    else:
+        normalizeMax = None
+        multiplicative = args.value
 
     matricesPerThread = len(matrices_list) // threads
 
-    matrixFileHandlerListThreads = [None] * args.threads
+    pixelsListThreads = [None] * args.threads
     process = [None] * args.threads
-    # all_data_processed = False
     queue = [None] * args.threads
 
     thread_done = [False] * args.threads
-    # args.threads = 1
     for i in range(args.threads):
         if i < args.threads - 1:
             matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
@@ -198,10 +220,10 @@ def main(args=None):
         process[i] = Process(target=compute_normalize, kwargs=dict(
             pMatrixName=matrices_name,
             pMatricesList=matrices_name_list,
-            pArgminSum=argminSum,
+            pNormalizeMax=normalizeMax,
             pSumOfAll=sum_of_all_list,
-            pAppend=i == 0,
             pThreshold=args.setToZeroThreshold,
+            pMultiplicative=multiplicative,
             pQueue=queue[i]
         )
         )
@@ -210,7 +232,7 @@ def main(args=None):
     while not all_data_collected:
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
-                matrixFileHandlerListThreads[i] = queue[i].get()
+                pixelsListThreads[i] = queue[i].get()
 
                 queue[i] = None
                 process[i].join()
@@ -224,7 +246,14 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
-    matrixFileHandlerList = [item for sublist in matrixFileHandlerListThreads for item in sublist]
+    pixelsList = [item for sublist in pixelsListThreads for item in sublist]
 
-    for i, matrixFileHandler in enumerate(matrixFileHandlerList):
-        matrixFileHandler.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
+    cooler_obj_external = cooler.Cooler(matrices_name + '::' + matrices_list[0])
+    bins = cooler_obj_external.bins()[:]
+
+    matrixFileHandler = MatrixFileHandler(pFileType='scool')
+    matrixFileHandler.matrixFile.coolObjectsList = None
+    matrixFileHandler.matrixFile.bins = bins
+    matrixFileHandler.matrixFile.pixel_list = pixelsList
+    matrixFileHandler.matrixFile.name_list = matrices_list
+    matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)

@@ -9,13 +9,15 @@ log = logging.getLogger(__name__)
 
 import cooler
 import numpy as np
-
+import gc
 from hicmatrix import HiCMatrix as hm
-
+import pandas as pd
 from schicexplorer._version import __version__
 from hicmatrix.lib import MatrixFileHandler
 
 from copy import deepcopy
+
+from schicexplorer.utilities import cell_name_list
 
 
 def parse_arguments(args=None):
@@ -57,65 +59,96 @@ def parse_arguments(args=None):
     return parser
 
 
-def compute_adjust_matrix(pMatrixName, pMatricesList, pArgs, pQueue):
-    log.debug('compute adjust matrix')
-    hicmatrices_adjusted_objects = []
+def compute_adjust_matrix(pMatrixName, pMatricesList, pArgs, pListIds, pInvertedMap, pInvertedLogic, pQueue):
+    pixels_list = []
     keep_matrices = []
-    # pArgs_local = deepcopy(pArgs)
+
     for i, matrix in enumerate(pMatricesList):
+        if i % 1 == 0:
+            log.debug('processed {} out of {}'.format(i, len(pMatricesList)))
+        try:
+            cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
 
-        hic_matrix = hm.hiCMatrix(pMatrixName + '::' + matrix)
+            pixels = cooler_obj.pixels()[:]
+            indices = pixels['bin1_id'].apply(lambda x: x in pListIds)
+            if pInvertedLogic:
+                indices = ~indices
+            pixels = pixels[indices].reset_index(drop=True)
 
-        if pArgs.action == 'keep':
-            try:
-                hic_matrix.keepOnlyTheseChr(pArgs.chromosomes)
-                keep_matrices.append(1)
-                # hicmatrices_adjusted_objects.append(hic_matrix)
-            except Exception as e:
-                keep_matrices.append(0)
-                log.debug('exception: {}'.format(e))
-        else:
-            chromosomes_list = list(hic_matrix.chrBinBoundaries)
-            keep_list = []
-            for chromosome in chromosomes_list:
-                if chromosome in pArgs.chromosomes:
-                    continue
-                else:
-                    keep_list.append(chromosome)
-            try:
-                hic_matrix.keepOnlyTheseChr(keep_list)
-                keep_matrices.append(1)
-            except Exception as e:
-                keep_matrices.append(0)
-                log.debug('exception: {}'.format(e))
-        hicmatrices_adjusted_objects.append(hic_matrix)
+            indices = pixels['bin2_id'].apply(lambda x: x in pListIds)
+            if pInvertedLogic:
+                indices = ~indices
+            pixels = pixels[indices].reset_index(drop=True)
 
-    pQueue.put([hicmatrices_adjusted_objects, keep_matrices])
+            for key, value in pInvertedMap.items():
+
+                pixels['bin1_id'].replace(to_replace=key, value=value, inplace=True)
+                pixels['bin2_id'].replace(to_replace=key, value=value, inplace=True)
+
+            pixels_list.append(pixels)
+            keep_matrices.append(True)
+
+        except Exception as e:
+            keep_matrices.append(False)
+            log.debug('exception: {}'.format(e))
+            log.debug('pixels {}'.format(pixels[:5]))
+            continue
+
+    pQueue.put([pixels_list, keep_matrices])
     return
 
 
 def main(args=None):
-    # args_string
     args = parse_arguments().parse_args(args)
-    hicmatrix_adjusted_objects = []
     matrices_name = args.matrix
     threads = args.threads
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
+    matrices_list = cell_name_list(matrices_name)
     if args.createSubmatrix is not None and args.regions is None and args.chromosomes is None:
         for matrix in matrices_list[:args.createSubmatrix]:
             cooler.fileops.cp(args.matrix + '::' + matrix, args.outFileName + '::' + matrix)
         exit(0)
 
     input_count_matrices = len(matrices_list)
-    # log.debug('args.createSubmatrix {}, args.action {}, args.chromosomes {}'.format(args.createSubmatrix, args.action, args.chromosomes ))
-    # exit()
     if threads > len(matrices_list):
         threads = len(matrices_list)
 
+    # load bin ids only once
+    cooler_obj_external = cooler.Cooler(matrices_name + '::' + matrices_list[0])
+    bins = cooler_obj_external.bins()[:]
+
+    # apply the inverted operation if the number of values is less
+    # the idea is that for
+    # indices = pixels['bin1_id'].apply(lambda x: x in pListIds)
+    # the search time is less if the list pListIds is shorter
+    # therefore the drop must be inverted too
+    apply_inverted = False
+    if args.action == 'keep':
+        list_ids = bins.index[bins['chrom'].apply(lambda x: x in args.chromosomes)].tolist()
+        list_inverted_logic_ids = bins.index[bins['chrom'].apply(lambda x: x not in args.chromosomes)].tolist()
+
+        bins_new = bins[bins['chrom'].apply(lambda x: x in args.chromosomes)].reset_index()
+
+    else:
+        list_ids = bins.index[bins['chrom'].apply(lambda x: x not in args.chromosomes)].tolist()
+        list_inverted_logic_ids = bins.index[bins['chrom'].apply(lambda x: x in args.chromosomes)].tolist()
+        bins_new = bins[bins['chrom'].apply(lambda x: x not in args.chromosomes)].reset_index()
+
+    if len(list_inverted_logic_ids) < len(list_ids):
+        apply_inverted = True
+        list_ids = list_inverted_logic_ids
+
+    dict_values = bins_new['index'].to_dict()
+    inv_map = {}
+    for k, v in dict_values.items():
+        if k == v:
+            continue
+        inv_map[v] = k
+    bins_new.drop(['index'], axis=1, inplace=True)
+
     all_data_collected = False
     thread_done = [False] * threads
-    hicmatrix_adjusted_objects_threads = [None] * threads
-    keep_matrices_list_threads = [None] * threads
+    pixels_thread = [None] * threads
+    keep_thread = [None] * threads
 
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
@@ -132,16 +165,18 @@ def main(args=None):
             pMatrixName=matrices_name,
             pMatricesList=matrices_name_list,
             pArgs=args,
+            pListIds=list_ids,
+            pInvertedMap=inv_map,
+            pInvertedLogic=apply_inverted,
             pQueue=queue[i]
         )
         )
 
         process[i].start()
-    log.debug("foo")
     while not all_data_collected:
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
-                hicmatrix_adjusted_objects_threads[i], keep_matrices_list_threads[i] = queue[i].get()
+                pixels_thread[i], keep_thread[i] = queue[i].get()
 
                 queue[i] = None
                 process[i].join()
@@ -154,26 +189,18 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
-    # TODO: implement this!
-    hicmatrix_adjusted_objects = [item for sublist in hicmatrix_adjusted_objects_threads for item in sublist]
-    keep_matrices_list = [item for sublist in keep_matrices_list_threads for item in sublist]
+    pixels_list = [item for sublist in pixels_thread for item in sublist]
+    keep_list = [item for sublist in keep_thread for item in sublist]
 
-    log.debug('length out {}'.format(len(hicmatrix_adjusted_objects)))
-    for i, hic_matrix in enumerate(hicmatrix_adjusted_objects):
-        if args.createSubmatrix and i > args.createSubmatrix:
-            break
-        append = True
-        if i == 0:
-            append = False
+    matrices_list = np.array(matrices_list)
+    mask = np.array(keep_list)
+    matrices_list = matrices_list[mask]
 
-        if keep_matrices_list[i] == 0:
-            continue
+    matrixFileHandler = MatrixFileHandler(pFileType='scool')
+    matrixFileHandler.matrixFile.bins = bins_new
+    matrixFileHandler.matrixFile.pixel_list = pixels_list
+    matrixFileHandler.matrixFile.name_list = matrices_list
 
-        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=None)
-
-        matrixFileHandlerOutput.set_matrix_variables(hic_matrix.matrix, hic_matrix.cut_intervals, hic_matrix.nan_bins,
-                                                     hic_matrix.correction_factors, hic_matrix.distance_counts)
-        matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
-
-    broken_count = input_count_matrices - np.sum(np.array(keep_matrices_list))
+    matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)
+    broken_count = input_count_matrices - np.sum(np.array(keep_list))
     print('Out of {} matrices, {} were removed because they were broken.'.format(input_count_matrices, broken_count))

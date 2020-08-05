@@ -8,7 +8,10 @@ Requirements
 -------------
 
 * Python 3.6
-* HiCExplorer 3.4
+* HiCExplorer 3.5
+* cooler 0.8.9
+* HiCMatrix 14
+* sparse-neighbors-search 0.6
 
 
 Command line installation using ``conda``
@@ -22,7 +25,7 @@ follow the directions for its installation. All of the requirements for scHiCExp
 
 .. code:: bash
 
-    $ conda install schicexplorer -c bioconda -c conda-forge
+    $ conda install schicexplorer python=3.6 -c bioconda -c conda-forge
 
 We strongly recommended to use conda to install scHiCExplorer. 
 

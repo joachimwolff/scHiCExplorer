@@ -11,6 +11,7 @@ from hicmatrix import HiCMatrix as hm
 from hicexplorer.hicMergeMatrixBins import running_window_merge, merge_bins
 from schicexplorer._version import __version__
 from hicmatrix.lib import MatrixFileHandler
+from schicexplorer.utilities import cell_name_list
 
 
 def parse_arguments(args=None):
@@ -26,13 +27,13 @@ def parse_arguments(args=None):
     parserRequired = parser.add_argument_group('Required arguments')
 
     parserRequired.add_argument('--matrix', '-m',
-                                help='Matrix to reduce in h5 format.',
-                                metavar='matrix.h5',
+                                help='Matrix to reduce in scool format.',
+                                metavar='matrix.scool',
                                 required=True)
 
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting matrix. '
-                                'The output is also a .h5 file. But don\'t add '
+                                'The output is also a .scool file. But don\'t add '
                                 'the suffix.',
                                 required=True)
 
@@ -63,17 +64,24 @@ def parse_arguments(args=None):
 def compute_merge(pMatrixName, pMatrixList, pRunningWindow, pNumBins, pQueue):
 
     out_queue_list = []
-    for matrix in pMatrixList:
-        hic = hm.hiCMatrix(pMatrixName + '::' + matrix)
+    try:
+        for matrix in pMatrixList:
+            hic = hm.hiCMatrix(pMatrixName + '::' + matrix)
 
-        if pRunningWindow:
-            merged_matrix = running_window_merge(hic, pNumBins)
-        else:
-            merged_matrix = merge_bins(hic, pNumBins)
+            if pRunningWindow:
+                merged_matrix = running_window_merge(hic, pNumBins)
+            else:
+                merged_matrix = merge_bins(hic, pNumBins)
 
-        out_queue_list.append(merged_matrix)
+            matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix, pEnforceInteger=False, pFileWasH5=False)
 
-    pQueue.put(out_queue_list)
+            matrixFileHandlerOutput.set_matrix_variables(merged_matrix.matrix, merged_matrix.cut_intervals, merged_matrix.nan_bins,
+                                                         merged_matrix.correction_factors, merged_matrix.distance_counts)
+            out_queue_list.append(matrixFileHandlerOutput)
+
+        pQueue.put(out_queue_list)
+    except Exception as exp:
+        pQueue.put(["Fail: {}".format(str(exp))])
     return
 
 
@@ -83,7 +91,7 @@ def main(args=None):
 
     threads = args.threads
     merged_matrices = [None] * threads
-    matrices_list = cooler.fileops.list_coolers(args.matrix)
+    matrices_list = cell_name_list(args.matrix)
     if len(matrices_list) < threads:
         threads = len(matrices_list)
     all_data_collected = False
@@ -112,16 +120,19 @@ def main(args=None):
         )
 
         process[i].start()
-
+    fail_flag = False
+    fail_message = ''
     while not all_data_collected:
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
-                log.debug('i {}'.format(i))
-                log.debug('len(queue) {}'.format(len(queue)))
-                log.debug('len(merged_matrices) {}'.format(len(merged_matrices)))
+                # log.debug('i {}'.format(i))
+                # log.debug('len(queue) {}'.format(len(queue)))
+                # log.debug('len(merged_matrices) {}'.format(len(merged_matrices)))
 
                 merged_matrices[i] = queue[i].get()
-
+                if isinstance(merged_matrices[i][0], str) and merged_matrices[i][0].startswith('Fail: '):
+                    fail_flag = True
+                    fail_message = merged_matrices[i][0]
                 queue[i] = None
                 process[i].join()
                 process[i].terminate()
@@ -133,15 +144,11 @@ def main(args=None):
                 all_data_collected = False
             time.sleep(1)
 
-    merged_matrices = [item for sublist in merged_matrices for item in sublist]
+    if fail_flag:
+        log.error('{}'.format(fail_message))
+        exit(1)
+    matrixFileHandlerObjects_list = [item for sublist in merged_matrices for item in sublist]
 
-    for i, hic_matrix in enumerate(merged_matrices):
-        append = False
-        if i > 0:
-            append = True
-        matrixFileHandlerOutput = MatrixFileHandler(
-            pFileType='cool', pAppend=append, pFileWasH5=False)
-
-        matrixFileHandlerOutput.set_matrix_variables(hic_matrix.matrix, hic_matrix.cut_intervals, hic_matrix.nan_bins,
-                                                     hic_matrix.correction_factors, hic_matrix.distance_counts)
-        matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
+    matrixFileHandler = MatrixFileHandler(pFileType='scool')
+    matrixFileHandler.matrixFile.coolObjectsList = matrixFileHandlerObjects_list
+    matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)

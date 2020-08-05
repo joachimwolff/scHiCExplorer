@@ -8,15 +8,20 @@ import logging
 log = logging.getLogger(__name__)
 from scipy import linalg
 import cooler
-
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.cm import get_cmap
 from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.neighbors import NearestNeighbors
+from sklearn.decomposition import PCA
 from hicmatrix import HiCMatrix as hm
 
 import numpy as np
 from scipy.sparse import csr_matrix
 
 from schicexplorer._version import __version__
+from schicexplorer.utilities import cell_name_list, create_csr_matrix_all_cells
 
 
 def parse_arguments(args=None):
@@ -51,16 +56,43 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--chromosomes',
                            help='List of to be plotted chromosomes',
                            nargs='+')
-
+    parserOpt.add_argument('--intraChromosomalContactsOnly', '-ic',
+                           help='This option loads only the intra-chromosomal contacts. Can improve the cluster result if data is very noisy.',
+                           action='store_true')
+    parserOpt.add_argument('--additionalPCA', '-pca',
+                           help='Computes PCA on top of a k-nn. Can improve the cluster result.',
+                           action='store_true')
+    parserOpt.add_argument('--dimensionsPCA', '-dim_pca',
+                           help='The number of dimensions from the PCA matrix that should be considered for clustering. Can improve the cluster result.',
+                           default=20,
+                           type=int)
     parserOpt.add_argument('--dimensionReductionMethod', '-drm',
                            help='Dimension reduction methods, knn with euclidean distance, pca',
                            choices=['none', 'knn', 'pca'],
                            default='none')
+    parserOpt.add_argument('--createScatterPlot', '-csp',
+                           help='Create a scatter plot for the clustering, the x and y are the first and second principal component of the computed k-nn graph.',
+                           required=False,
+                           default=None)
     parserOpt.add_argument('--numberOfNearestNeighbors', '-k',
                            help='Number of to be used computed nearest neighbors for the knn graph. Default is either the default value or the number of the provided cells, whatever is smaller.',
                            required=False,
                            default=100,
                            type=int)
+    parserOpt.add_argument('--colorMap',
+                           help='Color map to use for the heatmap. Available '
+                           'values can be seen here: '
+                           'http://matplotlib.org/examples/color/colormaps_reference.html',
+                           default='tab20')
+    parserOpt.add_argument('--dpi', '-d',
+                           help='The dpi of the scatter plot.',
+                           required=False,
+                           default=300,
+                           type=int)
+    parserOpt.add_argument('--fontsize',
+                           help='Fontsize in the plot for x and y axis.',
+                           type=float,
+                           default=10)
     parserOpt.add_argument('--outFileName', '-o',
                            help='File name to save the resulting clusters',
                            required=True,
@@ -76,87 +108,15 @@ def parse_arguments(args=None):
     return parser
 
 
-def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pQueue):
-    neighborhood_matrix = None
-    for i, matrix in enumerate(pMatricesList):
-        if pChromosomes is not None and len(pChromosomes) == 1:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes)
-        else:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix)
-            if pChromosomes:
-                hic_ma.keepOnlyTheseChr(pChromosomes)
-
-        _matrix = hic_ma.matrix
-
-        if neighborhood_matrix is None:
-            neighborhood_matrix = csr_matrix((pXDimension, _matrix.shape[0] * _matrix.shape[1]), dtype=np.float)
-
-        instances, features = _matrix.nonzero()
-
-        instances *= _matrix.shape[1]
-        instances += features
-        features = None
-        neighborhood_matrix[pIndex + i, instances] = _matrix.data
-
-    pQueue.put(neighborhood_matrix)
-
-
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-    matrices_name = args.matrix
-    threads = args.threads
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
-    neighborhood_matrix = None
+    outputFolder = os.path.dirname(os.path.abspath(args.outFileName)) + '/'
+    log.debug('outputFolder {}'.format(outputFolder))
 
-    all_data_collected = False
-    thread_done = [False] * threads
-    length_index = [None] * threads
-    length_index[0] = 0
-    matricesPerThread = len(matrices_list) // threads
-    queue = [None] * threads
-    process = [None] * threads
-    for i in range(threads):
-
-        if i < threads - 1:
-            matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
-            length_index[i + 1] = length_index[i] + len(matrices_name_list)
-        else:
-            matrices_name_list = matrices_list[i * matricesPerThread:]
-
-        queue[i] = Queue()
-        process[i] = Process(target=open_and_store_matrix, kwargs=dict(
-            pMatrixName=matrices_name,
-            pMatricesList=matrices_name_list,
-            pIndex=length_index[i],
-            pXDimension=len(matrices_list),
-            pChromosomes=args.chromosomes,
-            pQueue=queue[i]
-        )
-        )
-
-        process[i].start()
-
-    while not all_data_collected:
-        for i in range(threads):
-            if queue[i] is not None and not queue[i].empty():
-                csr_matrix_worker = queue[i].get()
-                if neighborhood_matrix is None:
-                    neighborhood_matrix = csr_matrix_worker
-                else:
-                    neighborhood_matrix += csr_matrix_worker
-
-                queue[i] = None
-                process[i].join()
-                process[i].terminate()
-                process[i] = None
-                thread_done[i] = True
-        all_data_collected = True
-        for thread in thread_done:
-            if not thread:
-                all_data_collected = False
-        time.sleep(1)
+    raw_file_name = os.path.splitext(os.path.basename(args.outFileName))[0]
+    neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes, outputFolder, raw_file_name, args.intraChromosomalContactsOnly)
 
     reduce_to_dimension = neighborhood_matrix.shape[0] - 1
     if args.dimensionReductionMethod == 'knn':
@@ -166,6 +126,12 @@ def main(args=None):
         nbrs = NearestNeighbors(n_neighbors=args.numberOfNearestNeighbors, algorithm='ball_tree', n_jobs=args.threads).fit(neighborhood_matrix)
         neighborhood_matrix = nbrs.kneighbors_graph(mode='distance')
 
+        if args.additionalPCA:
+            pca = PCA(n_components=min(neighborhood_matrix.shape) - 1)
+            neighborhood_matrix = pca.fit_transform(neighborhood_matrix.todense())
+            if args.dimensionsPCA:
+                args.dimensionsPCA = min(args.dimensionsPCA, neighborhood_matrix.shape[0])
+                neighborhood_matrix = neighborhood_matrix[:, :args.dimensionsPCA]
     elif args.dimensionReductionMethod == 'pca':
         corrmatrix = np.cov(neighborhood_matrix.todense())
         evals, eigs = linalg.eig(corrmatrix)
@@ -179,6 +145,57 @@ def main(args=None):
     elif args.clusterMethod == 'kmeans':
         kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
         labels_clustering = kmeans_object.fit_predict(neighborhood_matrix)
+
+    if args.createScatterPlot:
+        if args.dimensionReductionMethod == 'none':
+            log.warning('Raw matrix clustering scatter plot needs to compute a PCA and can request large amount (> 100 GB) of memory.')
+
+        log.debug('args.additionalPCA  {}'.format(args.additionalPCA))
+        log.debug('args.dimensionReductionMethod  {}'.format(args.dimensionReductionMethod))
+
+        if args.dimensionReductionMethod == 'none' or (args.dimensionReductionMethod == 'knn' and not args.additionalPCA):
+            log.debug('compute pca')
+
+            pca = PCA(n_components=min(neighborhood_matrix.shape) - 1)
+            neighborhood_matrix_knn = pca.fit_transform(neighborhood_matrix.todense())
+            log.debug('compute pca')
+        else:
+            log.debug('already computed pca')
+
+            neighborhood_matrix_knn = neighborhood_matrix
+        plt.figure(figsize=(15, 8))
+
+        list(set(labels_clustering))
+        plt.figure(figsize=(15, 8), dpi=80)
+        cmap = get_cmap(args.colorMap)
+        colors = cmap.colors
+        for i, color in enumerate(colors[:args.numberOfClusters]):
+            mask = labels_clustering == i
+            plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(i), s=50, alpha=0.7)
+        plt.legend(fontsize=args.fontsize)
+        plt.xticks([])
+        plt.yticks([])
+        plt.xlabel('PC1', fontsize=args.fontsize)
+        plt.ylabel('PC2', fontsize=args.fontsize)
+        log.debug('args.createScatterPlot {}'.format(args.createScatterPlot))
+        if '.' not in args.createScatterPlot:
+            args.createScatterPlot += '.png'
+        scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc1_pc2.' + args.createScatterPlot.split('.')[-1]
+        log.debug('scatter_plot_name {}'.format(scatter_plot_name))
+        plt.savefig(scatter_plot_name, dpi=args.dpi)
+        plt.close()
+
+        for i, color in enumerate(colors[:args.numberOfClusters]):
+            mask = labels_clustering == i
+            plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
+        plt.legend(fontsize=args.fontsize)
+        plt.xticks([])
+        plt.yticks([])
+        plt.xlabel('PC2', fontsize=args.fontsize)
+        plt.ylabel('PC3', fontsize=args.fontsize)
+        scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc2_pc3.' + args.createScatterPlot.split('.')[-1]
+        plt.savefig(scatter_plot_name, dpi=args.dpi)
+        plt.close()
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
     np.savetxt(args.outFileName, matrices_cluster, fmt="%s")

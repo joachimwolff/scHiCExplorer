@@ -16,6 +16,7 @@ from hicmatrix import HiCMatrix as hm
 import numpy as np
 
 from schicexplorer._version import __version__
+from schicexplorer.utilities import cell_name_list
 
 
 def parse_arguments(args=None):
@@ -28,15 +29,13 @@ def parse_arguments(args=None):
     )
 
     parserRequired = parser.add_argument_group('Required arguments')
-
-    # define the arguments
     parserRequired.add_argument('--matrix', '-m',
                                 help='The single cell Hi-C interaction matrices to cluster. Needs to be in scool format',
                                 metavar='scool scHi-C matrix',
                                 required=True)
 
     parserRequired.add_argument('--outFileName', '-o',
-                                help='File name to save the exported matrix.',
+                                help='File name to save the exported cooler matrix. Please add .cool appendix.',
                                 required=True)
 
     parserOpt = parser.add_argument_group('Optional arguments')
@@ -71,7 +70,7 @@ def main(args=None):
 
     matrices_name = args.matrix
     threads = args.threads
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
+    matrices_list = cell_name_list(matrices_name)
     bulk_matrix = None
 
     all_data_collected = False
@@ -119,6 +118,4 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
-    #  hic.setMatrixValues(summed_matrix)
-    # .maskBins(sorted(nan_bins))
     bulk_matrix.save(args.outFileName)

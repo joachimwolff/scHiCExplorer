@@ -9,6 +9,7 @@ import numpy as np
 
 from hicmatrix.lib import MatrixFileHandler
 from schicexplorer._version import __version__
+from schicexplorer.utilities import cell_name_list
 
 
 def parse_arguments(args=None):
@@ -26,7 +27,7 @@ def parse_arguments(args=None):
                                 metavar='scool scHi-C matrix',
                                 required=True)
     parserOpt = parser.add_argument_group('Optional arguments')
-
+    parserOpt.add_argument('--writeOutNames', '-w', help='Write out the names of the individual cells to the here specified file.', type=str)
     parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
                            version='%(prog)s {}'.format(__version__))
@@ -37,7 +38,7 @@ def main(args=None):
 
     args = parse_arguments().parse_args(args)
 
-    matrices_list = cooler.fileops.list_coolers(args.matrix)
+    matrices_list = cell_name_list(args.matrix)
 
     print('Filename: {}'.format(args.matrix))
     print('Contains {} single-cell matrices'.format(len(matrices_list)))
@@ -47,3 +48,9 @@ def main(args=None):
     if cooler_file.info is not None:
         for key, value in cooler_file.info.items():
             print(key, value)
+    print('Chromosomes: {}'.format(cooler_file.chromnames))
+
+    if args.writeOutNames is not None:
+        with open(args.writeOutNames, 'w') as file:
+            for cell in matrices_list:
+                file.write("{}\n".format(cell[7:]))

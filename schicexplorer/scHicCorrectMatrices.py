@@ -15,6 +15,7 @@ from hicmatrix import HiCMatrix as hm
 # from hicexplorer._version import __version__
 from hicmatrix.lib import MatrixFileHandler
 from schicexplorer._version import __version__
+from schicexplorer.utilities import cell_name_list
 
 
 def parse_arguments(args=None):
@@ -34,7 +35,6 @@ def parse_arguments(args=None):
     parserRequired.add_argument('--outFileName', '-o',
                                 help='File name to save the resulting matrix, please add the scool prefix.',
                                 required=True)
-    # parserRequired.a
     parserOpt = parser.add_argument_group('Optional arguments')
 
     parserOpt.add_argument('--threads', '-t',
@@ -74,7 +74,7 @@ def main(args=None):
 
     threads = args.threads
     merged_matrices = [None] * threads
-    matrices_list = cooler.fileops.list_coolers(args.matrix)
+    matrices_list = cell_name_list(args.matrix)
     if len(matrices_list) < threads:
         threads = len(matrices_list)
     all_data_collected = False
@@ -117,19 +117,17 @@ def main(args=None):
             if not thread:
                 all_data_collected = False
         time.sleep(1)
-    log.debug('merge it')
 
     merged_matrices = [item for sublist in merged_matrices for item in sublist]
-    log.debug('len(merged_matrices) {}'.format(len(merged_matrices)))
-    log.debug('len(matrices_list) {}'.format(len(matrices_list)))
-
+    matrixFileHandlerObjects_list = []
     for i, hic_matrix in enumerate(merged_matrices):
-        append = False
-        if i > 0:
-            append = True
-        matrixFileHandlerOutput = MatrixFileHandler(
-            pFileType='cool', pAppend=append, pFileWasH5=False)
+        matrixFileHandlerOutput = MatrixFileHandler(pMatrixFile=matrices_list[i],
+                                                    pFileType='cool', pFileWasH5=False)
 
         matrixFileHandlerOutput.set_matrix_variables(hic_matrix.matrix, hic_matrix.cut_intervals, hic_matrix.nan_bins,
                                                      hic_matrix.correction_factors, hic_matrix.distance_counts)
-        matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
+        # matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
+        matrixFileHandlerObjects_list.append(matrixFileHandlerOutput)
+    matrixFileHandler = MatrixFileHandler(pFileType='scool')
+    matrixFileHandler.matrixFile.coolObjectsList = matrixFileHandlerObjects_list
+    matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)

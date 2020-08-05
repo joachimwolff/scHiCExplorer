@@ -4,7 +4,7 @@ logging.basicConfig(level=logging.INFO)
 logging.getLogger('numexpr').setLevel(logging.WARNING)
 
 logging.getLogger('cooler').setLevel(logging.WARNING)
-logging.getLogger('hicmatrix').setLevel(logging.ERROR)
+logging.getLogger('hicmatrix').setLevel(logging.WARNING)
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 import warnings

@@ -10,7 +10,7 @@ from matplotlib.testing.compare import compare_images
 from schicexplorer import scHicPlotClusterProfiles
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
 
-tolerance = 30
+tolerance = 60
 
 
 def test_plot_svl():
@@ -28,7 +28,7 @@ def test_plot_svl():
     res = compare_images(test_image_path, outfile.name, tolerance)
     assert res is None, res
 
-    os.unlink(outfile.name)
+    # os.unlink(outfile.name)
 
 
 def test_plot_use_defaults():
@@ -44,7 +44,7 @@ def test_plot_use_defaults():
     res = compare_images(test_image_path, outfile.name, tolerance)
     assert res is None, res
 
-    os.unlink(outfile.name)
+    # os.unlink(outfile.name)
 
 
 def test_plot_chromosomes():
@@ -63,7 +63,7 @@ def test_plot_chromosomes():
     res = compare_images(test_image_path, outfile.name, tolerance)
     assert res is None, res
 
-    os.unlink(outfile.name)
+    # os.unlink(outfile.name)
 
 
 def test_plot_orderByFile():
@@ -82,7 +82,7 @@ def test_plot_orderByFile():
     res = compare_images(test_image_path, outfile.name, tolerance)
     assert res is None, res
 
-    os.unlink(outfile.name)
+    # os.unlink(outfile.name)
 
 
 def test_plot_maxDistance():
@@ -90,7 +90,7 @@ def test_plot_maxDistance():
 
     outfile.close()
     args = "--matrix {} -c {} --outFileName {} -t {} --maximalDistance {} --distanceShortRange {} \
-            --distanceLongRange {} --orderBy {} --dpi {}"\
+            --distanceLongRange {} --orderBy {} --dpi {} --legend"\
                 .format(ROOT + 'test_matrix.scool',
                         ROOT + 'scHicPlotClusterProfiles/cluster_kmeans.txt', outfile.name,
                         1, 9000000, 2000000, 12000000,
@@ -101,7 +101,7 @@ def test_plot_maxDistance():
     res = compare_images(test_image_path, outfile.name, tolerance)
     assert res is None, res
 
-    os.unlink(outfile.name)
+    # os.unlink(outfile.name)
 
 
 def test_version():

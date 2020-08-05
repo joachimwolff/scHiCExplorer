@@ -12,19 +12,20 @@ from hicmatrix import HiCMatrix as hm
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
 
 from schicexplorer import scHicNormalize
+from schicexplorer.utilities import cell_name_list
 
 
 def test_normalize():
     outfile = NamedTemporaryFile(suffix='.scool', delete=False)
 
     outfile.close()
-    args = "--matrix {} --outFileName {} -t {} --setToZeroThreshold {}".format(ROOT + 'test_matrix.scool',
-                                                                               outfile.name, 1, 0).split()
+    args = "--matrix {} --outFileName {} -t {} --setToZeroThreshold {} --normalize smallest".format(ROOT + 'test_matrix.scool',
+                                                                                                    outfile.name, 1, 0).split()
     scHicNormalize.main(args)
 
     test_data_matrix = ROOT + 'scHicNormalize/test_matrix_normalized.scool'
-    matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
-    matrices_list_created = cooler.fileops.list_coolers(outfile.name)
+    matrices_list_test_data = cell_name_list(test_data_matrix)
+    matrices_list_created = cell_name_list(outfile.name)
 
     matrices_list_test_data = sorted(matrices_list_test_data)
     matrices_list_created = sorted(matrices_list_created)

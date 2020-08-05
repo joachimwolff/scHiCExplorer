@@ -24,6 +24,7 @@ import pyBigWig
 import scipy.sparse
 
 from schicexplorer._version import __version__
+from schicexplorer.utilities import cell_name_list
 
 
 def parse_arguments(args=None):
@@ -39,7 +40,6 @@ def parse_arguments(args=None):
 
     parserRequired = parser.add_argument_group('Required arguments')
 
-    # define the arguments
     parserRequired.add_argument('--matrix', '-m',
                                 help='The single cell Hi-C interaction matrices to cluster. Needs to be in scool format',
                                 metavar='scool scHi-C matrix',
@@ -191,7 +191,7 @@ def main(args=None):
 
     matrices_name = args.matrix
     threads = args.threads
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
+    matrices_list = cell_name_list(matrices_name)
     if threads > len(matrices_list):
         threads = len(matrices_list)
     compartments_matrix = None
@@ -248,7 +248,6 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
-    log.debug('Clustering starting')
     if args.clusterMethod == 'spectral':
         spectral_clustering = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads, random_state=0)
         labels_clustering = spectral_clustering.fit_predict(compartments_matrix)

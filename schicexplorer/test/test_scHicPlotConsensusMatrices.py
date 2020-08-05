@@ -10,16 +10,16 @@ from matplotlib.testing.compare import compare_images
 from schicexplorer import scHicPlotConsensusMatrices
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
 
-tolerance = 30
+tolerance = 70
 
 
 def test_plot():
     outfile = NamedTemporaryFile(suffix='.png', delete=False)
 
     outfile.close()
-    args = "--matrix {} --outFileName {} -t {} --dpi {}".format(ROOT + 'scHicConsensusMatrices/consensus_matrix.scool',
-                                                                outfile.name, 1, 300
-                                                                ).split()
+    args = "--matrix {} --outFileName {} -t {} --dpi {} --log1p".format(ROOT + 'scHicConsensusMatrices/consensus_matrix.scool',
+                                                                        outfile.name, 1, 300
+                                                                        ).split()
     scHicPlotConsensusMatrices.main(args)
     test_image_path = ROOT + 'scHicPlotConsensusMatrices/plot.png'
     res = compare_images(test_image_path, outfile.name, tolerance)
@@ -37,6 +37,21 @@ def test_plot_chr():
                                                                       ).split()
     scHicPlotConsensusMatrices.main(args)
     test_image_path = ROOT + 'scHicPlotConsensusMatrices/plot_chr1.png'
+    res = compare_images(test_image_path, outfile.name, tolerance)
+    assert res is None, res
+
+    os.unlink(outfile.name)
+
+
+def test_plot_region():
+    outfile = NamedTemporaryFile(suffix='.png', delete=False)
+
+    outfile.close()
+    args = "--matrix {} --outFileName {} -t {} --dpi {} --region {}".format(ROOT + 'scHicConsensusMatrices/consensus_matrix.scool',
+                                                                            outfile.name, 1, 300, "chr1:18000000-22000000"
+                                                                            ).split()
+    scHicPlotConsensusMatrices.main(args)
+    test_image_path = ROOT + 'scHicPlotConsensusMatrices/plot_chr1-18-22.png'
     res = compare_images(test_image_path, outfile.name, tolerance)
     assert res is None, res
 

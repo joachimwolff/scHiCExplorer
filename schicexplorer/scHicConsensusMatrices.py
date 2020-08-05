@@ -6,7 +6,7 @@ log = logging.getLogger(__name__)
 
 import cooler
 import numpy as np
-
+from scipy.sparse import csr_matrix
 from hicmatrix.lib import MatrixFileHandler
 from schicexplorer._version import __version__
 
@@ -35,6 +35,9 @@ def parse_arguments(args=None):
                                 required=True)
     parserOpt = parser.add_argument_group('Optional arguments')
 
+    parserOpt.add_argument('--no_normalization',
+                           help='Do not plot a header.',
+                           action='store_false')
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
@@ -46,18 +49,21 @@ def parse_arguments(args=None):
     return parser
 
 
-def compute_consensus_matrix(pMatrixName, pClusterMatricesList, pAppend, pQueue):
-    cluster_consensus_matrices_list = []
-    for i, cluster in enumerate(pClusterMatricesList):
-        consensus_matrix = None
-        if i == 0 and pAppend:
-            append = False
-        else:
-            append = True
-        for matrix in cluster:
-            matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix)
-            _matrix, cut_intervals, nan_bins, \
-                distance_counts, correction_factors = matrixFileHandlerInput.load()
+def compute_consensus_matrix(pMatrixName, pClusterMatricesList, pClusterName, pQueue):
+    counter = 0
+    consensus_matrix = None
+    try:
+        matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + pClusterMatricesList[0])
+        _matrix, cut_intervals, nan_bins, \
+            distance_counts, correction_factors = matrixFileHandlerInput.load()
+        consensus_matrix = _matrix
+
+        for j, matrix in enumerate(pClusterMatricesList[1:]):
+
+            matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=pMatrixName + '::' + matrix, pLoadMatrixOnly=True)
+            _matrix, _, _, _, _ = matrixFileHandlerInput.load()
+
+            _matrix = csr_matrix((_matrix[2], (_matrix[0], _matrix[1])), (_matrix[3], _matrix[3]), dtype=np.float)
 
             if consensus_matrix is None:
                 consensus_matrix = _matrix
@@ -65,13 +71,16 @@ def compute_consensus_matrix(pMatrixName, pClusterMatricesList, pAppend, pQueue)
                 consensus_matrix += _matrix
 
         hic2CoolVersion = matrixFileHandlerInput.matrixFile.hic2cool_version
-        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pAppend=append, pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=hic2CoolVersion)
+        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile='consensus_matrix_cluster_' + str(pClusterName) + ':' + str(len(pClusterMatricesList)), pEnforceInteger=False, pFileWasH5=False, pHic2CoolVersion=hic2CoolVersion)
 
         matrixFileHandlerOutput.set_matrix_variables(consensus_matrix, cut_intervals, nan_bins,
                                                      correction_factors, distance_counts)
-        cluster_consensus_matrices_list.append(matrixFileHandlerOutput)
-
-    pQueue.put(cluster_consensus_matrices_list)
+        if counter > 0:
+            log.info('{} matrices were not considered because of a wrong size.'.format(counter))
+    except Exception as exp:
+        log.debug('exception! {}'.format(str(exp)))
+    log.debug('computaiton of {} done'.format(str(pClusterName)))
+    pQueue.put(matrixFileHandlerOutput)
 
 
 def main(args=None):
@@ -80,88 +89,101 @@ def main(args=None):
 
     clusters = {}
     with open(args.clusters, 'r') as cluster_file:
-
         for i, line in enumerate(cluster_file.readlines()):
             line = line.strip()
             file_path, cluster = line.split(' ')
-
+            if not file_path.startswith('/cells'):
+                file_path = '/cells/' + file_path
             if int(cluster) in clusters:
                 clusters[int(cluster)].append(file_path)
             else:
                 clusters[int(cluster)] = [file_path]
 
-    cluster_list = []
-    for key in clusters:
-        cluster_list.append(clusters[key])
     threads = args.threads
-    if len(cluster_list) < threads:
-        threads = len(cluster_list)
+    if len(clusters) < threads:
+        threads = len(clusters)
 
-    consensus_matrices_threads = [None] * threads
-    all_data_collected = False
     thread_done = [False] * threads
     length_index = [None] * threads
     length_index[0] = 0
-    clusterPerThread = len(cluster_list) // threads
     queue = [None] * threads
     process = [None] * threads
-    for i in range(threads):
 
-        if i < threads - 1:
-            cluster_name_list = cluster_list[i * clusterPerThread:(i + 1) * clusterPerThread]
-        else:
-            cluster_name_list = cluster_list[i * clusterPerThread:]
-
-        queue[i] = Queue()
-        process[i] = Process(target=compute_consensus_matrix, kwargs=dict(
-            pMatrixName=args.matrix,
-            pClusterMatricesList=cluster_name_list,
-            pAppend=i == 0,
-            pQueue=queue[i]
-        )
-        )
-        process[i].start()
-
-    while not all_data_collected:
+    all_data_processed = False
+    all_threads_done = False
+    count = 0
+    matrixFileHandlerObjects_list = []
+    while not all_data_processed or not all_threads_done:
         for i in range(threads):
-            if queue[i] is not None and not queue[i].empty():
-                consensus_matrices_threads[i] = queue[i].get()
 
+            if queue[i] is None and not all_data_processed:
+
+                queue[i] = Queue()
+                process[i] = Process(target=compute_consensus_matrix, kwargs=dict(
+                    pMatrixName=args.matrix,
+                    pClusterMatricesList=clusters[count],
+                    pClusterName=count,
+                    pQueue=queue[i]
+                )
+                )
+                process[i].start()
+                thread_done[i] = False
+                count += 1
+                if count >= len(clusters):
+                    all_data_processed = True
+
+            elif queue[i] is not None and not queue[i].empty():
+                log.debug('Get data!')
+                matrixFileHandlerObjects_list.append(queue[i].get())
                 queue[i] = None
                 process[i].join()
                 process[i].terminate()
                 process[i] = None
                 thread_done[i] = True
-        all_data_collected = True
-        for thread in thread_done:
-            if not thread:
-                all_data_collected = False
-            time.sleep(1)
 
-    matrixFileHandlerObjects_list = [item for sublist in consensus_matrices_threads for item in sublist]
+                log.debug('all_data_processed {}'.format(all_data_processed))
+                log.debug('all_threads_done {}'.format(all_threads_done))
+                log.debug('queue {}'.format(queue))
+                log.debug('process {}'.format(process))
+                log.debug('thread_done {}'.format(thread_done))
+                log.debug('count {}'.format(count))
+            elif all_data_processed and queue[i] is None:
+                thread_done[i] = True
+            else:
+                time.sleep(1)
+
+        if all_data_processed:
+            all_threads_done = True
+            for thread in thread_done:
+                if not thread:
+                    all_threads_done = False
 
     sum_of_all = []
     for i, matrixFileHandler in enumerate(matrixFileHandlerObjects_list):
         sum_of_all.append(matrixFileHandler.matrixFile.matrix.sum())
 
-    argmin = np.argmin(sum_of_all)
+    if args.no_normalization:
+        argmin = np.argmin(sum_of_all)
 
-    for i, matrixFileHandler in enumerate(matrixFileHandlerObjects_list):
-        matrixFileHandler.matrixFile.matrix.data = matrixFileHandler.matrixFile.matrix.data.astype(np.float32)
-        if i != argmin:
+        for i, matrixFileHandler in enumerate(matrixFileHandlerObjects_list):
+            matrixFileHandler.matrixFile.matrix.data = matrixFileHandler.matrixFile.matrix.data.astype(np.float32)
+            if i != argmin:
+                mask = np.isnan(matrixFileHandler.matrixFile.matrix.data)
+                matrixFileHandler.matrixFile.matrix.data[mask] = 0
+
+                mask = np.isinf(matrixFileHandler.matrixFile.matrix.data)
+                matrixFileHandler.matrixFile.matrix.data[mask] = 0
+                adjust_factor = sum_of_all[i] / sum_of_all[argmin]
+                matrixFileHandler.matrixFile.matrix.data /= adjust_factor
+                mask = np.isnan(matrixFileHandler.matrixFile.matrix.data)
+
             mask = np.isnan(matrixFileHandler.matrixFile.matrix.data)
             matrixFileHandler.matrixFile.matrix.data[mask] = 0
 
             mask = np.isinf(matrixFileHandler.matrixFile.matrix.data)
             matrixFileHandler.matrixFile.matrix.data[mask] = 0
-            adjust_factor = sum_of_all[i] / sum_of_all[argmin]
-            matrixFileHandler.matrixFile.matrix.data /= adjust_factor
-            mask = np.isnan(matrixFileHandler.matrixFile.matrix.data)
+            matrixFileHandler.matrixFile.matrix.eliminate_zeros()
 
-        mask = np.isnan(matrixFileHandler.matrixFile.matrix.data)
-        matrixFileHandler.matrixFile.matrix.data[mask] = 0
-
-        mask = np.isinf(matrixFileHandler.matrixFile.matrix.data)
-        matrixFileHandler.matrixFile.matrix.data[mask] = 0
-        matrixFileHandler.matrixFile.matrix.eliminate_zeros()
-        matrixFileHandler.save(args.outFileName + '::/' + 'consensus_matrix_cluster_' + str(i), pSymmetric=True, pApplyCorrection=False)
+    matrixFileHandler = MatrixFileHandler(pFileType='scool')
+    matrixFileHandler.matrixFile.coolObjectsList = matrixFileHandlerObjects_list
+    matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)

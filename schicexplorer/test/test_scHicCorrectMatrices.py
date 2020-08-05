@@ -22,8 +22,8 @@ def test_correct_matrices():
     scHicCorrectMatrices.main(args)
 
     test_data_matrix = ROOT + 'scHicCorrectMatrices/test_matrix_corrected.scool'
-    matrices_list_test_data = cooler.fileops.list_coolers(test_data_matrix)
-    matrices_list_created = cooler.fileops.list_coolers(outfile.name)
+    matrices_list_test_data = cooler.fileops.list_scool_cells(test_data_matrix)
+    matrices_list_created = cooler.fileops.list_scool_cells(outfile.name)
 
     matrices_list_test_data = sorted(matrices_list_test_data)
     matrices_list_created = sorted(matrices_list_created)

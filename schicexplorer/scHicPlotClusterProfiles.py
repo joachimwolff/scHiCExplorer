@@ -7,9 +7,11 @@ import logging
 log = logging.getLogger(__name__)
 
 import cooler
+import pandas as pd
 
 from hicmatrix import HiCMatrix as hm
 from hicmatrix.lib import MatrixFileHandler
+from schicexplorer.utilities import cell_name_list
 
 import numpy as np
 
@@ -31,7 +33,6 @@ def parse_arguments(args=None):
 
     parserRequired = parser.add_argument_group('Required arguments')
 
-    # define the arguments
     parserRequired.add_argument('--matrix', '-m',
                                 help='The single cell Hi-C interaction matrices to investigate for QC. Needs to be in scool format',
                                 metavar='scool scHi-C matrix',
@@ -46,22 +47,38 @@ def parse_arguments(args=None):
                            help='List of to be plotted chromosomes',
                            nargs='+')
     parserOpt.add_argument('--maximalDistance', '-md',
-                           help='maximal distance in bases',
+                           help='Maximal distance in bases to consider for ratio computation.',
                            required=False,
                            default=50000000,
                            type=int)
     parserOpt.add_argument('--distanceShortRange', '-ds',
-                           help='Distance which should be considered as short range. Default 2MB.',
+                           help='Distance which should be considered as lower distance for svl ordering. Values from distances smaller this value are not considered. Default 2MB.',
                            default=2000000,
                            type=int)
     parserOpt.add_argument('--distanceLongRange', '-dl',
-                           help='Distance which should be considered as short range. Default 12MB.',
+                           help='Distance which should be considered as upper distance for svl ordering. Values from distances greater this value are not considered. Default 12MB.',
                            default=12000000,
                            type=int)
     parserOpt.add_argument('--orderBy', '-ob',
                            help='Algorithm to cluster the Hi-C matrices',
                            choices=['svl', 'orderByFile'],
                            default='svl')
+    parserOpt.add_argument('--fontsize',
+                           help='Fontsize in the plot for x and y axis.',
+                           type=float,
+                           default=10)
+    parserOpt.add_argument('--rotationX',
+                           help='Rotation in degrees for the labels of x axis.',
+                           type=int,
+                           default=0)
+    parserMutuallyExclusiveGroupFilter = parser.add_mutually_exclusive_group(
+        required=False)
+    parserMutuallyExclusiveGroupFilter.add_argument('--ticks',
+                                                    help='Plot the cluster names as ticks. Use legend if they overlap.',
+                                                    action='store_true')
+    parserMutuallyExclusiveGroupFilter.add_argument('--legend',
+                                                    help='Plot the cluster names as legend.  Might be helpful if the ticks overlap.',
+                                                    action='store_true')
     parserOpt.add_argument('--outFileName', '-o',
                            help='File name to save the resulting cluster profile.',
                            required=False,
@@ -71,6 +88,11 @@ def parse_arguments(args=None):
                            required=False,
                            default=300,
                            type=int)
+    parserOpt.add_argument('--colorMap',
+                           help='Color map to use for the heatmap. Available '
+                           'values can be seen here: '
+                           'http://matplotlib.org/examples/color/colormaps_reference.html',
+                           default='RdYlBu_r')
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
@@ -84,27 +106,37 @@ def parse_arguments(args=None):
 
 def compute_read_distribution(pMatrixName, pMatricesList, pMaximalDistance, pChromosomes, pQueue):
     read_distribution = []
-    resolution = 0
-    for i, matrix in enumerate(pMatricesList):
-        if pChromosomes is not None and len(pChromosomes) == 1:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix, pChrnameList=pChromosomes)
-        else:
-            hic_ma = hm.hiCMatrix(pMatrixFile=pMatrixName + '::' + matrix)
-            if pChromosomes:
-                hic_ma.keepOnlyTheseChr(pChromosomes)
-        _matrix = hic_ma.matrix
-        resolution = hic_ma.getBinSize()
-        maximalDistance = pMaximalDistance // resolution
 
-        instances, features = _matrix.nonzero()
+    for i, matrix in enumerate(pMatricesList):
+        cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
+        resolution = cooler_obj.binsize
+        chromosome_dataframes_list = []
+
+        if pChromosomes is None:
+            pChromosomes = cooler_obj.chromnames
+        for chromosome in pChromosomes:
+
+            pixels_chromosome = cooler_obj.pixels().fetch(chromosome)
+
+            chromosome_dataframes_list.append(pixels_chromosome)
+
+        pixels_chromosome = pd.concat(chromosome_dataframes_list)
+
+        if 'bin1_id' in pixels_chromosome.columns and 'bin2_id' in pixels_chromosome.columns and 'count' in pixels_chromosome.columns:
+            instances = pixels_chromosome['bin1_id'].values
+            features = pixels_chromosome['bin2_id'].values
+            data = pixels_chromosome['count'].values
+        else:
+            continue
+        maximalDistance = pMaximalDistance // resolution
 
         relative_distance = np.absolute(instances - features)
         read_distribution_ = np.zeros(maximalDistance)
         sum_of_matrix_within_maximalDistance = 0
         for j, relative_distance_ in enumerate(relative_distance):
             if relative_distance_ < maximalDistance:
-                read_distribution_[relative_distance_] += _matrix.data[j]
-                sum_of_matrix_within_maximalDistance += _matrix.data[j]
+                read_distribution_[relative_distance_] += data[j]
+                sum_of_matrix_within_maximalDistance += data[j]
         read_distribution_ /= sum_of_matrix_within_maximalDistance
         read_distribution.append(read_distribution_)
 
@@ -117,13 +149,11 @@ def main(args=None):
 
     matrices_name = args.matrix
     threads = args.threads
-    matrices_list = cooler.fileops.list_coolers(matrices_name)
+    matrices_list = cell_name_list(matrices_name)
     read_coverage = [None] * threads
 
     all_data_collected = False
     thread_done = [False] * threads
-    length_index = [None] * threads
-    length_index[0] = 0
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
     process = [None] * threads
@@ -131,7 +161,6 @@ def main(args=None):
 
         if i < threads - 1:
             matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
-            length_index[i + 1] = length_index[i] + len(matrices_name_list)
         else:
             matrices_name_list = matrices_list[i * matricesPerThread:]
 
@@ -174,7 +203,6 @@ def main(args=None):
     clusters_svl = {}
     short_range_distance = args.distanceShortRange // resolution
     long_range_distance = args.distanceLongRange // resolution
-
     with open(args.clusters, 'r') as cluster_file:
 
         for i, line in enumerate(cluster_file.readlines()):
@@ -197,7 +225,8 @@ def main(args=None):
 
     clusters_list = []
     cluster_size = []
-    for i, key in enumerate(clusters):
+    key_list_cluster = sorted(clusters.keys())
+    for i, key in enumerate(key_list_cluster):
         cluster_to_plot = []
 
         for cluster_item in clusters[key]:
@@ -212,6 +241,7 @@ def main(args=None):
     all_data = None
     index_clusters = []
     cluster_ticks = []
+    cluster_ticks_top = []
     ticks_position = []
     for i, cluster in enumerate(clusters_list):
         if all_data is None:
@@ -223,32 +253,86 @@ def main(args=None):
             index_clusters.append(index_clusters[i - 1] + len(cluster))
             ticks_position.append(index_clusters[i - 1] + len(cluster) // 2)
 
-        cluster_ticks.append('Cluster {} ({} cells)'.format(i + 1, len(cluster)))
+        cluster_ticks.append('Cluster {}: {} cells'.format((i), len(cluster)))
+        cluster_ticks_top.append('Cluster {}'.format(i))
 
-    fig = plt.figure(figsize=(10, 2))
+    if len(matrices_list) > 1000:
+        fig = plt.figure(figsize=(8, 3))
+    elif len(matrices_list) > 500:
+        fig = plt.figure(figsize=(5, 3))
+    elif len(matrices_list) > 250:
+        fig = plt.figure(figsize=(4, 3))
+    else:
+        fig = plt.figure(figsize=(3, 3))
 
-    plt.imshow(all_data.T, cmap='RdYlBu_r', norm=LogNorm(), aspect="auto")
+    plt.imshow(all_data.T, cmap=args.colorMap, norm=LogNorm(), aspect="auto")
 
-    for index in index_clusters[:-1]:
-        plt.axvline(index, color='black', linewidth=0.4)
-
+    for index in index_clusters:
+        plt.axvline(index - 1, color='black', linewidth=0.4)
     y_ticks = []
     y_labels = []
-    for i in range(0, (args.maximalDistance // resolution) + 1, 1):
-        if i % 10 == 0:
-            y_ticks.append(i)
 
-            y_labels.append(str(i) + 'MB')
-    plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=8)
+    unit = 'MB'
+
+    factor = args.maximalDistance // 10
+
+    if factor >= 1000000:
+        unit = 'MB'
+    elif factor >= 1000:
+        unit = 'kb'
+    else:
+        unit = 'b'
+
+    for i in range(0, (args.maximalDistance) + 1, resolution):
+        if i % (factor) == 0:
+            y_ticks.append(i // resolution)
+
+            label = ''
+            if factor >= 1000000:
+                label = str(i // 1000000)
+            elif factor >= 1000:
+                label = str(i // 1000)
+            else:
+                label = str(i)
+
+            y_labels.append(label + unit)
+
+    plt.yticks(ticks=y_ticks, labels=y_labels, fontsize=args.fontsize)
 
     plt.gca().invert_yaxis()
-    plt.xticks(ticks=ticks_position, labels=cluster_ticks, fontsize=4)
+    if args.ticks:
+        plt.xticks(ticks=ticks_position, labels=cluster_ticks_top, rotation=args.rotationX, fontsize=args.fontsize)
+
+    elif args.legend:
+        plt.tick_params(
+            axis='x',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom=False,      # ticks along the bottom edge are off
+            top=False,         # ticks along the top edge are off
+            labelbottom=False)
+        if len(cluster_ticks) < 5:
+            ncols = 1
+        else:
+            ncols = 3
+        leg = plt.legend(cluster_ticks, loc='upper center', bbox_to_anchor=(0.5, -0.01),
+                         fancybox=True, shadow=False, ncol=ncols, fontsize=args.fontsize)
+        for item in leg.legendHandles:
+            item.set_visible(False)
+    else:
+        plt.tick_params(
+            axis='x',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom=False,      # ticks along the bottom edge are off
+            top=False,         # ticks along the top edge are off
+            labelbottom=False)
     fig.autofmt_xdate()
 
     cbar = plt.colorbar()
-    cbar.ax.set_ylabel('% contacts', rotation=270, fontsize=5)
+    cbar.ax.set_ylabel('% contacts', rotation=270, fontsize=args.fontsize)
+    cbar.ax.yaxis.set_label_coords(args.fontsize, 0.5)
     cbar.ax.invert_yaxis()
-    cbar.ax.tick_params(labelsize=5)
+    cbar.ax.tick_params(labelsize=args.fontsize)
+
     plt.tight_layout()
     plt.savefig(args.outFileName, dpi=args.dpi)
 
