@@ -14,6 +14,10 @@ scHiCExplorer tools
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
 |:ref:`scHicMergeToScool`              | preprocessing    | n Hi-C matrices in cool format         | One scool file containg all Hi-C matrices    | Merges all single-cell Hi-C matrices to one                                       |
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
+|:ref:`scHicManageScool`               | preprocessing    | scool Hi-C matrix                      | one scool matrix or cool matrix              | update old version 4 of scHiCExplorer scool file to new scool file of version 5   |
++--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
+|:ref:`scHicConvertFormat`             | preprocessing    | scool Hi-C matrix                      | scHiCluster data                             | Converts scool to scHiCluster files                                               |
++--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
 |:ref:`scHicMergeMatrixBins`           | preprocessing    | scool Hi-C matrix                      | scool Hi-C matrix                            | Changes the resolution of the matrices                                            |
 +--------------------------------------+------------------+----------------------------------------+----------------------------------------------+-----------------------------------------------------------------------------------+
 |:ref:`scHicQualityControl`            | preprocessing    | scool Hi-C matrix                      | One scool file, two qc images, qc report     | Checks the quality of all samples and removes bad ones                            |
@@ -88,6 +92,10 @@ Tools for single-cell Hi-C data pre-preprocessing
 """"""""""""""""""""""""
 :ref:`scHicNormalize`
 """""""""""""""""""""
+:ref:`scHicManageScool`
+"""""""""""""""""""""""
+:ref:`scHicConvertFormat`
+"""""""""""""""""""""""""
 
 Tools for information about the single-cell Hi-C matrix
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

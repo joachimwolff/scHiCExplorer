@@ -27,6 +27,8 @@ Furthermore, please consider the data needs to be demultiplexed and mapped which
 If you do not want to download, demultiplex, map and build the matrices on your own, two precomputed raw scool matrices are provided on `Zenodo <https://doi.org/10.5281/zenodo.3557682>`__ in 1Mb and 10kb resolution. 
 For this tutorial we use the 1Mb resolution of the matrix to reduce computation time. The 10kb takes significant longer and needs more memory to compute. 
 
+**WARNING** Please consider you need to convert the matrices first to the new scool file format as it is introduced with scHiCExplorer 5 and cooler 0.8.9. Use for this **scHicManageScool** and its update function.
+
 Download of the fastq files
 ---------------------------
 
