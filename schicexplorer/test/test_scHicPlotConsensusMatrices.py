@@ -10,7 +10,7 @@ from matplotlib.testing.compare import compare_images
 from schicexplorer import scHicPlotConsensusMatrices
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
 
-tolerance = 30
+tolerance = 60
 
 
 def test_plot():

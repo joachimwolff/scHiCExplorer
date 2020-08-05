@@ -1,6 +1,28 @@
 News
 ====
 
+** 5 August 2020**
+
+Release of version 5:
+
+- Better clustering with MinHash: More accurate, faster loading times, less memory, additional PCA
+- In general: Fast loading of matrices. This version is up to 19 times faster (10 kb matrices scHiCExplorer version 4: 58 minutes. Version 5: < 3 minutes)
+- Support for scool format as defined with version 0.8.9 of cooler
+- scHicManageScool: Tool to update old scool (version 4 or less of scHiCExplorer) to new version. Option to extract a matrix to a single cool
+- scHicConvertFormat: Tool to convert a scool matrix to the file and folder structure scHiCluster needs
+- Option to plot PC1 vs PC2 on cluster results for scHicCluster and scHicClusterMinHash
+- scHicClusterMinHash: New additional cluster algorithms: birch, agglomerative (ward, average, single, complete)
+- scHicCluster and scHicClusterMinHash: Option to work on intra-chromosomal data only
+- Multiple bug fixes
+- Improved plotting of scHicPlotConsensusMatrices and scHicPlotClusterProfile
+
+** 8 March 2020**
+
+Release of version 4:
+
+- Fixing a bug in scHicDemultiplex
+- Improving the documentation on how to download the FASTQ files for example.
+
 **7th March 2020**
 
 Release of version 3:

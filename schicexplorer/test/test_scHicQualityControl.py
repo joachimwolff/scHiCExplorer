@@ -13,7 +13,7 @@ from matplotlib.testing.compare import compare_images
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
 import numpy.testing as nt
 from hicmatrix import HiCMatrix as hm
-tolerance = 40
+tolerance = 60
 
 
 def are_files_equal(file1, file2, delta=2, skip=0):

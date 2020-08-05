@@ -8,7 +8,9 @@ Requirements
 -------------
 
 * Python 3.6
-* HiCExplorer 3.4
+* HiCExplorer 3.5
+* cooler 0.8.9
+* HiCMatrix 14
 
 
 Command line installation using ``conda``

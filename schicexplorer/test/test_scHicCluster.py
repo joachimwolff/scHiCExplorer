@@ -8,7 +8,7 @@ from matplotlib.testing.compare import compare_images
 
 from schicexplorer import scHicCluster
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-data/")
-tolerance = 30
+tolerance = 60
 
 
 def are_files_equal(file1, file2, delta=2, skip=0):
