@@ -51,7 +51,7 @@ def cell_name_list(pScoolUri):
             exit(1)
 
 
-def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices, pQueue):
+def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices, pQueue=None):
     neighborhood_matrix = None
     features = []
     data = []
@@ -105,12 +105,14 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
             features_length.append(len(_matrix[2]))
 
     instances = []
-    log.debug('')
     for i, instance_length in enumerate(features_length):
         instances.extend([pIndex + i] * instance_length)
 
     neighborhood_matrix = csr_matrix((data, (instances, features)), (pXDimension, max_shape * max_shape), dtype=np.float)
+    if pQueue is None:
+        return neighborhood_matrix, valid_matrix_list
     pQueue.put([neighborhood_matrix, valid_matrix_list])
+    return
 
 
 def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes, pOutputFolder, pRawFileName, pIntraChromosomalContactsOnly=None):
@@ -183,3 +185,66 @@ def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes, pOutputFold
                 all_data_collected = False
         time.sleep(1)
     return neighborhood_matrix, matrices_list
+
+
+
+# def create_csr_matrix_share_of_cells(pMatrixName, pMatrixNameList, pChromosomes, pStartIndex, pShareSize, pLengthIndex, pIntraChromosomalContactsOnly=None):
+
+#     # matrices_name = pMatrixName
+#     # threads = pThreads
+#     # # matrices_list = cell_name_list(matrices_name)
+#     # neighborhood_matrix = None
+#     # neighborhood_matrix_threads = [None] * threads
+#     # valid_matrix_list_threads = [None] * threads
+
+#     # all_data_collected = False
+#     # thread_done = [False] * threads
+#     # length_index = [None] * threads
+#     # length_index[0] = 0
+#     # matricesPerThread = len(matrices_list) // threads
+#     # queue = [None] * threads
+#     # process = [None] * threads
+
+#     chromosome_indices = None
+#     if pIntraChromosomalContactsOnly:
+#         cooler_obj = cooler.Cooler(pMatrixName + '::' + pMatrixNameList[0])
+#         binsDataFrame = cooler_obj.bins()[:]
+#         chromosome_indices = {}
+#         for chromosome in cooler_obj.chromnames:
+#             chromosome_indices[chromosome] = np.array(binsDataFrame.index[binsDataFrame['chrom'] == chromosome].tolist())
+
+#     # for i in range(threads
+
+#     return open_and_store_matrix(
+#         pMatrixName=pMatrixName,
+#         pMatricesList=pMatrixNameList,
+#         pIndex=pLengthIndex,
+#         pXDimension=len(matrices_list),
+#         pChromosomes=pChromosomes,
+#         pIntraChromosomalContactsOnly=pIntraChromosomalContactsOnly,
+#         pChromosomeIndices=chromosome_indices,
+#         pQueue=None)
+      
+
+#     # while not all_data_collected:
+#     #     for i in range(threads):
+#     #         if queue[i] is not None and not queue[i].empty():
+#     #             csr_matrix_worker = queue[i].get()
+#     #             neighborhood_matrix_threads, valid_matrix_list_threads[i] = csr_matrix_worker
+#     #             if neighborhood_matrix is None:
+#     #                 neighborhood_matrix = csr_matrix((len(matrices_list), neighborhood_matrix_threads.shape[1]))
+#     #                 neighborhood_matrix += neighborhood_matrix_threads
+#     #             else:
+#     #                 neighborhood_matrix += neighborhood_matrix_threads
+#     #             del neighborhood_matrix_threads
+#     #             queue[i] = None
+#     #             process[i].join()
+#     #             process[i].terminate()
+#     #             process[i] = None
+#     #             thread_done[i] = True
+#     #     all_data_collected = True
+#     #     for thread in thread_done:
+#     #         if not thread:
+#     #             all_data_collected = False
+#     #     time.sleep(1)
+#     return neighborhood_matrix, matrices_list
