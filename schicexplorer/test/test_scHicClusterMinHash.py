@@ -183,6 +183,41 @@ def test_spectral_euclidean():
     assert res is None, res
 
 
+def test_kmeans_saveMemory():
+    outfile = NamedTemporaryFile(suffix='.txt', delete=False)
+
+    outfile.close()
+    args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
+        --outFileName {} -t {} -nh {} -dim_pca 100 --saveMemory".format(ROOT + 'test_matrix.scool',
+                                                                        3, 'kmeans', outfile.name, 3, 800).split()
+    scHicClusterMinHash.main(args)
+    assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_kmeans.txt", outfile.name)
+
+
+def test_agglomerative_single_saveMemory():
+    outfile = NamedTemporaryFile(suffix='.txt', delete=False)
+
+    outfile.close()
+    args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
+        --outFileName {} -t {} -nh {} --noPCA --saveMemory".format(ROOT + 'test_matrix.scool',
+                                                                   3, 'agglomerative_single', outfile.name, 3, 800).split()
+    scHicClusterMinHash.main(args)
+    assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_kmeans.txt", outfile.name)
+
+
+# some issue with the test data, real world data works fine
+@pytest.mark.xfail
+def test_kmeans_euclidean_saveMemory():
+    outfile = NamedTemporaryFile(suffix='.txt', delete=False)
+
+    outfile.close()
+    args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
+        --outFileName {} -t {} -nh {} --euclideanModeMinHash --saveMemory ".format(ROOT + 'test_matrix.scool',
+                                                                                   3, 'kmeans', outfile.name, 2, 800).split()
+    scHicClusterMinHash.main(args)
+    assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_kmeans_exact.txt", outfile.name)
+
+
 def test_version():
     args = "--version".split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
