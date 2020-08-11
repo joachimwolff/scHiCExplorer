@@ -5,7 +5,7 @@ from multiprocessing import Process, Queue
 
 
 import numpy as np
-from scipy.sparse import csr_matrix, vstack, save_npz, lil_matrix, dok_matrix
+from scipy.sparse import csr_matrix, vstack, save_npz, lil_matrix, dok_matrix, isspmatrix_csr
 from sklearn.decomposition import PCA
 
 import logging
@@ -24,7 +24,7 @@ from sparse_neighbors_search import MinHashClustering
 from hicmatrix import HiCMatrix as hm
 
 from schicexplorer._version import __version__
-from schicexplorer.utilities import cell_name_list, create_csr_matrix_all_cells
+from schicexplorer.utilities import cell_name_list, create_csr_matrix_all_cells, open_and_store_matrix
 
 
 def parse_arguments(args=None):
@@ -66,7 +66,7 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--intraChromosomalContactsOnly', '-ic',
                            help='This option loads only the intra-chromosomal contacts. Can improve the cluster result if data is very noisy.',
                            action='store_true')
-    parserOpt.add_argument('--saveIntermediateRawMatrix', '-sm',
+    parserOpt.add_argument('--saveIntermediateRawMatrix', '-sirm',
                            help='This option activates the save of the intermediate raw scHi-C matrix.',
                            required=False)
     parserOpt.add_argument('--createScatterPlot', '-csp',
@@ -89,13 +89,23 @@ def parse_arguments(args=None):
                            default=100,
                            type=int)
     parserOpt.add_argument('--shareOfMatrixToBeTransferred', '-s',
-                           help='Which share of rows shall be transferred from Python to C++ at once. Values between 0 and 1, the more are transferred at once, the larger the memory usage is. The less rows are transferred, the slower the computation is.',
+                           help='Which share of rows shall be transferred from Python to C++ at once. If `--saveMemory` is active, value is interpreted as the share to loaded at once to memory. Values between 0 and 1, the more are transferred at once, the larger the memory usage is. The less rows are transferred, the slower the computation is.',
                            required=False,
                            default=0.25,
                            type=float)
+    parserOpt.add_argument('--saveMemory', '-sm',
+                           help='Load data only with one core, this method saves memory but is significantly slower.',
+                           required=False,
+                           action='store_true')
+    # parserOpt.add_argument('--saveMemoryShare', '-sm',
+    #                        help='Load data only with one core, define the share of the data which should be transferred at once to the sparse-neighbors-module. This method saves memory but is significantly slower.',
+    #                        required=False,
+    #                        action='store_true'
+    #                        default=0.00,
+    #                        type=float)
     parserOpt.add_argument('--noPCA',
                            help='Do not computes PCA on top of a k-nn. Can improve the cluster result.',
-                           action='store_false')
+                           action='store_true')
     parserOpt.add_argument('--dimensionsPCA', '-dim_pca',
                            help='The number of dimensions from the PCA matrix that should be considered for clustering. Can improve the cluster result.',
                            default=100,
@@ -122,7 +132,7 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
-                           default=4,
+                           default=8,
                            type=int)
     parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
@@ -133,15 +143,13 @@ def parse_arguments(args=None):
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
+    # if args.threads <= 4:
+    #     log.error('')
+    #     exit(1)
     outputFolder = os.path.dirname(os.path.abspath(args.outFileName)) + '/'
 
     raw_file_name = os.path.splitext(os.path.basename(args.outFileName))[0]
 
-    neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes, outputFolder, raw_file_name, args.intraChromosomalContactsOnly)
-    if args.saveIntermediateRawMatrix:
-        save_npz(args.saveIntermediateRawMatrix, neighborhood_matrix)
-    minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                             shingle_size=4, fast=args.euclideanModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False)
     if args.clusterMethod == 'spectral':
         cluster_object = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads, random_state=0)
     elif args.clusterMethod == 'kmeans':
@@ -156,14 +164,77 @@ def main(args=None):
     else:
         log.error('No valid cluster method given: {}'.format(args.clusterMethod))
 
-    minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=cluster_object)
-    minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=args.noPCA, pPcaDimensions=args.dimensionsPCA)
-    # log.debug('minHashClustering._precomputed_graph.data: {}'.format(minHashClustering._precomputed_graph.data))
+    if args.saveMemory:
+        matrices_list = cell_name_list(args.matrix)
+        max_nnz = 0
+        for matrix in matrices_list:
+            cooler_obj = cooler.Cooler(args.matrix + '::' + matrix)
+            nnz = cooler_obj.info['nnz']
+            if max_nnz < nnz:
+                max_nnz = nnz
+        minHash_object = None
+        matricesPerRun = int(len(matrices_list) * args.shareOfMatrixToBeTransferred)
+        if matricesPerRun < 1:
+            matricesPerRun = 1
+        chromosome_indices = None
+        if args.intraChromosomalContactsOnly:
+            cooler_obj = cooler.Cooler(args.matrix + '::' + matrices_list[0])
+            binsDataFrame = cooler_obj.bins()[:]
+            chromosome_indices = {}
+            for chromosome in cooler_obj.chromnames:
+                chromosome_indices[chromosome] = np.array(binsDataFrame.index[binsDataFrame['chrom'] == chromosome].tolist())
 
-    if not args.noPCA:
+        for j, i in enumerate(range(0, len(matrices_list), matricesPerRun)):
+            if i < len(matrices_list) - 1:
+                matrices_share = matrices_list[i:i + matricesPerRun]
+            else:
+                matrices_share = matrices_list[i:]
+            neighborhood_matrix, matrices_list_share = open_and_store_matrix(args.matrix, matrices_share, 0, len(matrices_share),
+                                                                             args.chromosomes, args.intraChromosomalContactsOnly, chromosome_indices)
+            if minHash_object is None:
+                minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+                                         shingle_size=4, fast=args.euclideanModeMinHash, maxFeatures=int(max_nnz), absolute_numbers=False)
+
+            if j == 0:
+                minHash_object.fit(neighborhood_matrix)
+            else:
+                minHash_object.partial_fit(X=neighborhood_matrix)
+
+        precomputed_graph = minHash_object.kneighbors_graph(mode='distance')
+
+        if not args.noPCA:
+
+            pca = PCA(n_components=min(precomputed_graph.shape) - 1)
+            precomputed_graph = pca.fit_transform(precomputed_graph.todense())
+
+            if args.dimensionsPCA:
+                args.dimensionsPCA = min(args.dimensionsPCA, precomputed_graph.shape[0])
+                cluster_object.fit(precomputed_graph[:, :args.dimensionsPCA])
+                # return
+        else:
+            try:
+                cluster_object.fit(precomputed_graph)
+            except Exception:
+                cluster_object.fit(precomputed_graph.todense())
+        minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=cluster_object)
+        minHashClustering._precomputed_graph = precomputed_graph
+
+    else:
+        neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes, outputFolder, raw_file_name, args.intraChromosomalContactsOnly)
+
+        if args.saveIntermediateRawMatrix:
+            save_npz(args.saveIntermediateRawMatrix, neighborhood_matrix)
+
+    if not args.saveMemory:
+        minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+                                 shingle_size=4, fast=args.euclideanModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False)
+        minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=cluster_object)
+        minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=(not args.noPCA), pPcaDimensions=args.dimensionsPCA)
+        log.debug('251 type(){}'.format(type(minHashClustering._precomputed_graph)))
+
+    if args.noPCA:
         mask = np.isnan(minHashClustering._precomputed_graph.data)
         minHashClustering._precomputed_graph.data[mask] = 0
-        log.debug('minHashClustering._precomputed_graph.data: {}'.format(minHashClustering._precomputed_graph.data))
 
         mask = np.isinf(minHashClustering._precomputed_graph.data)
         minHashClustering._precomputed_graph.data[mask] = 0
@@ -171,7 +242,7 @@ def main(args=None):
     labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.noPCA, pPcaDimensions=args.dimensionsPCA)
 
     if args.createScatterPlot:
-        if not args.noPCA:
+        if args.noPCA:
             pca = PCA(n_components=min(minHashClustering._precomputed_graph.shape) - 1)
             neighborhood_matrix_knn = pca.fit_transform(minHashClustering._precomputed_graph.todense())
         else:
@@ -181,6 +252,10 @@ def main(args=None):
         list(set(labels_clustering))
         cmap = get_cmap(args.colorMap)
         colors = cmap.colors
+        try:
+            neighborhood_matrix_knn = neighborhood_matrix_knn.toarray()
+        except Exception:
+            pass
         for i, color in enumerate(colors[:args.numberOfClusters]):
             mask = labels_clustering == i
             plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(i), s=50, alpha=0.7)

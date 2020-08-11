@@ -16,7 +16,8 @@ MOCK_MODULES = ['numpy', 'numpy.core', 'numpy.core.multiarray', 'numpy.distutils
                 'Bio', 'Bio.Seq', 'Bio.Alphabet', 'pyBigWig', 'tables', 'pytables', 'future', 'past', 'past.builtins',
                 'future.utils', 'cooler', 'logging', 'unidecode', 'hic2cool', 'hicmatrix', 'hicmatrix.HiCMatrix',
                 'hicmatrix.lib', 'krbalancing', 'fit_nbinom', 'pybedtools', 'numpy.float', 'numpy.dtype', 'sparse_neighbors_search',
-                'sklearn.cluster', 'errno', 'shutil', 'gzip', 'sklearn', 'sklearn.neighbors']
+                'sklearn.cluster', 'errno', 'shutil', 'gzip', 'sklearn', 'sklearn.neighbors', 'sklearn.decomposition', 'hicexplorer', 'h5py',
+                'hicexplorer.utilities', 'hicexplorer.hicMergeMatrixBins', 'hicexplorer.hicPCA']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = Mock()
 

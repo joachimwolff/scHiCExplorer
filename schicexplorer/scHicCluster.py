@@ -100,7 +100,7 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
-                           default=4,
+                           default=8,
                            type=int)
     parserOpt.add_argument('--help', '-h', action='help', help='show this help message and exit')
     parserOpt.add_argument('--version', action='version',
