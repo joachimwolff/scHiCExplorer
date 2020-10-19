@@ -97,12 +97,9 @@ def parse_arguments(args=None):
                            help='Load data only with one core, this method saves memory but is significantly slower.',
                            required=False,
                            action='store_true')
-    # parserOpt.add_argument('--saveMemoryShare', '-sm',
-    #                        help='Load data only with one core, define the share of the data which should be transferred at once to the sparse-neighbors-module. This method saves memory but is significantly slower.',
-    #                        required=False,
-    #                        action='store_true'
-    #                        default=0.00,
-    #                        type=float)
+    parserOpt.add_argument('--cell_coloring', '-cc',
+                            help='A two column list, first colum the cell names as stored in the scool file, second column the associated coloring for the scatter plot',
+                            required=False)
     parserOpt.add_argument('--noPCA',
                            help='Do not computes PCA on top of a k-nn. Can improve the cluster result.',
                            action='store_true')
@@ -149,6 +146,22 @@ def main(args=None):
     outputFolder = os.path.dirname(os.path.abspath(args.outFileName)) + '/'
 
     raw_file_name = os.path.splitext(os.path.basename(args.outFileName))[0]
+
+    if args.cell_coloring:
+        cell_name_cell_type_dict = {}
+        
+        cell_type_color_dict = {}
+        color_cell_type_dict = {}
+        cell_type_counter = 0
+        with open(args.cell_coloring, 'r') as file:
+            for i, line in enumerate(file.readlines()):
+                line = line.strip()
+                cell_name, cell_type = line.split('\t')
+                cell_name_cell_type_dict[cell_name] = cell_type
+                if cell_type not in cell_type_color_dict:
+                    cell_type_color_dict[cell_type] = cell_type_counter
+                    color_cell_type_dict[cell_type_counter] = cell_type
+                    cell_type_counter += 1
 
     if args.clusterMethod == 'spectral':
         cluster_object = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads, random_state=0)
@@ -241,6 +254,7 @@ def main(args=None):
 
     labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.noPCA, pPcaDimensions=args.dimensionsPCA)
 
+
     if args.createScatterPlot:
         if args.noPCA:
             pca = PCA(n_components=min(minHashClustering._precomputed_graph.shape) - 1)
@@ -256,9 +270,38 @@ def main(args=None):
             neighborhood_matrix_knn = neighborhood_matrix_knn.toarray()
         except Exception:
             pass
-        for i, color in enumerate(colors[:args.numberOfClusters]):
-            mask = labels_clustering == i
-            plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(i), s=50, alpha=0.7)
+
+        if args.cell_coloring:
+            labels_clustering_cell_type = []
+            for cell_name in matrices_list:
+                labels_clustering_cell_type.append(cell_type_color_dict[cell_name_cell_type_dict[cell_name]])
+
+            labels_clustering_cell_type = np.array(labels_clustering_cell_type)
+            for i, color in enumerate(colors[:len(cell_type_color_dict)]):
+                mask = labels_clustering_cell_type == i
+                plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(color_cell_type_dict[i]), s=50, alpha=0.7)
+
+        
+            # compute overlap of cell_type find found clusters
+            computed_clusters = set(labels_clustering)
+
+            with open('matches.txt', 'w') as matches_file:
+                for i in computed_clusters:
+                    mask_computed_clusters = labels_clustering == i
+                    for j in range(len(cell_type_color_dict)):
+                        mask_cell_type = labels_clustering_cell_type == j
+                        
+                        mask = mask_computed_clusters & mask_cell_type
+
+                        number_of_matches = np.sum(mask)
+                        matches_file.write('Computed cluster {} (size: {}) matching with cell type {} (size: {}) {} times. Rate (matches/computed_clusters): {}% Rate (matches/given_celltypes): {}%\n'.format(
+                                        i, np.sum(mask_computed_clusters), color_cell_type_dict[j], np.sum(mask_cell_type), number_of_matches, number_of_matches/np.sum(mask_computed_clusters), number_of_matches/np.sum(mask_cell_type)))
+
+                    matches_file.write('\n')
+        else:
+            for i, color in enumerate(colors[:args.numberOfClusters]):
+                mask = labels_clustering == i
+                plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(i), s=50, alpha=0.7)
         plt.legend(fontsize=args.fontsize)
         plt.xticks([])
         plt.yticks([])
@@ -270,9 +313,18 @@ def main(args=None):
         plt.savefig(scatter_plot_name, dpi=args.dpi)
         plt.close()
         plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
-        for i, color in enumerate(colors[:args.numberOfClusters]):
-            mask = labels_clustering == i
-            plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
+        # for i, color in enumerate(colors[:args.numberOfClusters]):
+        #     mask = labels_clustering == i
+        #     plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
+        if args.cell_coloring:
+
+            for i, color in enumerate(colors[:len(cell_type_color_dict)]):
+                mask = labels_clustering_cell_type == i
+                plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(color_cell_type_dict[i]), s=50, alpha=0.7)
+        else:
+            for i, color in enumerate(colors[:args.numberOfClusters]):
+                mask = labels_clustering == i
+                plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
         plt.legend(fontsize=args.fontsize)
         plt.xticks([])
         plt.yticks([])
