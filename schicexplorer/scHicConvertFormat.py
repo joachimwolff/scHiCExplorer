@@ -83,16 +83,6 @@ def convert_to_txt_csr(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder
 
             pixels = cooler_obj.pixels()[:]
 
-            # chromosome_indices = None
-            # for chromosome in cooler_obj.chromnames:
-            #     chromosome_indices = np.array(pBinsDataFrame.index[pBinsDataFrame['chrom'] == chromosome].tolist())
-
-                # get pixels from one chromosome, but only intra chromosomal contacts
-                # mask = pixels['bin1_id'].apply(lambda x: x in chromosome_indices) & pixels['bin2_id'].apply(lambda x: x in chromosome_indices)
-                # pixels_chromosome = pixels[mask].reset_index(drop=True)
-                # pixels_chromosome['bin1_id'] = pixels_chromosome['bin1_id'] - chromosome_indices[0]
-                # pixels_chromosome['bin2_id'] = pixels_chromosome['bin2_id'] - chromosome_indices[0]
-
             file_name = pOutputFolder + matrix + '.txt'
             pixels.to_csv(file_name, sep="\t", index=False, header=False)
             cell_name_array.append(pOutputFolder + matrix)
