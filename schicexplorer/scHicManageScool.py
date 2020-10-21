@@ -32,12 +32,21 @@ def parse_arguments(args=None):
                                 required=True)
 
     parserOpt = parser.add_argument_group('Optional arguments')
-    parserOpt.add_argument('--update', '-u',
-                           help='Update the scool file from the old format of scHiCExplorer until version 4 to the one used since version 5.',
-                           required=False,
-                           action='store_true')
-    parserOpt.add_argument('--extract', '-e',
-                           help='Path to a file with the cell names to be extracted into an individual cool file',
+    parserOpt.add_argument('--action', '-a',
+                           help='The different actions this tool is able to do. Update can be used to update scool files from scHiCExplorer version 4 to the file format as it is used starting from scHiCExplorer 5.'
+                           'ExtractToCool extracts either a given scool file to individual cool files or only a subset given by a list. ExtractScool requires a list of internal cells that should be copied to a new scool file.',
+                           choices=['update', 'extractToCool', 'extractScool'],
+                           default='none')
+    # parserOpt.add_argument('--update', '-u',
+    #                        help='Update the scool file from the old format of scHiCExplorer until version 4 to the one used since version 5.',
+    #                        required=False,
+    #                        action='store_true')
+    # parserOpt.add_argument('--extract', '-e',
+    #                        help='Path to a file with the cell names to be extracted into an individual cool file',
+    #                        required=False,
+    #                        type=str)
+    parserOpt.add_argument('--cellList', '-cl',
+                           help='A text file with the cells that should be extracted or copied to the a new scool file.',
                            required=False,
                            type=str)
     parserOpt.add_argument('--threads', '-t',
@@ -83,15 +92,17 @@ def main(args=None):
     matrix_file_handler_object_list = []
 
     matrices_list = cell_name_list(args.matrix)
-    if args.extract is not None:
-        matrix_list_tmp = []
-        with open(args.extract, 'r') as file:
-            for line in file:
-                values = line.strip()
-                if not values.startswith('/cells'):
-                    values = '/cells/' + values
-                if values in matrices_list:
-                    matrix_list_tmp.append(values)
+    if args.action in ['extractToCool', 'extractScool']:
+        if args.cellList is not None:
+            matrix_list_tmp = []
+            with open(args.cellList, 'r') as file:
+                for line in file:
+                    values = line.strip()
+                    log.debug('values {}'.format(values))
+                    if not values.startswith('/cells'):
+                        values = '/cells/' + values
+                    if values in matrices_list:
+                        matrix_list_tmp.append(values)
 
         matrices_list = matrix_list_tmp
 
@@ -157,7 +168,7 @@ def main(args=None):
         exit(1)
     matrix_file_handler_object_list = [item for sublist in matrixFileHandler_list for item in sublist]
 
-    if args.update:
+    if args.action in ['extractScool', 'update']:
         matrixFileHandler = MatrixFileHandler(pFileType='scool')
         matrixFileHandler.matrixFile.coolObjectsList = matrix_file_handler_object_list
         matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)

@@ -113,7 +113,7 @@ setup(
              'bin/scHicPlotClusterProfiles', 'bin/scHicPlotConsensusMatrices', 'bin/scHicConsensusMatrices',
              'bin/scHicMergeMatrixBins', 'bin/scHicCluster', 'bin/scHicAdjustMatrix', 'bin/scHicNormalize',
              'bin/scHicInfo', 'bin/scHicCreateBulkMatrix', 'bin/scHicManageScool', 'bin/scHicConvertFormat',
-             'bin/scHicTxtToSCool'
+             'bin/scHicTxtToSCool', 'bin/scHicCorrelate'
              ],
     include_package_data=True,
     package_dir={'schicexplorer': 'schicexplorer'},

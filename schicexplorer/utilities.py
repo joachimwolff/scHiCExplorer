@@ -50,7 +50,7 @@ def cell_name_list(pScoolUri):
             raise Exception('Wrong data format. Please use a scool file.')
             exit(1)
 
-def load_matrix(pMatrix, pChromosomes, pIntraChromosomalContactsOnly):
+def load_matrix(pMatrix, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices):
     cooler_obj = cooler.Cooler(pMatrix)
     shape = cooler_obj.shape
     cooler_obj.binsize
@@ -85,7 +85,7 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
     try:
         for i, matrix in enumerate(pMatricesList):
 
-            pixels_chromosome, shape, _ = load_matrix(pMatrixName + '::' + matrix, pChromosomes, pIntraChromosomalContactsOnly)
+            pixels_chromosome, shape, _ = load_matrix(pMatrixName + '::' + matrix, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices)
 
             if max_shape < shape[0]:
                 max_shape = shape[0]
