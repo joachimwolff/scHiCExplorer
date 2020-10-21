@@ -50,6 +50,29 @@ def cell_name_list(pScoolUri):
             raise Exception('Wrong data format. Please use a scool file.')
             exit(1)
 
+def load_matrix(pMatrix, pChromosomes, pIntraChromosomalContactsOnly):
+    cooler_obj = cooler.Cooler(pMatrix)
+    shape = cooler_obj.shape
+    cooler_obj.binsize
+    chromosome_dataframes_list = []
+
+    if pChromosomes is None:
+        pChromosomes = cooler_obj.chromnames
+    for chromosome in pChromosomes:
+
+        pixels_chromosome = cooler_obj.pixels().fetch(chromosome)
+        # get pixels from one chromosome, but only intra chromosomal contacts
+
+        # per defintion the bin1_id should belong only to the fetched chromosome, therefore only bin2_id needs to be cleaned
+        if pIntraChromosomalContactsOnly:
+            mask_chromosome = pixels_chromosome['bin2_id'].apply(lambda x: x in pChromosomeIndices[chromosome])
+            chromosome_dataframes_list.append(pixels_chromosome[mask_chromosome])
+        else:
+            chromosome_dataframes_list.append(pixels_chromosome)
+
+    pixels_chromosome = pd.concat(chromosome_dataframes_list)
+
+    return pixels_chromosome, shape, cooler_obj.binsize
 
 def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices, pQueue=None):
     neighborhood_matrix = None
@@ -62,25 +85,7 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
     try:
         for i, matrix in enumerate(pMatricesList):
 
-            cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
-            shape = cooler_obj.shape
-            chromosome_dataframes_list = []
-
-            if pChromosomes is None:
-                pChromosomes = cooler_obj.chromnames
-            for chromosome in pChromosomes:
-
-                pixels_chromosome = cooler_obj.pixels().fetch(chromosome)
-                # get pixels from one chromosome, but only intra chromosomal contacts
-
-                # per defintion the bin1_id should belong only to the fetched chromosome, therefore only bin2_id needs to be cleaned
-                if pIntraChromosomalContactsOnly:
-                    mask_chromosome = pixels_chromosome['bin2_id'].apply(lambda x: x in pChromosomeIndices[chromosome])
-                    chromosome_dataframes_list.append(pixels_chromosome[mask_chromosome])
-                else:
-                    chromosome_dataframes_list.append(pixels_chromosome)
-
-            pixels_chromosome = pd.concat(chromosome_dataframes_list)
+            pixels_chromosome, shape, _ = load_matrix(pMatrixName + '::' + matrix, pChromosomes, pIntraChromosomalContactsOnly)
 
             if max_shape < shape[0]:
                 max_shape = shape[0]
