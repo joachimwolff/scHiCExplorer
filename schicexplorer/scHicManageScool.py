@@ -104,12 +104,7 @@ def main(args=None):
                     if values in matrices_list:
                         matrix_list_tmp.append(values)
 
-        
-
-        # for matrix_list_tmp_name in matrix_list_tmp:
-        #     if 
-
-        matrices_list = matrix_list_tmp
+            matrices_list = matrix_list_tmp
 
 
     if len(matrices_list) == 0:

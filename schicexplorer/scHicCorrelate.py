@@ -14,12 +14,10 @@ from multiprocessing import Process, Queue
 import time
 
 import cooler
-# from hicmatrix import HiCMatrix as hm
 from schicexplorer.utilities import load_matrix, cell_name_list
 from schicexplorer._version import __version__
 from scipy.sparse import csr_matrix
 import traceback
-# from hicexplorer.utilities import check_cooler
 # for plotting
 from matplotlib import use as mplt_use
 mplt_use('Agg')
@@ -201,7 +199,6 @@ def plot_correlation(corr_matrix, labels, plot_filename, vmax=None,
                              rotation=45,
                              ha='left')
 
-#    axmatrix.set_xticks([])
     # Plot colorbar.
     axcolor = fig.add_axes([0.13, 0.065, 0.6, 0.02])
     plt.colorbar(img_mat, cax=axcolor, orientation='horizontal')
@@ -237,17 +234,14 @@ def get_vectors(mat1, mat2):
     _mat.data += 1
 
     # get a vector of the values in mat1 from
-    # _mat
     values1 = (_mat - mat1).data - 1
 
     # get a vector of the values in mat2 from
-    # _mat
     values2 = (_mat - mat2).data - 1
 
     return values1, values2
 
 def load_matrix_list(pMatrixName, pMatricesList, pArgs, pChromosomeIndices, pQueue):
-    # all_mat = None
     max_value = None
     min_value = None
     all_mat = None
@@ -255,33 +249,18 @@ def load_matrix_list(pMatrixName, pMatricesList, pArgs, pChromosomeIndices, pQue
     try:
         hic_mat_list = []
         for i, matrix in enumerate(pMatricesList):
-            # log.debug("loading hic matrix {}\n".format(matrix))
-
-            # if (check_cooler(pArgs.matrices[i])) and pArgs.chromosomes is not None and len(pArgs.chromosomes) == 1:
-            #     _mat = hm.hiCMatrix(matrix, pChrnameList=pArgs.chromosomes)
-            # else:
-            #     _mat = hm.hiCMatrix(matrix)
-            #     if pArgs.chromosomes:
-            #         _mat.keepOnlyTheseChr(pArgs.chromosomes)
-            #     _mat.filterOutInterChrCounts()
-
             pixels_chromosome, shape, bin_size = load_matrix(pMatrixName + '::' + matrix, pArgs.chromosomes, pIntraChromosomalContactsOnly=True, pChromosomeIndices=pChromosomeIndices)
             instances = pixels_chromosome['bin1_id'].values
             features = pixels_chromosome['bin2_id'].values
             data = pixels_chromosome['count'].values
 
-            # _mat.diagflat(0)
             distance = np.absolute(instances - features)
             mask = distance == 0
-            # instances[mask] = 0
-            # features[mask] = 0
             data[mask] = 0
 
             _mat = csr_matrix((data, (instances, features)), shape=shape)
             _mat.eliminate_zeros()
             log.debug("restore masked bins {}\n".format(matrix))
-            # bin_size = _mat.getBinSize()
-            # all_nan = np.unique(np.concatenate([all_nan, _mat.nan_bins]))
 
             _mat = triu(_mat, k=0, format='csr')
             if pArgs.range:
@@ -343,9 +322,6 @@ def compute_correlation(pCorrelationFunction, pRows, pColumns, pBigMatrix, pInde
                 pResults[row, col] = 1
                 continue
 
-            # log.debug("comparing {} and {}\n".format(args.matrices[row],
-            #                                          args.matrices[col]))
-
             # remove cases in which both are zero or one is zero and
             # the other is one
             _mat = pBigMatrix[:, [row, col]]
@@ -368,9 +344,6 @@ def main(args=None):
         exit(0)
     if not args.labels:
         label_list = [x.split('/')[2].split('.')[0].split('_')[2] for x in matrices_list]
-        # log.debug('label_list[:2] {}'.format(label_list[:2]))
-        # exit()
-        # args.labels = map(lambda x: os.path.basename(x), matrices_list)
         args.labels = label_list
 
     num_files = len(matrices_list)
@@ -388,9 +361,7 @@ def main(args=None):
     all_nan = []
 
     # load csr matrices in parallel
-
     chromosome_indices = None
-    # if pIntraChromosomalContactsOnly:
     cooler_obj = cooler.Cooler(args.matrix + '::' + matrices_list[0])
     binsDataFrame = cooler_obj.bins()[:]
     chromosome_indices = {}
@@ -425,7 +396,6 @@ def main(args=None):
             pQueue=queue[i]
         )
         )
-# load_matrix_list(pMatrixName, pMatricesList, pArgs, pQueue)
         process[i].start()
 
     fail_flag = False
@@ -510,10 +480,6 @@ def main(args=None):
     #### parallel correlation computation
     all_data_collected = False
     thread_done = [False] * threads
-    # length_index = [None] * threads
-    # matrix_list_threads = [None] * threads
-    # all_mat_thread = [None] * threads
-    # length_index[0] = 0
     matricesPerThread = len(rows) // threads
 
     queue = [None] * threads
@@ -523,12 +489,9 @@ def main(args=None):
         if i < threads - 1:
             start_index = i * matricesPerThread
             end_index = (i + 1) * matricesPerThread
-            # matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
-            # length_index[i + 1] = length_index[i] + len(matrices_name_list)
         else:
             start_index = i * matricesPerThread
             end_index = len(rows)
-            # matrices_name_list = matrices_list[i * matricesPerThread:]
 
         queue[i] = Queue()
         process[i] = Process(target=compute_correlation, kwargs=dict(
@@ -542,12 +505,10 @@ def main(args=None):
             pQueue=queue[i]
         )
         )
-    # compute_correlation(pCorrelationFunction, pRows, pColumns, pBigMatrix, pIndexStart, pIndexEnd, pResults, pQueue):
         process[i].start()
 
     fail_flag = False
     time_start = time.time()
-    # wait_threshold = 60 * 5
     while not all_data_collected:
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
@@ -568,98 +529,11 @@ def main(args=None):
             if not thread:
                 all_data_collected = False
 
-        # if time.time() - time_start > wait_threshold:
-        #     log.error('The wait threshold time limit is reached. It seems parts of your data are too large for Python\'s queues to be passed back. Please use either a higher number of threads or use the `--saveMemory` option if available.')
-
-        #     for i in range(threads):
-        #         if process[i] is not None:
-        #             process[i].join()
-        #             process[i].terminate()
-        #     exit(1)
         time.sleep(1)
 
     if fail_flag:
-        # log.error(fail_message)
         exit(1)
 
-    # hic_mat_list = [item for sublist in matrix_list_threads for item in sublist]
-
-    # for index in range(len(rows)):
-    #     row = rows[index]
-    #     col = cols[index]
-    #     if row == col:
-    #         # results[row, col] = 1
-
-    #         # add titles as
-    #         # empty plot in the diagonal
-    #         ax = fig.add_subplot(grids[row, col])
-    #         ax.text(0.6, 0.6, args.labels[row],
-    #                 verticalalignment='center',
-    #                 horizontalalignment='center',
-    #                 fontsize=10, fontweight='bold',
-    #                 transform=ax.transAxes)
-    #         ax.set_axis_off()
-    #         continue
-
-    #     # log.debug("comparing {} and {}\n".format(args.matrices[row],
-    #     #                                          args.matrices[col]))
-
-    #     # remove cases in which both are zero or one is zero and
-    #     # the other is one
-    #     # _mat = big_mat[:, [row, col]]
-    #     # _mat = _mat[_mat.sum(axis=1) > 1, :]
-    #     # vector1 = _mat[:, 0]
-    #     # vector2 = _mat[:, 1]
-
-    #     # results[row, col] = correlation_opts[args.method](vector1, vector2)[0]
-
-    #     # scatter plots
-    #     ax = fig.add_subplot(grids[row, col])
-    #     if args.log1p:
-    #         ax.xaxis.set_major_locator(major_locator)
-    #         ax.xaxis.set_minor_locator(minor_locator)
-    #         ax.yaxis.set_major_locator(major_locator)
-    #         ax.yaxis.set_minor_locator(minor_locator)
-
-    #     ax.text(0.2, 0.8, "{}={:.2f}".format(args.method,
-    #                                          results[row, col]),
-    #             horizontalalignment='left',
-    #             transform=ax.transAxes)
-    #     ax.get_yaxis().set_tick_params(
-    #         which='both',
-    #         left='off',
-    #         right='off',
-    #         direction='out')
-
-    #     ax.get_xaxis().set_tick_params(
-    #         which='both',
-    #         top='off',
-    #         bottom='off',
-    #         direction='out')
-
-    #     if col != num_files - 1:
-    #         ax.set_yticklabels([])
-    #     else:
-    #         ax.yaxis.tick_right()
-    #         ax.get_yaxis().set_tick_params(
-    #             which='both',
-    #             left='off',
-    #             right='on',
-    #             direction='out')
-    #     if col - row == 1:
-    #         ax.xaxis.tick_bottom()
-    #         ax.get_xaxis().set_tick_params(
-    #             which='both',
-    #             top='off',
-    #             bottom='on',
-    #             direction='out')
-    #     else:
-    #         ax.set_xticklabels([])
-
-    #     # ax.hist2d(vector1, vector2, bins=150, cmin=0.1)
-    # fig.tight_layout()
-    # log.debug("saving {}".format(args.outFileNameScatter))
-    # fig.savefig(args.outFileNameScatter, bbox_inches='tight')
 
     results = results + np.triu(results, 1).T
     plot_correlation(results, args.labels,
