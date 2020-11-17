@@ -20,6 +20,8 @@ from hicmatrix import HiCMatrix as hm
 import numpy as np
 from scipy.sparse import csr_matrix
 
+from holoviews.plotting.util import process_cmap
+
 from schicexplorer._version import __version__
 from schicexplorer.utilities import cell_name_list, create_csr_matrix_all_cells
 
@@ -167,8 +169,9 @@ def main(args=None):
 
         list(set(labels_clustering))
         plt.figure(figsize=(15, 8), dpi=80)
-        cmap = get_cmap(args.colorMap)
-        colors = cmap.colors
+        # cmap = get_cmap(args.colorMap)
+        # colors = cmap.colors
+        colors = process_cmap(args.colorMap)
         for i, color in enumerate(colors[:args.numberOfClusters]):
             mask = labels_clustering == i
             plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(i), s=50, alpha=0.7)

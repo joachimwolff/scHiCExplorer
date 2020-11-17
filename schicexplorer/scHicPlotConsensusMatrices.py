@@ -104,7 +104,7 @@ def main(args=None):
     else:
         figsize = (5, 3)
 
-    f, axes = plt.subplots(rows, columns, figsize=figsize)
+    f, axes = plt.subplots(rows, columns , figsize=figsize)
 
     title_string = 'Consensus matrices of {}'.format(os.path.basename(args.matrix.split('.scool')[0]))
     if args.chromosomes:
@@ -116,6 +116,7 @@ def main(args=None):
 
     if args.no_header:
         plt.suptitle(title_string, fontsize=args.fontsize)
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     for i, matrix in enumerate(matrices_list):
         if args.chromosomes is not None and len(args.chromosomes) == 1:
@@ -146,7 +147,10 @@ def main(args=None):
             norm = LogNorm()
         else:
             norm = None
+
+
         if rows == 1:
+
             im = axes[i % columns].imshow(matrix_data, cmap=args.colorMap, norm=norm)
             axes[i % columns].get_xaxis().set_ticks([])
             axes[i % columns].get_yaxis().set_ticks([])
@@ -159,7 +163,11 @@ def main(args=None):
             axes[i // columns, i % columns].get_yaxis().set_ticks([])
 
             axes[i // columns, i % columns].yaxis.set_visible(False)
-            axes[i // columns, i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1]))
+            axes[i // columns, i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1].split(':')[0]))
+
+
+
+
 
     number_of_plots = len(matrices_list)
     i = -1
@@ -169,7 +177,12 @@ def main(args=None):
         number_of_plots += 1
         i -= 1
 
-    f.colorbar(im)
+   
     plt.tight_layout()
+
+    f.subplots_adjust(right=0.8)
+    cbar_ax = f.add_axes([0.85, 0.15, 0.05, 0.7])
+    f.colorbar(im, cax=cbar_ax)
+
     plt.savefig(args.outFileName, dpi=args.dpi)
     plt.close()

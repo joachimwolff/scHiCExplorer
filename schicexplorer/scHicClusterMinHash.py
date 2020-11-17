@@ -26,6 +26,7 @@ from hicmatrix import HiCMatrix as hm
 from schicexplorer._version import __version__
 from schicexplorer.utilities import cell_name_list, create_csr_matrix_all_cells, open_and_store_matrix
 
+from holoviews.plotting.util import process_cmap
 
 def parse_arguments(args=None):
 
@@ -72,7 +73,7 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--createScatterPlot', '-csp',
                            help='Create a scatter plot for the clustering, the x and y are the first and second principal component of the computed k-nn graph.',
                            required=False,
-                           default='scatterPlot.pdf')
+                           default='scatterPlot.eps')
     parserOpt.add_argument('--dpi',
                            help='The dpi of the scatter plot.',
                            required=False,
@@ -97,7 +98,10 @@ def parse_arguments(args=None):
                            help='Load data only with one core, this method saves memory but is significantly slower.',
                            required=False,
                            action='store_true')
-    parserOpt.add_argument('--cell_coloring', '-cc',
+    parserOpt.add_argument('--cell_coloring_type', '-cct',
+                            help='A two column list, first colum the cell names as stored in the scool file, second column the associated coloring for the scatter plot',
+                            required=False)
+    parserOpt.add_argument('--cell_coloring_batch', '-ccb',
                             help='A two column list, first colum the cell names as stored in the scool file, second column the associated coloring for the scatter plot',
                             required=False)
     parserOpt.add_argument('--noPCA',
@@ -127,13 +131,16 @@ def parse_arguments(args=None):
                            help='Fontsize in the plot for x and y axis.',
                            type=float,
                            nargs=2,
-                           default=(10, 5),
+                           default=(15, 6),
                            metavar=('x-size', 'y-size'))
     parserOpt.add_argument('--chromosomes',
                            help='List of to be computed chromosomes',
                            nargs='+')
     parserOpt.add_argument('--perChromosome', '-pc',
                            help='Computes the knn per chromosome and merge the different knns for clustering.',
+                           action='store_true')
+    parserOpt.add_argument('--absoluteValues', '-av',
+                           help='Return the number of hash collisions as measure instead of 0 - 1 normalized values.',
                            action='store_true')
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
@@ -243,13 +250,13 @@ def main(args=None):
 
     raw_file_name = os.path.splitext(os.path.basename(args.outFileName))[0]
 
-    if args.cell_coloring:
+    if args.cell_coloring_type:
         cell_name_cell_type_dict = {}
         
         cell_type_color_dict = {}
         color_cell_type_dict = {}
         cell_type_counter = 0
-        with open(args.cell_coloring, 'r') as file:
+        with open(args.cell_coloring_type, 'r') as file:
             for i, line in enumerate(file.readlines()):
                 line = line.strip()
                 try:
@@ -261,7 +268,27 @@ def main(args=None):
                     cell_type_color_dict[cell_type] = cell_type_counter
                     color_cell_type_dict[cell_type_counter] = cell_type
                     cell_type_counter += 1
+    
+    if args.cell_coloring_batch:
+        cell_name_cell_type_dict_batch = {}
+        
+        cell_type_color_dict_batch = {}
+        color_cell_type_dict_batch = {}
+        cell_type_counter_batch = 0
+        with open(args.cell_coloring_batch, 'r') as file:
+            for i, line in enumerate(file.readlines()):
+                line = line.strip()
+                try:
+                    cell_name, cell_type = line.split('\t')
+                except:
+                    cell_name, cell_type = line.split('    ')
+                cell_name_cell_type_dict_batch[cell_name] = cell_type
+                if cell_type not in cell_type_color_dict_batch:
+                    cell_type_color_dict_batch[cell_type] = cell_type_counter_batch
+                    color_cell_type_dict_batch[cell_type_counter_batch] = cell_type
+                    cell_type_counter_batch += 1
         # log.debug('cell_name_cell_type_dict,keys() {}'.format(cell_name_cell_type_dict.keys()))
+        # log.debug('len(cell_type_color_dict) {}'.format(len(cell_type_color_dict)))
     if args.clusterMethod == 'spectral':
         cluster_object = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads, random_state=0)
     elif args.clusterMethod == 'kmeans':
@@ -282,7 +309,7 @@ def main(args=None):
         for param in vars(args):
             if 'umap_' in param:
                  umap_params_dict[param] = vars(args)[param]
-    log.debug(umap_params_dict)
+    # log.debug(umap_params_dict)
 
     if args.perChromosome:
         matrices_list = cell_name_list(args.matrix)
@@ -441,7 +468,7 @@ def main(args=None):
             minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=(not args.noPCA), pPcaDimensions=args.dimensionsPCA, pUmap=(not args.noUMAP), pUmapDict=umap_params_dict)
             # log.debug('251 type(){}'.format(type(minHashClustering._precomputed_graph)))
 
-        if args.noPCA:
+        if args.noPCA and args.noUMAP:
             mask = np.isnan(minHashClustering._precomputed_graph.data)
             minHashClustering._precomputed_graph.data[mask] = 0
 
@@ -452,7 +479,7 @@ def main(args=None):
 
 
     if args.createScatterPlot:
-        if args.noPCA:
+        if args.noPCA  and args.noUMAP:
             pca = PCA(n_components=min(minHashClustering._precomputed_graph.shape) - 1)
             neighborhood_matrix_knn = pca.fit_transform(minHashClustering._precomputed_graph.todense())
         else:
@@ -462,20 +489,26 @@ def main(args=None):
        
 
         list(set(labels_clustering))
-        cmap = get_cmap(args.colorMap)
-        colors = cmap.colors
+        # cmap = get_cmap(args.colorMap)
+        # colors = cmap.colors
+
+        colors = process_cmap(args.colorMap)
+        
         try:
             neighborhood_matrix_knn = neighborhood_matrix_knn.toarray()
         except Exception:
             pass
         
-        if not (args.noPCA):
-            label_x = 'PC1'
-            label_y = 'PC2'
+        # if not (args.noPCA):
+        label_x = 'PC1'
+        label_y = 'PC2'
         if not (args.noUMAP):
             label_x = 'UMAP1'
             label_y = 'UMAP2'
-        if args.cell_coloring:
+        if args.cell_coloring_type:
+            if len(colors) < len(cell_type_color_dict):
+                log.error('The chosen colormap offers too less values for the number of clusters.')
+                exit(1)
             labels_clustering_cell_type = []
             for cell_name in matrices_list:
                 # if cell_name in cell_name_cell_type_dict:
@@ -484,12 +517,28 @@ def main(args=None):
 
             labels_clustering_cell_type = np.array(labels_clustering_cell_type)
 
+            log.debug('labels_clustering_cell_type: {}'.format(len(labels_clustering_cell_type)))
+            log.debug('matrices_list: {}'.format(len(matrices_list)))
+
 
             plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
             for i, color in enumerate(colors[:len(cell_type_color_dict)]):
                 mask = labels_clustering_cell_type == i
+                log.debug('plot cluster: {} {}'.format(color_cell_type_dict[i], np.sum(mask)))
                 plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(color_cell_type_dict[i]), s=20, alpha=0.7)
 
+            # plt.legend(fontsize=args.fontsize)
+            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=args.fontsize)
+            plt.xticks([])
+            plt.yticks([])
+            plt.xlabel(label_x, fontsize=args.fontsize)
+            plt.ylabel(label_y, fontsize=args.fontsize)
+            if '.' not in args.createScatterPlot:
+                args.createScatterPlot += '.png'
+            scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_cell_color.' + args.createScatterPlot.split('.')[-1]
+            plt.tight_layout()
+            plt.savefig(scatter_plot_name, dpi=args.dpi)
+            plt.close()
         
             # compute overlap of cell_type find found clusters
             computed_clusters = set(labels_clustering)
@@ -507,33 +556,60 @@ def main(args=None):
                                         i, np.sum(mask_computed_clusters), color_cell_type_dict[j], np.sum(mask_cell_type), number_of_matches, number_of_matches/np.sum(mask_computed_clusters), number_of_matches/np.sum(mask_cell_type)))
 
                     matches_file.write('\n')
-            plt.legend(fontsize=args.fontsize)
+            
+        if args.cell_coloring_batch:
+            if len(colors) < len(cell_type_color_dict_batch):
+                log.error('The chosen colormap offers too less values for the number of clusters.')
+                exit(1)
+            labels_clustering_cell_type_batch = []
+            for cell_name in matrices_list:
+                # if cell_name in cell_name_cell_type_dict:
+                #     if cell_name_cell_type_dict[cell_name] in cell_type_color_dict:
+                labels_clustering_cell_type_batch.append(cell_type_color_dict_batch[cell_name_cell_type_dict_batch[cell_name]])
+
+            labels_clustering_cell_type_batch = np.array(labels_clustering_cell_type_batch)
+
+            log.debug('labels_clustering_cell_type: {}'.format(len(labels_clustering_cell_type_batch)))
+            log.debug('matrices_list: {}'.format(len(matrices_list)))
+
+
+            plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
+            for i, color in enumerate(colors[:len(cell_type_color_dict_batch)]):
+                mask = labels_clustering_cell_type_batch == i
+                log.debug('plot cluster: {} {}'.format(color_cell_type_dict_batch[i], np.sum(mask)))
+                plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(color_cell_type_dict_batch[i]), s=20, alpha=0.7)
+
+            # plt.legend(fontsize=args.fontsize)
+            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=args.fontsize)
             plt.xticks([])
             plt.yticks([])
             plt.xlabel(label_x, fontsize=args.fontsize)
             plt.ylabel(label_y, fontsize=args.fontsize)
             if '.' not in args.createScatterPlot:
                 args.createScatterPlot += '.png'
-            scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc1_pc2_cell_color.' + args.createScatterPlot.split('.')[-1]
+            scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_cell_color_batch.' + args.createScatterPlot.split('.')[-1]
+            plt.tight_layout()
             plt.savefig(scatter_plot_name, dpi=args.dpi)
             plt.close()
-       
 
         plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
         for i, color in enumerate(colors[:args.numberOfClusters]):
             mask = labels_clustering == i
             plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(i), s=20, alpha=0.7)
         plt.legend(fontsize=args.fontsize)
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=args.fontsize)
+
         plt.xticks([])
         plt.yticks([])
         plt.xlabel(label_x, fontsize=args.fontsize)
         plt.ylabel(label_y, fontsize=args.fontsize)
         if '.' not in args.createScatterPlot:
             args.createScatterPlot += '.png'
-        scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc1_pc2.' + args.createScatterPlot.split('.')[-1]
+        scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '.' + args.createScatterPlot.split('.')[-1]
+        plt.tight_layout()
         plt.savefig(scatter_plot_name, dpi=args.dpi)
         plt.close()
-        plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
+        # plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
         # for i, color in enumerate(colors[:args.numberOfClusters]):
         #     mask = labels_clustering == i
         #     plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
