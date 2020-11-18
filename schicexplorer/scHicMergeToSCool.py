@@ -53,10 +53,10 @@ def load_cool_files(pMatricesList, pCutIntervals, pQueue):
             matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix)
 
             matrixFileHandlerOutput.set_matrix_variables(_matrix,
-                                                        pCutIntervals,
-                                                        nan_bins,
-                                                        correction_factors,
-                                                        distance_counts)
+                                                         pCutIntervals,
+                                                         nan_bins,
+                                                         correction_factors,
+                                                         distance_counts)
 
             matrixFileHandlerList.append(matrixFileHandlerOutput)
         except Exception as exp:

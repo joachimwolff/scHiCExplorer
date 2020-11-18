@@ -111,7 +111,7 @@ def parse_arguments(args=None):
                            'from file names. '
                            'Multiple labels have to be separated by space, e.g. '
                            '--labels sample1 sample2 sample3',
-                           nargs='+')
+                           type=str)
 
     parserOpt.add_argument('--range',
                            help='In bp with the format low_range:high_range, '
@@ -133,7 +133,16 @@ def parse_arguments(args=None):
                            'correlation.',
                            default=None,
                            nargs='+')
-
+    parserOpt.add_argument('--fontsize',
+                           help='Fontsize in the plot for x and y axis.',
+                           type=float,
+                           default=30)
+    parserOpt.add_argument('--figuresize',
+                           help='Fontsize in the plot for x and y axis.',
+                           type=float,
+                           nargs=2,
+                           default=(25, 20),
+                           metavar=('x-size', 'y-size'))
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module. Is only used with \'cool\' matrix format.'
                            ' One master process which is used to read the input file into the buffer and one process which is merging '
@@ -152,7 +161,7 @@ def parse_arguments(args=None):
 
 
 def plot_correlation(corr_matrix, labels, plot_filename, vmax=None,
-                     vmin=None, colormap='Reds', image_format=None):
+                     vmin=None, colormap=None, image_format=None, pFontSize=None, pFigureSize=None):
     import scipy.cluster.hierarchy as sch
     num_rows = corr_matrix.shape[0]
 
@@ -163,7 +172,7 @@ def plot_correlation(corr_matrix, labels, plot_filename, vmax=None,
         vmin = 0 if corr_matrix.min() >= 0 else -1
 
     # Compute and plot dendrogram.
-    fig = plt.figure(figsize=(100.5, 90.5))
+    fig = plt.figure(figsize=pFigureSize)
     axdendro = fig.add_axes([0.02, 0.1, 0.1, 0.7])
     axdendro.set_axis_off()
     y_var = sch.linkage(corr_matrix, method='complete')
@@ -191,14 +200,14 @@ def plot_correlation(corr_matrix, labels, plot_filename, vmax=None,
     axmatrix.yaxis.tick_right()
     axmatrix.set_yticks(np.arange(corr_matrix.shape[0]) + 0.5)
     axmatrix.set_yticklabels(np.array(labels).astype('str')[index],
-                             fontsize=14)
+                             fontsize=pFontSize)
 
     axmatrix.set_xticks(np.arange(corr_matrix.shape[0]) + 0.5)
     axmatrix.set_xticklabels(np.array(labels).astype('str')[index],
-                             fontsize=14,
+                             fontsize=pFontSize,
                              rotation=45,
                              ha='left')
-
+    plt.tight_layout()
     # Plot colorbar.
     axcolor = fig.add_axes([0.13, 0.065, 0.6, 0.02])
     plt.colorbar(img_mat, cax=axcolor, orientation='horizontal')
@@ -240,6 +249,7 @@ def get_vectors(mat1, mat2):
     values2 = (_mat - mat2).data - 1
 
     return values1, values2
+
 
 def load_matrix_list(pMatrixName, pMatricesList, pArgs, pChromosomeIndices, pQueue):
     max_value = None
@@ -335,14 +345,28 @@ def compute_correlation(pCorrelationFunction, pRows, pColumns, pBigMatrix, pInde
         return
     pQueue.put(pResults)
 
+
 def main(args=None):
 
     args = parse_arguments().parse_args(args)
     matrices_list = cell_name_list(args.matrix)
-    if args.labels and len(matrices_list) != len(args.labels):
-        log.error("The number of labels does not match the number of matrices.")
-        exit(0)
-    if not args.labels:
+    # if args.labels and len(matrices_list) != len(args.labels):
+    #     log.error("The number of labels does not match the number of matrices.")
+    #     exit(0)
+
+    if args.labels:
+        label_list = [None] * len(matrices_list)
+        with open(args.labels, 'r') as file:
+            for line in file.readlines():
+                try:
+                    matrix_name, label_name = line.strip().split('\t')
+                except Exception:
+                    matrix_name, label_name = line.strip().split('    ')
+                if matrix_name in matrices_list:
+                    index = matrices_list.index(matrix_name)
+                    label_list[index] = label_name
+            args.labels = label_list
+    else:
         label_list = [x.split('/')[2].split('.')[0].split('_')[2] for x in matrices_list]
         args.labels = label_list
 
@@ -368,7 +392,6 @@ def main(args=None):
     for chromosome in cooler_obj.chromnames:
         chromosome_indices[chromosome] = np.array(binsDataFrame.index[binsDataFrame['chrom'] == chromosome].tolist())
 
-
     threads = args.threads
     all_data_collected = False
     thread_done = [False] * threads
@@ -380,7 +403,7 @@ def main(args=None):
     queue = [None] * threads
     process = [None] * threads
     for i in range(threads):
-    
+
         if i < threads - 1:
             matrices_name_list = matrices_list[i * matricesPerThread:(i + 1) * matricesPerThread]
             length_index[i + 1] = length_index[i] + len(matrices_name_list)
@@ -441,7 +464,7 @@ def main(args=None):
 
     hic_mat_list = [item for sublist in matrix_list_threads for item in sublist]
     # remove nan bins
-    
+
     rows_keep = cols_keep = np.delete(list(range(all_mat.shape[1])), all_nan)
     all_mat = all_mat[rows_keep, :][:, cols_keep]
 
@@ -476,8 +499,7 @@ def main(args=None):
         major_locator = FixedLocator(list(range(min_value, max_value, 2)))
         minor_locator = FixedLocator(list(range(min_value, max_value, 1)))
 
-
-    #### parallel correlation computation
+    # parallel correlation computation
     all_data_collected = False
     thread_done = [False] * threads
     matricesPerThread = len(rows) // threads
@@ -485,7 +507,7 @@ def main(args=None):
     queue = [None] * threads
     process = [None] * threads
     for i in range(threads):
-    
+
         if i < threads - 1:
             start_index = i * matricesPerThread
             end_index = (i + 1) * matricesPerThread
@@ -495,12 +517,12 @@ def main(args=None):
 
         queue[i] = Queue()
         process[i] = Process(target=compute_correlation, kwargs=dict(
-            pCorrelationFunction=correlation_opts[args.method], 
-            pRows=rows, 
-            pColumns=cols, 
-            pBigMatrix=big_mat, 
-            pIndexStart=start_index, 
-            pIndexEnd=end_index, 
+            pCorrelationFunction=correlation_opts[args.method],
+            pRows=rows,
+            pColumns=cols,
+            pBigMatrix=big_mat,
+            pIndexStart=start_index,
+            pIndexEnd=end_index,
             pResults=results,
             pQueue=queue[i]
         )
@@ -517,7 +539,7 @@ def main(args=None):
                     log.error('{}'.format(correlated_result))
                     fail_flag = True
                 else:
-                   results += correlated_result
+                    results += correlated_result
                 queue[i] = None
                 process[i].join()
                 process[i].terminate()
@@ -534,12 +556,13 @@ def main(args=None):
     if fail_flag:
         exit(1)
 
-
     results = results + np.triu(results, 1).T
     plot_correlation(results, args.labels,
                      args.outFileNameHeatmap,
                      args.zMax,
                      args.zMin,
                      args.colorMap,
-                     image_format=args.plotFileFormat)
+                     image_format=args.plotFileFormat,
+                     pFontSize=args.fontsize,
+                     pFigureSize=args.figuresize)
 #                    plot_numbers=args.plotNumbers)

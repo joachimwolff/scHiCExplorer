@@ -104,7 +104,7 @@ def main(args=None):
     else:
         figsize = (5, 3)
 
-    f, axes = plt.subplots(rows, columns , figsize=figsize)
+    f, axes = plt.subplots(rows, columns, figsize=figsize)
 
     title_string = 'Consensus matrices of {}'.format(os.path.basename(args.matrix.split('.scool')[0]))
     if args.chromosomes:
@@ -148,7 +148,6 @@ def main(args=None):
         else:
             norm = None
 
-
         if rows == 1:
 
             im = axes[i % columns].imshow(matrix_data, cmap=args.colorMap, norm=norm)
@@ -165,10 +164,6 @@ def main(args=None):
             axes[i // columns, i % columns].yaxis.set_visible(False)
             axes[i // columns, i % columns].set_xlabel(str(matrix.split('/')[-1].split('cluster_')[-1].split(':')[0]))
 
-
-
-
-
     number_of_plots = len(matrices_list)
     i = -1
     while rows * columns > number_of_plots:
@@ -177,7 +172,6 @@ def main(args=None):
         number_of_plots += 1
         i -= 1
 
-   
     plt.tight_layout()
 
     f.subplots_adjust(right=0.8)

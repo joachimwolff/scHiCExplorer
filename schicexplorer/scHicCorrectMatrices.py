@@ -19,6 +19,7 @@ from schicexplorer.utilities import cell_name_list
 from scipy.sparse import csr_matrix
 from schicexplorer.utilities import load_matrix
 
+
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
@@ -70,38 +71,33 @@ def compute_correction(pMatrixName, pMatrixList, pQueue):
                 _matrix[0] = pixels_chromosome['bin1_id'].values
                 _matrix[1] = pixels_chromosome['bin2_id'].values
                 _matrix[2] = pixels_chromosome['count'].values
-                
+
                 # matrix = csr_matrix()
                 matrix = csr_matrix((data, (instances, features)), (pXDimension, max_shape * max_shape), dtype=np.float)
             else:
                 continue
 
-
             kr = kr_balancing(shape[0], shape[1],
-                        matrix.count_nonzero(), matrix.indptr.astype(np.int64, copy=False),
-                        matrix.indices.astype(np.int64, copy=False), matrix.data.astype(np.float64, copy=False))
+                              matrix.count_nonzero(), matrix.indptr.astype(np.int64, copy=False),
+                              matrix.indices.astype(np.int64, copy=False), matrix.data.astype(np.float64, copy=False))
             kr.computeKR()
             correction_factors = kr.get_normalisation_vector(False).todense()
-
 
             matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix)
 
             matrixFileHandlerOutput.set_matrix_variables(matrix,
-                                                        pCutIntervals,
-                                                        None,
-                                                        correction_factors,
-                                                        None)
+                                                         pCutIntervals,
+                                                         None,
+                                                         correction_factors,
+                                                         None)
 
             out_queue_list.append(matrixFileHandlerOutput)
-
 
             # hic.setCorrectionFactors(correction_factors)
             # out_queue_list.append(hic)
 
-
     except Exception as exp:
         print('hff')
-    
 
     # for matrix in pMatrixList:
     #     hic = hm.hiCMatrix(pMatrixName + '::' + matrix)
@@ -181,7 +177,6 @@ def main(args=None):
     # matrixFileHandler = MatrixFileHandler(pFileType='scool')
     # matrixFileHandler.matrixFile.coolObjectsList = matrixFileHandlerObjects_list
     # matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)
-
 
     matrix_file_handler_object_list = [item for sublist in matrixFileHandler_list for item in sublist]
 

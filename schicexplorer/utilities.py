@@ -50,6 +50,7 @@ def cell_name_list(pScoolUri):
             raise Exception('Wrong data format. Please use a scool file.')
             exit(1)
 
+
 def load_matrix(pMatrix, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices):
     cooler_obj = cooler.Cooler(pMatrix)
     shape = cooler_obj.shape
@@ -73,6 +74,7 @@ def load_matrix(pMatrix, pChromosomes, pIntraChromosomalContactsOnly, pChromosom
     pixels_chromosome = pd.concat(chromosome_dataframes_list)
 
     return pixels_chromosome, shape, cooler_obj.binsize
+
 
 def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices, pDistance=None, pQueue=None):
     neighborhood_matrix = None

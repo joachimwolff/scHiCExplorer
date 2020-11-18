@@ -28,6 +28,7 @@ from schicexplorer.utilities import cell_name_list, create_csr_matrix_all_cells,
 
 from holoviews.plotting.util import process_cmap
 
+
 def parse_arguments(args=None):
 
     parser = argparse.ArgumentParser(
@@ -82,12 +83,12 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--numberOfHashFunctions', '-nh',
                            help='Number of to be used hash functions for minHash',
                            required=False,
-                           default=800,
+                           default=4000,
                            type=int)
     parserOpt.add_argument('--numberOfNearestNeighbors', '-k',
                            help='Number of to be used computed nearest neighbors for the knn graph.',
                            required=False,
-                           default=100,
+                           default=None,
                            type=int)
     parserOpt.add_argument('--shareOfMatrixToBeTransferred', '-s',
                            help='Which share of rows shall be transferred from Python to C++ at once. If `--saveMemory` is active, value is interpreted as the share to loaded at once to memory. Values between 0 and 1, the more are transferred at once, the larger the memory usage is. The less rows are transferred, the slower the computation is.',
@@ -99,11 +100,11 @@ def parse_arguments(args=None):
                            required=False,
                            action='store_true')
     parserOpt.add_argument('--cell_coloring_type', '-cct',
-                            help='A two column list, first colum the cell names as stored in the scool file, second column the associated coloring for the scatter plot',
-                            required=False)
+                           help='A two column list, first colum the cell names as stored in the scool file, second column the associated coloring for the scatter plot',
+                           required=False)
     parserOpt.add_argument('--cell_coloring_batch', '-ccb',
-                            help='A two column list, first colum the cell names as stored in the scool file, second column the associated coloring for the scatter plot',
-                            required=False)
+                           help='A two column list, first colum the cell names as stored in the scool file, second column the associated coloring for the scatter plot',
+                           required=False)
     parserOpt.add_argument('--noPCA',
                            help='Do not computes PCA on top of a k-nn.',
                            action='store_true')
@@ -153,89 +154,89 @@ def parse_arguments(args=None):
 
     parserOptUmap = parser.add_argument_group('Optional umap arguments', 'Arguments for umap embedding. Please consider its documentation for details: https://umap-learn.readthedocs.io/en/latest/api.html#umap.umap_.UMAP')
     parserOptUmap.add_argument('--umap_n_neighbors',
-                           help='Number of neighbors',
-                           type=int,
-                           default=30)
+                               help='Number of neighbors',
+                               type=int,
+                               default=30)
     parserOptUmap.add_argument('--umap_n_components',
-                           help='Number of components',
-                           type=int,
-                           default=2)
+                               help='Number of components',
+                               type=int,
+                               default=2)
     parserOptUmap.add_argument('--umap_metric',
-                           help='Metric of umap.',
-                           type=str,
-                           default='canberra')
+                               help='Metric of umap.',
+                               type=str,
+                               default='canberra')
     parserOptUmap.add_argument('--umap_n_epochs',
-                           help='Number of epochs',
-                           type=int,
-                           default=None)
+                               help='Number of epochs',
+                               type=int,
+                               default=None)
     parserOptUmap.add_argument('--umap_learning_rate',
-                           help='Learning rate',
-                           type=float,
-                           default=1.0)
+                               help='Learning rate',
+                               type=float,
+                               default=1.0)
     parserOptUmap.add_argument('--umap_init',
-                           help='Initialization method',
-                           type=str,
-                           default='spectral')
+                               help='Initialization method',
+                               type=str,
+                               default='spectral')
     parserOptUmap.add_argument('--umap_min_dist',
-                           help='Minimum distance of two neighbors',
-                           type=float,
-                           default=0.3)
+                               help='Minimum distance of two neighbors',
+                               type=float,
+                               default=0.3)
     parserOptUmap.add_argument('--umap_spread',
-                           help='Spread',
-                           type=float,
-                           default=1.0)
+                               help='Spread',
+                               type=float,
+                               default=1.0)
     parserOptUmap.add_argument('--umap_set_op_mix_ratio',
-                           help='set_op_mix_ratio',
-                           type=float,
-                           default=1.0)
+                               help='set_op_mix_ratio',
+                               type=float,
+                               default=1.0)
     parserOptUmap.add_argument('--umap_local_connectivity',
-                           help='local connectivity',
-                           type=float,
-                           default=1.0)
+                               help='local connectivity',
+                               type=float,
+                               default=1.0)
     parserOptUmap.add_argument('--umap_repulsion_strength',
-                           help='repulsion strength',
-                           type=float,
-                           default=1.0)
+                               help='repulsion strength',
+                               type=float,
+                               default=1.0)
     parserOptUmap.add_argument('--umap_negative_sample_rate',
-                           help='negative sample rate',
-                           type=int,
-                           default=5)
+                               help='negative sample rate',
+                               type=int,
+                               default=5)
     parserOptUmap.add_argument('--umap_transform_queue_size',
-                           help='transform queue size',
-                           type=float,
-                           default=4.0)
+                               help='transform queue size',
+                               type=float,
+                               default=4.0)
     parserOptUmap.add_argument('--umap_a',
-                           help='a',
-                           type=float,
-                           default=None)
+                               help='a',
+                               type=float,
+                               default=None)
     parserOptUmap.add_argument('--umap_b',
-                           help='b',
-                           type=float,
-                           default=None)
+                               help='b',
+                               type=float,
+                               default=None)
     parserOptUmap.add_argument('--umap_angular_rp_forest',
-                           help='angular rp forest',
-                           action='store_true')
+                               help='angular rp forest',
+                               action='store_true')
     parserOptUmap.add_argument('--umap_target_n_neighbors',
-                           help='target number of neighbors',
-                           type=int,
-                           default=-1)
+                               help='target number of neighbors',
+                               type=int,
+                               default=-1)
     parserOptUmap.add_argument('--umap_target_metric',
-                           help='target metric',
-                           type=str,
-                           default='categorical')
+                               help='target metric',
+                               type=str,
+                               default='categorical')
     parserOptUmap.add_argument('--umap_target_weight',
-                           help='target weight',
-                           type=float,
-                           default=0.5)
+                               help='target weight',
+                               type=float,
+                               default=0.5)
     parserOptUmap.add_argument('--umap_force_approximation_algorithm',
-                           help='force approximation algorithm',
-                           action='store_true')
+                               help='force approximation algorithm',
+                               action='store_true')
     parserOptUmap.add_argument('--umap_verbose',
-                           help='verbose',
-                           action='store_true')
+                               help='verbose',
+                               action='store_true')
     parserOptUmap.add_argument('--umap_unique',
-                           help='Contact distance to consider',
-                           action='store_true')
+                               help='Contact distance to consider',
+                               action='store_true')
 
     return parser
 
@@ -250,9 +251,11 @@ def main(args=None):
 
     raw_file_name = os.path.splitext(os.path.basename(args.outFileName))[0]
 
+    # if args.numberOfNearestNeighbors is None:
+    #     args.numberOfNearestNeighbors = cooler.
     if args.cell_coloring_type:
         cell_name_cell_type_dict = {}
-        
+
         cell_type_color_dict = {}
         color_cell_type_dict = {}
         cell_type_counter = 0
@@ -261,17 +264,17 @@ def main(args=None):
                 line = line.strip()
                 try:
                     cell_name, cell_type = line.split('\t')
-                except:
+                except Exception:
                     cell_name, cell_type = line.split('    ')
                 cell_name_cell_type_dict[cell_name] = cell_type
                 if cell_type not in cell_type_color_dict:
                     cell_type_color_dict[cell_type] = cell_type_counter
                     color_cell_type_dict[cell_type_counter] = cell_type
                     cell_type_counter += 1
-    
+
     if args.cell_coloring_batch:
         cell_name_cell_type_dict_batch = {}
-        
+
         cell_type_color_dict_batch = {}
         color_cell_type_dict_batch = {}
         cell_type_counter_batch = 0
@@ -280,7 +283,7 @@ def main(args=None):
                 line = line.strip()
                 try:
                     cell_name, cell_type = line.split('\t')
-                except:
+                except Exception:
                     cell_name, cell_type = line.split('    ')
                 cell_name_cell_type_dict_batch[cell_name] = cell_type
                 if cell_type not in cell_type_color_dict_batch:
@@ -308,7 +311,8 @@ def main(args=None):
     if not args.noUMAP:
         for param in vars(args):
             if 'umap_' in param:
-                 umap_params_dict[param] = vars(args)[param]
+                umap_params_dict[param] = vars(args)[param]
+        umap_params_dict['umap_random'] = 42
     # log.debug(umap_params_dict)
 
     if args.perChromosome:
@@ -332,9 +336,9 @@ def main(args=None):
             #                             shingle_size=4, fast=args.exactModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False)
 
             minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                    shingle_size=5, fast=args.euclideanModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False, max_bin_size=100000,
-                                    minimal_blocks_in_common=400, excess_factor=1, prune_inverse_index=False)
-            
+                                     shingle_size=5, fast=args.euclideanModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False, max_bin_size=100000,
+                                     minimal_blocks_in_common=400, excess_factor=1, prune_inverse_index=False)
+
             if args.shareOfMatrixToBeTransferred is not None and args.shareOfMatrixToBeTransferred > 0:
                 if args.shareOfMatrixToBeTransferred > 1:
                     args.shareOfMatrixToBeTransferred = 1
@@ -348,9 +352,9 @@ def main(args=None):
                 if batch_size < number_of_elements:
                     log.debug('partial fit')
                     for i in range(batch_size, neighborhood_matrix.shape[0], batch_size):
-                        sub_matrix = neighborhood_matrix[i:i+batch_size, :]
+                        sub_matrix = neighborhood_matrix[i:i + batch_size, :]
                         log.debug('chr {} len sub.data: {}'.format(chromosome, len(sub_matrix.data)))
-                        minHash_object.partial_fit(neighborhood_matrix[i:i+batch_size, :])
+                        minHash_object.partial_fit(neighborhood_matrix[i:i + batch_size, :])
             else:
                 minHash_object.fit(neighborhood_matrix)
             log.debug('147')
@@ -358,46 +362,28 @@ def main(args=None):
             # compute knn per chromosome
             neighborhood_matrix_knn_pca = minHash_object.kneighbors_graph(mode='distance')
             if args.dimensionsPCA:
-                pca = PCA(n_components = min(neighborhood_matrix_knn_pca.shape) - 1)
+                pca = PCA(n_components=min(neighborhood_matrix_knn_pca.shape) - 1)
                 neighborhood_matrix_knn_pca = pca.fit_transform(neighborhood_matrix_knn_pca.todense())
                 if args.dimensionsPCA:
                     args.dimensionsPCA = min(args.dimensionsPCA, neighborhood_matrix_knn_pca.shape[0])
                     neighborhood_matrix_knn_pca = neighborhood_matrix_knn_pca[:, :args.dimensionsPCA]
-                
-                    # log.debug('neighborhood_matrix_knn_pca {}'.format(neighborhood_matrix_knn_pca))
-                    log.debug('neighborhood_matrix_knn_pca shape{}'.format(neighborhood_matrix_knn_pca.shape))
 
             if neighborhood_matrix_knn is None:
-                neighborhood_matrix_knn = neighborhood_matrix_knn_pca#minHash_object.kneighbors_graph(mode='distance')
+                neighborhood_matrix_knn = neighborhood_matrix_knn_pca
             else:
                 neighborhood_matrix_knn += neighborhood_matrix_knn_pca
-                # neighborhood_matrix_knn = np.hstack((neighborhood_matrix_knn, neighborhood_matrix_knn_pca))#minHash_object.kneighbors_graph(mode='distance')
-            log.debug('neighborhood_matrix_knn shape{}'.format(neighborhood_matrix_knn.shape))
             del minHash_object
 
-        # if args.dimensionsPCA:
-        #     pca = PCA(n_components = min(neighborhood_matrix_knn.shape) - 1)
-        #     neighborhood_matrix_knn = pca.fit_transform(neighborhood_matrix_knn)
-        #     if args.dimensionsPCA:
-        #         log.debug('neighborhood_matrix_knn All before pca shape{}'.format(neighborhood_matrix_knn.shape))
+        labels_clustering = cluster_object.fit_predict(neighborhood_matrix_knn)
+        # if args.clusterMethod == 'spectral':
+        #     spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
+        #                                                    n_neighbors=reduce_to_dimension, affinity='nearest_neighbors', random_state=0)
 
-        #         args.dimensionsPCA = min(args.dimensionsPCA, neighborhood_matrix_knn.shape[0])
-        #         neighborhood_matrix_knn = neighborhood_matrix_knn[:, :args.dimensionsPCA]
-        #         log.debug('neighborhood_matrix_knn All after pca shape{}'.format(neighborhood_matrix_knn.shape))
-        if args.clusterMethod == 'spectral':
-            spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
-                                                        n_neighbors=reduce_to_dimension, affinity='nearest_neighbors', random_state=0)
+        #     labels_clustering = spectralClustering_object.fit_predict(neighborhood_matrix_knn)
+        # elif args.clusterMethod == 'kmeans':
+        #     kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
+        #     labels_clustering = kmeans_object.fit_predict(neighborhood_matrix_knn)
 
-            labels_clustering = spectralClustering_object.fit_predict(neighborhood_matrix_knn)
-        elif args.clusterMethod == 'kmeans':
-            kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
-            labels_clustering = kmeans_object.fit_predict(neighborhood_matrix_knn)
-        # minHashClustering = MinHashClustering(minHashObject=None, clusteringObject=cluster_object)
-        # minHashClustering._precomputed_graph = neighborhood_matrix_knn
-        # labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.noPCA, pPcaDimensions=args.dimensionsPCA)
-
-
-        # minHash_object.fit()
     else:
         if args.saveMemory:
             matrices_list = cell_name_list(args.matrix)
@@ -425,10 +411,10 @@ def main(args=None):
                 else:
                     matrices_share = matrices_list[i:]
                 neighborhood_matrix, matrices_list_share = open_and_store_matrix(args.matrix, matrices_share, 0, len(matrices_share),
-                                                                                args.chromosomes, args.intraChromosomalContactsOnly, chromosome_indices)
+                                                                                 args.chromosomes, args.intraChromosomalContactsOnly, chromosome_indices)
                 if minHash_object is None:
                     minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                            shingle_size=0, fast=args.euclideanModeMinHash, maxFeatures=int(max_nnz), absolute_numbers=False)
+                                             shingle_size=0, fast=args.euclideanModeMinHash, maxFeatures=int(max_nnz), absolute_numbers=False)
 
                 if j == 0:
                     minHash_object.fit(neighborhood_matrix)
@@ -445,7 +431,6 @@ def main(args=None):
                 if args.dimensionsPCA:
                     args.dimensionsPCA = min(args.dimensionsPCA, precomputed_graph.shape[0])
                     cluster_object.fit(precomputed_graph[:, :args.dimensionsPCA])
-                    # return
             else:
                 try:
                     cluster_object.fit(precomputed_graph)
@@ -462,11 +447,10 @@ def main(args=None):
 
         if not args.saveMemory:
             minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                    shingle_size=5, fast=args.euclideanModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False, max_bin_size=100000,
-                                    minimal_blocks_in_common=100, excess_factor=1, prune_inverse_index=False)
+                                     shingle_size=5, fast=args.euclideanModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False, max_bin_size=100000,
+                                     minimal_blocks_in_common=100, excess_factor=1, prune_inverse_index=False)
             minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=cluster_object)
             minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=(not args.noPCA), pPcaDimensions=args.dimensionsPCA, pUmap=(not args.noUMAP), pUmapDict=umap_params_dict)
-            # log.debug('251 type(){}'.format(type(minHashClustering._precomputed_graph)))
 
         if args.noPCA and args.noUMAP:
             mask = np.isnan(minHashClustering._precomputed_graph.data)
@@ -477,29 +461,23 @@ def main(args=None):
 
         labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.noPCA, pPcaDimensions=args.dimensionsPCA)
 
-
     if args.createScatterPlot:
-        if args.noPCA  and args.noUMAP:
+        if args.noPCA and args.noUMAP:
             pca = PCA(n_components=min(minHashClustering._precomputed_graph.shape) - 1)
             neighborhood_matrix_knn = pca.fit_transform(minHashClustering._precomputed_graph.todense())
         else:
             if not args.perChromosome:
                 neighborhood_matrix_knn = minHashClustering._precomputed_graph
-        # neighborhood_matrix_knn = minHashClustering._precomputed_graph
-       
 
         list(set(labels_clustering))
-        # cmap = get_cmap(args.colorMap)
-        # colors = cmap.colors
 
         colors = process_cmap(args.colorMap)
-        
+
         try:
             neighborhood_matrix_knn = neighborhood_matrix_knn.toarray()
         except Exception:
             pass
-        
-        # if not (args.noPCA):
+
         label_x = 'PC1'
         label_y = 'PC2'
         if not (args.noUMAP):
@@ -511,8 +489,6 @@ def main(args=None):
                 exit(1)
             labels_clustering_cell_type = []
             for cell_name in matrices_list:
-                # if cell_name in cell_name_cell_type_dict:
-                #     if cell_name_cell_type_dict[cell_name] in cell_type_color_dict:
                 labels_clustering_cell_type.append(cell_type_color_dict[cell_name_cell_type_dict[cell_name]])
 
             labels_clustering_cell_type = np.array(labels_clustering_cell_type)
@@ -520,14 +496,12 @@ def main(args=None):
             log.debug('labels_clustering_cell_type: {}'.format(len(labels_clustering_cell_type)))
             log.debug('matrices_list: {}'.format(len(matrices_list)))
 
-
             plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
             for i, color in enumerate(colors[:len(cell_type_color_dict)]):
                 mask = labels_clustering_cell_type == i
                 log.debug('plot cluster: {} {}'.format(color_cell_type_dict[i], np.sum(mask)))
                 plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(color_cell_type_dict[i]), s=20, alpha=0.7)
 
-            # plt.legend(fontsize=args.fontsize)
             plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=args.fontsize)
             plt.xticks([])
             plt.yticks([])
@@ -539,7 +513,7 @@ def main(args=None):
             plt.tight_layout()
             plt.savefig(scatter_plot_name, dpi=args.dpi)
             plt.close()
-        
+
             # compute overlap of cell_type find found clusters
             computed_clusters = set(labels_clustering)
 
@@ -548,23 +522,21 @@ def main(args=None):
                     mask_computed_clusters = labels_clustering == i
                     for j in range(len(cell_type_color_dict)):
                         mask_cell_type = labels_clustering_cell_type == j
-                        
+
                         mask = mask_computed_clusters & mask_cell_type
 
                         number_of_matches = np.sum(mask)
                         matches_file.write('Computed cluster {} (size: {}) matching with cell type {} (size: {}) {} times. Rate (matches/computed_clusters): {}% Rate (matches/given_celltypes): {}%\n'.format(
-                                        i, np.sum(mask_computed_clusters), color_cell_type_dict[j], np.sum(mask_cell_type), number_of_matches, number_of_matches/np.sum(mask_computed_clusters), number_of_matches/np.sum(mask_cell_type)))
+                            i, np.sum(mask_computed_clusters), color_cell_type_dict[j], np.sum(mask_cell_type), number_of_matches, number_of_matches / np.sum(mask_computed_clusters), number_of_matches / np.sum(mask_cell_type)))
 
                     matches_file.write('\n')
-            
+
         if args.cell_coloring_batch:
             if len(colors) < len(cell_type_color_dict_batch):
                 log.error('The chosen colormap offers too less values for the number of clusters.')
                 exit(1)
             labels_clustering_cell_type_batch = []
             for cell_name in matrices_list:
-                # if cell_name in cell_name_cell_type_dict:
-                #     if cell_name_cell_type_dict[cell_name] in cell_type_color_dict:
                 labels_clustering_cell_type_batch.append(cell_type_color_dict_batch[cell_name_cell_type_dict_batch[cell_name]])
 
             labels_clustering_cell_type_batch = np.array(labels_clustering_cell_type_batch)
@@ -572,14 +544,12 @@ def main(args=None):
             log.debug('labels_clustering_cell_type: {}'.format(len(labels_clustering_cell_type_batch)))
             log.debug('matrices_list: {}'.format(len(matrices_list)))
 
-
             plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
             for i, color in enumerate(colors[:len(cell_type_color_dict_batch)]):
                 mask = labels_clustering_cell_type_batch == i
                 log.debug('plot cluster: {} {}'.format(color_cell_type_dict_batch[i], np.sum(mask)))
                 plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(color_cell_type_dict_batch[i]), s=20, alpha=0.7)
 
-            # plt.legend(fontsize=args.fontsize)
             plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=args.fontsize)
             plt.xticks([])
             plt.yticks([])
@@ -609,64 +579,6 @@ def main(args=None):
         plt.tight_layout()
         plt.savefig(scatter_plot_name, dpi=args.dpi)
         plt.close()
-        # plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
-        # for i, color in enumerate(colors[:args.numberOfClusters]):
-        #     mask = labels_clustering == i
-        #     plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
-       
-       
-        ###### PCA 2 - 3 plots START
-        # if args.cell_coloring:
-
-        #     for i, color in enumerate(colors[:len(cell_type_color_dict)]):
-        #         mask = labels_clustering_cell_type == i
-        #         plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(color_cell_type_dict[i]), s=20, alpha=0.7)
-        #     plt.legend(fontsize=args.fontsize)
-        #     plt.xticks([])
-        #     plt.yticks([])
-        #     plt.xlabel('PC2', fontsize=args.fontsize)
-        #     plt.ylabel('PC3', fontsize=args.fontsize)
-        #     scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc2_pc3_cell_color.' + args.createScatterPlot.split('.')[-1]
-        #     plt.savefig(scatter_plot_name, dpi=args.dpi)
-        #     plt.close()
-        
-        # plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
-        # for i, color in enumerate(colors[:args.numberOfClusters]):
-        #     mask = labels_clustering == i
-        #     plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(i), s=20, alpha=0.7)
-        # plt.legend(fontsize=args.fontsize)
-        # plt.xticks([])
-        # plt.yticks([])
-        # plt.xlabel('PC2', fontsize=args.fontsize)
-        # plt.ylabel('PC3', fontsize=args.fontsize)
-        # scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc2_pc3.' + args.createScatterPlot.split('.')[-1]
-        # plt.savefig(scatter_plot_name, dpi=args.dpi)
-        # plt.close()
-        ###### PCA 2 - 3 plots END
-
-
-
-        # plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
-        # # for i, color in enumerate(colors[:args.numberOfClusters]):
-        # #     mask = labels_clustering == i
-        # #     plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
-        # if args.cell_coloring:
-
-        #     for i, color in enumerate(colors[:len(cell_type_color_dict)]):
-        #         mask = labels_clustering_cell_type == i
-        #         plt.scatter(neighborhood_matrix_knn[:, 2].T[mask], neighborhood_matrix_knn[:, 3].T[mask], color=color, label=str(color_cell_type_dict[i]), s=20, alpha=0.7)
-        # else:
-        #     for i, color in enumerate(colors[:args.numberOfClusters]):
-        #         mask = labels_clustering == i
-        #         plt.scatter(neighborhood_matrix_knn[:, 2].T[mask], neighborhood_matrix_knn[:, 3].T[mask], color=color, label=str(i), s=20, alpha=0.7)
-        # plt.legend(fontsize=args.fontsize)
-        # plt.xticks([])
-        # plt.yticks([])
-        # plt.xlabel('PC2', fontsize=args.fontsize)
-        # plt.ylabel('PC3', fontsize=args.fontsize)
-        # scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc3_pc4.' + args.createScatterPlot.split('.')[-1]
-        # plt.savefig(scatter_plot_name, dpi=args.dpi)
-        # plt.close()
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
     np.savetxt(args.outFileName, matrices_cluster, fmt="%s")

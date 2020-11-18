@@ -54,13 +54,9 @@ def txt_to_matrixFileHandler(pMatricesList, pMatrixDimensions, pCutIntervals, pQ
 
     matrixFileHandlerList = []
 
-    # matrix_dimensions = pGenomeLength // pResolution
     for i, matrix in enumerate(pMatricesList):
 
-        
-    
         # create csr matrix
-        # hic_matrix = csr_matrix((pMatrixDimensions,pMatrixDimensions), dtype=float)
         instances = []
         features = []
         data = []
@@ -76,16 +72,10 @@ def txt_to_matrixFileHandler(pMatricesList, pMatrixDimensions, pCutIntervals, pQ
 
         cell_type = matrix.split('_')[2]
 
-        # nan_bins, correction-factors, dostance_counts = None
         log.debug('matrix name {}'.format(matrix))
 
-        log.debug('max(instances) {} max(features) {} pMatrixDimensions {}'.format(max(instances),max(features), pMatrixDimensions))
+        log.debug('max(instances) {} max(features) {} pMatrixDimensions {}'.format(max(instances), max(features), pMatrixDimensions))
         hic_matrix = csr_matrix((data, (instances, features)), (pMatrixDimensions, pMatrixDimensions), dtype=np.float)
-
-        # matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix)
-
-        # _matrix, cut_intervals, nan_bins, \
-        #     distance_counts, correction_factors = matrixFileHandlerInput.load()
 
         matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix)
 
@@ -94,7 +84,7 @@ def txt_to_matrixFileHandler(pMatricesList, pMatrixDimensions, pCutIntervals, pQ
                                                      None,
                                                      None,
                                                      None)
-                                                
+
         if matrixFileHandlerOutput.matrixFile.hic_metadata is None:
             matrixFileHandlerOutput.matrixFile.hic_metadata = {}
             matrixFileHandlerOutput.matrixFile.hic_metadata['cell_type'] = cell_type
@@ -108,11 +98,6 @@ def main(args=None):
     args = parse_arguments().parse_args(args)
     log.debug(args)
     matrix_file_handler_object_list = []
-    # matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=args.matrices[0])
-
-    # _matrix, cut_intervals_all, nan_bins, \
-    #     distance_counts, correction_factors = matrixFileHandlerInput.load()
-
 
     # read genome sizes
     chromosome_sizes = {}
@@ -125,25 +110,23 @@ def main(args=None):
             chromosome_sizes[chromosome_name] = int(chromosome_size)
             genome_size += int(chromosome_size)
             matrix_dimensions += ((int(chromosome_size) // args.resolution) + 1)
-    
+
     log.debug('genome_size {}'.format(genome_size))
     log.debug('args.resolution {}'.format(args.resolution))
 
-
-    # matrix_dimensions = genome_size // args.resolution
     log.debug('matrix_dimensions {}'.format(matrix_dimensions))
 
     log.debug('chromosome_sizes {}'.format(chromosome_sizes))
     # create cut_intervals:
     cut_intervals = []
-    
+
     for chromosome, size in chromosome_sizes.items():
         for interval in range(0, size, args.resolution):
             cut_intervals.append((chromosome, interval,
-                                min(size, interval + args.resolution), 1))
+                                  min(size, interval + args.resolution), 1))
 
     matrices_list = args.matrices
-    
+
     threads = args.threads
 
     matrixFileHandler_list = [None] * args.threads

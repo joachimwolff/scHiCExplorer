@@ -64,6 +64,7 @@ def parse_arguments(args=None):
                            version='%(prog)s {}'.format(__version__))
     return parser
 
+
 def convert_files(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder, pFormat, pQueue):
 
     if pFormat == 'schicluster':
@@ -73,6 +74,8 @@ def convert_files(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder, pFo
     else:
         log.error('Format not known!')
         pQueue.put([None])
+
+
 def convert_to_txt_csr(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder, pQueue):
     cell_name_array = []
 
@@ -94,6 +97,7 @@ def convert_to_txt_csr(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder
 
     pQueue.put(cell_name_array)
     return
+
 
 def convert_to_schicluster(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder, pQueue):
     cell_name_array = []
@@ -188,12 +192,12 @@ def main(args=None):
             if not thread:
                 all_data_collected = False
         time.sleep(1)
-    
+
     for subset in cell_name_array_thread:
         if subset[0] is None:
             exit(1)
     cell_name_array = [item for sublist in cell_name_array_thread for item in sublist]
-    
+
     # write cell names to file
     with open(args.outputCellNameFile, 'w') as file:
         for cell_name in cell_name_array:

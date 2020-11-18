@@ -106,7 +106,6 @@ def main(args=None):
 
             matrices_list = matrix_list_tmp
 
-
     if len(matrices_list) == 0:
         raise OSError('No cells for processing. Terminating.')
         exit(1)
