@@ -116,10 +116,9 @@ def parse_arguments(args=None):
                            default=100,
                            type=int)
     parserOpt.add_argument('--colorMap',
-                           help='Color map to use for the heatmap. Available '
-                           'values can be seen here: '
-                           'http://matplotlib.org/examples/color/colormaps_reference.html',
-                           default='tab10')
+                           help='Color map to use for the heatmap, supported are the categorical colormaps from holoviews: '
+                           'http://holoviews.org/user_guide/Colormaps.html',
+                           default='glasbay_dark')
     parserOpt.add_argument('--fontsize',
                            help='Fontsize in the plot for x and y axis.',
                            type=float,
@@ -137,11 +136,13 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--chromosomes',
                            help='List of to be computed chromosomes',
                            nargs='+')
-    parserOpt.add_argument('--perChromosome', '-pc',
-                           help='Computes the knn per chromosome and merge the different knns for clustering.',
-                           action='store_true')
     parserOpt.add_argument('--absoluteValues', '-av',
-                           help='Return the number of hash collisions as measure instead of 0 - 1 normalized values.',
+                           help='Return the number of hash collisions as measure instead of 0 - 1 normalized values.')
+    parserOpt.add_argument('--latexTable', '-lt',
+                           help='Return the overlap statistics if --cell_coloring_type is given as a latex table.',
+                           action='store_true')
+    parserOpt.add_argument('--runInHyperoptMode',
+                           help='Compute the correct associated average of the given clusters to',
                            action='store_true')
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
@@ -315,159 +316,88 @@ def main(args=None):
         umap_params_dict['umap_random'] = 42
     # log.debug(umap_params_dict)
 
-    if args.perChromosome:
+    if args.saveMemory:
         matrices_list = cell_name_list(args.matrix)
+        max_nnz = 0
+        for matrix in matrices_list:
+            cooler_obj = cooler.Cooler(args.matrix + '::' + matrix)
+            nnz = cooler_obj.info['nnz']
+            if max_nnz < nnz:
+                max_nnz = nnz
+        minHash_object = None
+        matricesPerRun = int(len(matrices_list) * args.shareOfMatrixToBeTransferred)
+        if matricesPerRun < 1:
+            matricesPerRun = 1
+        chromosome_indices = None
+        if args.intraChromosomalContactsOnly:
+            cooler_obj = cooler.Cooler(args.matrix + '::' + matrices_list[0])
+            binsDataFrame = cooler_obj.bins()[:]
+            chromosome_indices = {}
+            for chromosome in cooler_obj.chromnames:
+                chromosome_indices[chromosome] = np.array(binsDataFrame.index[binsDataFrame['chrom'] == chromosome].tolist())
 
-        neighborhood_matrix_knn = None
-        cooler_obj = cooler.Cooler(args.matrix + '::' + matrices_list[0])
-        # cooler_obj.chromnames
-
-        if args.chromosomes is None:
-            args.chromosomes = cooler_obj.chromnames
-            log.debug('args.chromosomes was none')
-        for chromosome in args.chromosomes:
-            neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, [chromosome], outputFolder, raw_file_name, args.intraChromosomalContactsOnly)
-
-            if len(neighborhood_matrix.data) == 0:
-                log.debug('empty matrix chromosome {}'.format(chromosome))
-                continue
-
-            # minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-            #                             shingle_size=4, fast=args.exactModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False)
-
-            minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                     shingle_size=5, fast=args.euclideanModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False, max_bin_size=100000,
-                                     minimal_blocks_in_common=400, excess_factor=1, prune_inverse_index=False)
-
-            if args.shareOfMatrixToBeTransferred is not None and args.shareOfMatrixToBeTransferred > 0:
-                if args.shareOfMatrixToBeTransferred > 1:
-                    args.shareOfMatrixToBeTransferred = 1
-                number_of_elements = neighborhood_matrix.shape[0]
-                batch_size = int(np.floor(number_of_elements * args.shareOfMatrixToBeTransferred))
-                if batch_size < 1:
-                    batch_size = 1
-                sub_matrix = neighborhood_matrix[0:batch_size, :]
-                log.debug('chr {} len sub.data: {}'.format(chromosome, len(sub_matrix.data)))
-                minHash_object.fit(neighborhood_matrix[0:batch_size, :])
-                if batch_size < number_of_elements:
-                    log.debug('partial fit')
-                    for i in range(batch_size, neighborhood_matrix.shape[0], batch_size):
-                        sub_matrix = neighborhood_matrix[i:i + batch_size, :]
-                        log.debug('chr {} len sub.data: {}'.format(chromosome, len(sub_matrix.data)))
-                        minHash_object.partial_fit(neighborhood_matrix[i:i + batch_size, :])
+        for j, i in enumerate(range(0, len(matrices_list), matricesPerRun)):
+            if i < len(matrices_list) - 1:
+                matrices_share = matrices_list[i:i + matricesPerRun]
             else:
+                matrices_share = matrices_list[i:]
+            neighborhood_matrix, matrices_list_share = open_and_store_matrix(args.matrix, matrices_share, 0, len(matrices_share),
+                                                                             args.chromosomes, args.intraChromosomalContactsOnly, chromosome_indices)
+            if minHash_object is None:
+                minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+                                         shingle_size=0, fast=args.euclideanModeMinHash, maxFeatures=int(max_nnz), absolute_numbers=False)
+
+            if j == 0:
                 minHash_object.fit(neighborhood_matrix)
-            log.debug('147')
-
-            # compute knn per chromosome
-            neighborhood_matrix_knn_pca = minHash_object.kneighbors_graph(mode='distance')
-            if args.dimensionsPCA:
-                pca = PCA(n_components=min(neighborhood_matrix_knn_pca.shape) - 1)
-                neighborhood_matrix_knn_pca = pca.fit_transform(neighborhood_matrix_knn_pca.todense())
-                if args.dimensionsPCA:
-                    args.dimensionsPCA = min(args.dimensionsPCA, neighborhood_matrix_knn_pca.shape[0])
-                    neighborhood_matrix_knn_pca = neighborhood_matrix_knn_pca[:, :args.dimensionsPCA]
-
-            if neighborhood_matrix_knn is None:
-                neighborhood_matrix_knn = neighborhood_matrix_knn_pca
             else:
-                neighborhood_matrix_knn += neighborhood_matrix_knn_pca
-            del minHash_object
+                minHash_object.partial_fit(X=neighborhood_matrix)
 
-        labels_clustering = cluster_object.fit_predict(neighborhood_matrix_knn)
-        # if args.clusterMethod == 'spectral':
-        #     spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
-        #                                                    n_neighbors=reduce_to_dimension, affinity='nearest_neighbors', random_state=0)
+        precomputed_graph = minHash_object.kneighbors_graph(mode='distance')
 
-        #     labels_clustering = spectralClustering_object.fit_predict(neighborhood_matrix_knn)
-        # elif args.clusterMethod == 'kmeans':
-        #     kmeans_object = KMeans(n_clusters=args.numberOfClusters, random_state=0, n_jobs=args.threads, precompute_distances=True)
-        #     labels_clustering = kmeans_object.fit_predict(neighborhood_matrix_knn)
+        if not args.noPCA:
+
+            pca = PCA(n_components=min(precomputed_graph.shape) - 1)
+            precomputed_graph = pca.fit_transform(precomputed_graph.todense())
+
+            if args.dimensionsPCA:
+                args.dimensionsPCA = min(args.dimensionsPCA, precomputed_graph.shape[0])
+                cluster_object.fit(precomputed_graph[:, :args.dimensionsPCA])
+        else:
+            try:
+                cluster_object.fit(precomputed_graph)
+            except Exception:
+                cluster_object.fit(precomputed_graph.todense())
+        minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=cluster_object)
+        minHashClustering._precomputed_graph = precomputed_graph
 
     else:
-        if args.saveMemory:
-            matrices_list = cell_name_list(args.matrix)
-            max_nnz = 0
-            for matrix in matrices_list:
-                cooler_obj = cooler.Cooler(args.matrix + '::' + matrix)
-                nnz = cooler_obj.info['nnz']
-                if max_nnz < nnz:
-                    max_nnz = nnz
-            minHash_object = None
-            matricesPerRun = int(len(matrices_list) * args.shareOfMatrixToBeTransferred)
-            if matricesPerRun < 1:
-                matricesPerRun = 1
-            chromosome_indices = None
-            if args.intraChromosomalContactsOnly:
-                cooler_obj = cooler.Cooler(args.matrix + '::' + matrices_list[0])
-                binsDataFrame = cooler_obj.bins()[:]
-                chromosome_indices = {}
-                for chromosome in cooler_obj.chromnames:
-                    chromosome_indices[chromosome] = np.array(binsDataFrame.index[binsDataFrame['chrom'] == chromosome].tolist())
+        neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes, outputFolder, raw_file_name, args.intraChromosomalContactsOnly, pDistance=args.distance)
 
-            for j, i in enumerate(range(0, len(matrices_list), matricesPerRun)):
-                if i < len(matrices_list) - 1:
-                    matrices_share = matrices_list[i:i + matricesPerRun]
-                else:
-                    matrices_share = matrices_list[i:]
-                neighborhood_matrix, matrices_list_share = open_and_store_matrix(args.matrix, matrices_share, 0, len(matrices_share),
-                                                                                 args.chromosomes, args.intraChromosomalContactsOnly, chromosome_indices)
-                if minHash_object is None:
-                    minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                             shingle_size=0, fast=args.euclideanModeMinHash, maxFeatures=int(max_nnz), absolute_numbers=False)
+        if args.saveIntermediateRawMatrix:
+            save_npz(args.saveIntermediateRawMatrix, neighborhood_matrix)
 
-                if j == 0:
-                    minHash_object.fit(neighborhood_matrix)
-                else:
-                    minHash_object.partial_fit(X=neighborhood_matrix)
+    if not args.saveMemory:
+        minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
+                                 shingle_size=5, fast=args.euclideanModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False, max_bin_size=100000,
+                                 minimal_blocks_in_common=100, excess_factor=1, prune_inverse_index=False)
+        minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=cluster_object)
+        minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=(not args.noPCA), pPcaDimensions=args.dimensionsPCA, pUmap=(not args.noUMAP), pUmapDict=umap_params_dict)
 
-            precomputed_graph = minHash_object.kneighbors_graph(mode='distance')
+    if args.noPCA and args.noUMAP:
+        mask = np.isnan(minHashClustering._precomputed_graph.data)
+        minHashClustering._precomputed_graph.data[mask] = 0
 
-            if not args.noPCA:
+        mask = np.isinf(minHashClustering._precomputed_graph.data)
+        minHashClustering._precomputed_graph.data[mask] = 0
 
-                pca = PCA(n_components=min(precomputed_graph.shape) - 1)
-                precomputed_graph = pca.fit_transform(precomputed_graph.todense())
-
-                if args.dimensionsPCA:
-                    args.dimensionsPCA = min(args.dimensionsPCA, precomputed_graph.shape[0])
-                    cluster_object.fit(precomputed_graph[:, :args.dimensionsPCA])
-            else:
-                try:
-                    cluster_object.fit(precomputed_graph)
-                except Exception:
-                    cluster_object.fit(precomputed_graph.todense())
-            minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=cluster_object)
-            minHashClustering._precomputed_graph = precomputed_graph
-
-        else:
-            neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes, outputFolder, raw_file_name, args.intraChromosomalContactsOnly, pDistance=args.distance)
-
-            if args.saveIntermediateRawMatrix:
-                save_npz(args.saveIntermediateRawMatrix, neighborhood_matrix)
-
-        if not args.saveMemory:
-            minHash_object = MinHash(n_neighbors=args.numberOfNearestNeighbors, number_of_hash_functions=args.numberOfHashFunctions, number_of_cores=args.threads,
-                                     shingle_size=5, fast=args.euclideanModeMinHash, maxFeatures=int(max(neighborhood_matrix.getnnz(1))), absolute_numbers=False, max_bin_size=100000,
-                                     minimal_blocks_in_common=100, excess_factor=1, prune_inverse_index=False)
-            minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=cluster_object)
-            minHashClustering.fit(X=neighborhood_matrix, pSaveMemory=args.shareOfMatrixToBeTransferred, pPca=(not args.noPCA), pPcaDimensions=args.dimensionsPCA, pUmap=(not args.noUMAP), pUmapDict=umap_params_dict)
-
-        if args.noPCA and args.noUMAP:
-            mask = np.isnan(minHashClustering._precomputed_graph.data)
-            minHashClustering._precomputed_graph.data[mask] = 0
-
-            mask = np.isinf(minHashClustering._precomputed_graph.data)
-            minHashClustering._precomputed_graph.data[mask] = 0
-
-        labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.noPCA, pPcaDimensions=args.dimensionsPCA)
+    labels_clustering = minHashClustering.predict(minHashClustering._precomputed_graph, pPca=args.noPCA, pPcaDimensions=args.dimensionsPCA)
 
     if args.createScatterPlot:
         if args.noPCA and args.noUMAP:
             pca = PCA(n_components=min(minHashClustering._precomputed_graph.shape) - 1)
             neighborhood_matrix_knn = pca.fit_transform(minHashClustering._precomputed_graph.todense())
         else:
-            if not args.perChromosome:
-                neighborhood_matrix_knn = minHashClustering._precomputed_graph
+            neighborhood_matrix_knn = minHashClustering._precomputed_graph
 
         list(set(labels_clustering))
 
@@ -516,21 +446,107 @@ def main(args=None):
 
             # compute overlap of cell_type find found clusters
             computed_clusters = set(labels_clustering)
+            cell_type_amounts_dict = {}
+            percentage_threshold = 0.8
+            if args.latexTable:
 
-            with open('matches.txt', 'w') as matches_file:
-                for i in computed_clusters:
-                    mask_computed_clusters = labels_clustering == i
-                    for j in range(len(cell_type_color_dict)):
-                        mask_cell_type = labels_clustering_cell_type == j
+                for threshold in [0.7, 0.8, 0.9]:
+                    cell_type_amounts_dict[threshold] = {}
+                with open(args.latexTable, 'w') as matches_file:
+                    header = '\\begin{table}[!htb]\n\\footnotesize\n\\begin{tabular}{|l'
+                    body = '\\hline Cluster '
+                    for i in range(len(color_cell_type_dict)):
+                        mask_cell_type = labels_clustering_cell_type == i
+                        header += '|c'
+                        body += '& ' + str(color_cell_type_dict[i]) + ' (' + str(np.sum(mask_cell_type)) + ' cells)'
+                    header += '|}\n'
+                    body += '\\\\\n'
+                    # body = ''
+                    for i in computed_clusters:
+                        body += '\hline Cluster ' + str(i)
+                        mask_computed_clusters = labels_clustering == i
+                        body += ' (' + str(np.sum(mask_computed_clusters)) + ' cells)'
+                        for j in range(len(cell_type_color_dict)):
+                            mask_cell_type = labels_clustering_cell_type == j
+                            mask = mask_computed_clusters & mask_cell_type
+                            number_of_matches = np.sum(mask)
+                            body += '& ' + str(number_of_matches)
 
-                        mask = mask_computed_clusters & mask_cell_type
+                            if number_of_matches != 1:
+                                body += ' cells / '
+                            else:
+                                body += ' cell / '
 
-                        number_of_matches = np.sum(mask)
-                        matches_file.write('Computed cluster {} (size: {}) matching with cell type {} (size: {}) {} times. Rate (matches/computed_clusters): {}% Rate (matches/given_celltypes): {}%\n'.format(
-                            i, np.sum(mask_computed_clusters), color_cell_type_dict[j], np.sum(mask_cell_type), number_of_matches, number_of_matches / np.sum(mask_computed_clusters), number_of_matches / np.sum(mask_cell_type)))
+                            body += '{:.2f}'.format((number_of_matches / np.sum(mask_computed_clusters)) * 100) + ' \\% '
+                            for threshold in [0.7, 0.8, 0.9]:
 
-                    matches_file.write('\n')
+                                if number_of_matches / np.sum(mask_computed_clusters) >= threshold:
+                                    if color_cell_type_dict[j] in cell_type_amounts_dict[threshold]:
+                                        cell_type_amounts_dict[threshold][color_cell_type_dict[j]] += number_of_matches
+                                    else:
+                                        cell_type_amounts_dict[threshold][color_cell_type_dict[j]] = number_of_matches
+                                else:
+                                    if color_cell_type_dict[j] in cell_type_amounts_dict[threshold]:
+                                        continue
+                                    else:
+                                        cell_type_amounts_dict[threshold][color_cell_type_dict[j]] = 0
+                        body += '\\\\\n'
+                    body += '\\hline ' + '&' * len(cell_type_color_dict) + '\\\\\n'
 
+                    for threshold in [0.7, 0.8, 0.9]:
+                        body += '\hline Correct identified $>{}\\%$'.format(int(threshold * 100))
+                        for i in range(len(cell_type_color_dict)):
+                            mask_cell_type = labels_clustering_cell_type == i
+
+                            if color_cell_type_dict[i] in cell_type_amounts_dict[threshold]:
+                                body += '& ' + str(cell_type_amounts_dict[threshold][color_cell_type_dict[i]]) + ' / ' + str(np.sum(mask_cell_type)) + ' ('
+                                body += '{:.2f}'.format((cell_type_amounts_dict[threshold][color_cell_type_dict[i]] / np.sum(mask_cell_type)) * 100)
+                            else:
+                                body += '& ' + str(0) + ' / ' + str(np.sum(mask_cell_type)) + ' ('
+                                body += '{:.2f}'.format(0 / np.sum(mask_cell_type))
+
+                            body += ' \\%)'
+                        body += '\\\\\n'
+                    body += '\hline \n'
+                    body += '\\end{tabular}\n\\caption{}\n\\end{table}'
+
+                    matches_file.write(header)
+                    matches_file.write(body)
+            else:
+                with open('matches.txt', 'w') as matches_file:
+                    for i in computed_clusters:
+                        mask_computed_clusters = labels_clustering == i
+                        for j in range(len(cell_type_color_dict)):
+                            mask_cell_type = labels_clustering_cell_type == j
+
+                            mask = mask_computed_clusters & mask_cell_type
+
+                            number_of_matches = np.sum(mask)
+                            matches_file.write('Computed cluster {} (size: {}) matching with cell type {} (size: {}) {} times. Rate (matches/computed_clusters): {}%\n'.format(
+                                i, np.sum(mask_computed_clusters), color_cell_type_dict[j], np.sum(mask_cell_type), number_of_matches, number_of_matches / np.sum(mask_computed_clusters)))
+
+                            if number_of_matches / np.sum(mask_computed_clusters) >= percentage_threshold:
+                                if color_cell_type_dict[j] in cell_type_amounts_dict:
+                                    cell_type_amounts_dict[color_cell_type_dict[j]] += number_of_matches
+                                else:
+                                    cell_type_amounts_dict[color_cell_type_dict[j]] = number_of_matches
+
+                        matches_file.write('\n')
+
+            for i in range(len(cell_type_color_dict)):
+                mask_cell_type = labels_clustering_cell_type == i
+                if color_cell_type_dict[i] in cell_type_amounts_dict:
+                    cell_type_amounts_dict[color_cell_type_dict[i]] /= np.sum(mask_cell_type)
+                else:
+                    cell_type_amounts_dict[color_cell_type_dict[i]] = 0.0
+            correct_associated = 0.0
+            for cell_iterator in cell_type_color_dict:
+                correct_associated += cell_type_amounts_dict[cell_iterator]
+
+            correct_associated /= len(cell_type_amounts_dict)
+
+            with open('correct_associated', 'w') as file:
+                file.write(str(correct_associated))
         if args.cell_coloring_batch:
             if len(colors) < len(cell_type_color_dict_batch):
                 log.error('The chosen colormap offers too less values for the number of clusters.')
