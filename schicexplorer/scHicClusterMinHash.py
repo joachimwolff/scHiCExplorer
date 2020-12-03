@@ -27,6 +27,7 @@ from schicexplorer._version import __version__
 from schicexplorer.utilities import cell_name_list, create_csr_matrix_all_cells, open_and_store_matrix
 
 from holoviews.plotting.util import process_cmap
+import umap
 
 
 def parse_arguments(args=None):
@@ -118,7 +119,7 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--colorMap',
                            help='Color map to use for the heatmap, supported are the categorical colormaps from holoviews: '
                            'http://holoviews.org/user_guide/Colormaps.html',
-                           default='glasbay_dark')
+                           default='glasbey_dark')
     parserOpt.add_argument('--fontsize',
                            help='Fontsize in the plot for x and y axis.',
                            type=float,
@@ -139,8 +140,7 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--absoluteValues', '-av',
                            help='Return the number of hash collisions as measure instead of 0 - 1 normalized values.')
     parserOpt.add_argument('--latexTable', '-lt',
-                           help='Return the overlap statistics if --cell_coloring_type is given as a latex table.',
-                           action='store_true')
+                           help='Return the overlap statistics if --cell_coloring_type is given as a latex table.')
     parserOpt.add_argument('--runInHyperoptMode',
                            help='Compute the correct associated average of the given clusters to',
                            action='store_true')
@@ -252,8 +252,9 @@ def main(args=None):
 
     raw_file_name = os.path.splitext(os.path.basename(args.outFileName))[0]
 
-    # if args.numberOfNearestNeighbors is None:
-    #     args.numberOfNearestNeighbors = cooler.
+    if args.numberOfNearestNeighbors is None:
+        cooler_obj = cooler.Cooler(args.matrix)
+        args.numberOfNearestNeighbors = int(cooler_obj.info['ncells'])
     if args.cell_coloring_type:
         cell_name_cell_type_dict = {}
 
@@ -291,8 +292,7 @@ def main(args=None):
                     cell_type_color_dict_batch[cell_type] = cell_type_counter_batch
                     color_cell_type_dict_batch[cell_type_counter_batch] = cell_type
                     cell_type_counter_batch += 1
-        # log.debug('cell_name_cell_type_dict,keys() {}'.format(cell_name_cell_type_dict.keys()))
-        # log.debug('len(cell_type_color_dict) {}'.format(len(cell_type_color_dict)))
+
     if args.clusterMethod == 'spectral':
         cluster_object = SpectralClustering(n_clusters=args.numberOfClusters, affinity='nearest_neighbors', n_jobs=args.threads, random_state=0)
     elif args.clusterMethod == 'kmeans':
@@ -353,7 +353,7 @@ def main(args=None):
                 minHash_object.partial_fit(X=neighborhood_matrix)
 
         precomputed_graph = minHash_object.kneighbors_graph(mode='distance')
-
+        precomputed_graph = np.nan_to_num(precomputed_graph)
         if not args.noPCA:
 
             pca = PCA(n_components=min(precomputed_graph.shape) - 1)
@@ -361,12 +361,29 @@ def main(args=None):
 
             if args.dimensionsPCA:
                 args.dimensionsPCA = min(args.dimensionsPCA, precomputed_graph.shape[0])
-                cluster_object.fit(precomputed_graph[:, :args.dimensionsPCA])
-        else:
-            try:
-                cluster_object.fit(precomputed_graph)
-            except Exception:
-                cluster_object.fit(precomputed_graph.todense())
+                precomputed_graph = precomputed_graph[:, :args.dimensionsPCA]
+                # cluster_object.fit(precomputed_graph[:, :args.dimensionsPCA])
+        if not args.noUMAP:
+
+            if umap_params_dict is None:
+                reducer = umap.UMAP()
+            else:
+                reducer = umap.UMAP(n_neighbors=umap_params_dict['umap_n_neighbors'], n_components=umap_params_dict['umap_n_components'], metric=umap_params_dict['umap_metric'],
+                                    n_epochs=umap_params_dict['umap_n_epochs'],
+                                    learning_rate=umap_params_dict['umap_learning_rate'], init=umap_params_dict['umap_init'], min_dist=umap_params_dict['umap_min_dist'], spread=umap_params_dict['umap_spread'],
+                                    set_op_mix_ratio=umap_params_dict['umap_set_op_mix_ratio'], local_connectivity=umap_params_dict['umap_local_connectivity'],
+                                    repulsion_strength=umap_params_dict['umap_repulsion_strength'], negative_sample_rate=umap_params_dict['umap_negative_sample_rate'], transform_queue_size=umap_params_dict['umap_transform_queue_size'],
+                                    a=umap_params_dict['umap_a'], b=umap_params_dict['umap_b'], angular_rp_forest=umap_params_dict['umap_angular_rp_forest'],
+                                    target_n_neighbors=umap_params_dict['umap_target_n_neighbors'], target_metric=umap_params_dict['umap_target_metric'],
+                                    target_weight=umap_params_dict['umap_target_weight'], random_state=umap_params_dict['umap_random'],
+                                    force_approximation_algorithm=umap_params_dict['umap_force_approximation_algorithm'], verbose=umap_params_dict['umap_verbose'], unique=umap_params_dict['umap_unique'])
+            precomputed_graph = reducer.fit_transform(precomputed_graph)
+        precomputed_graph = np.nan_to_num(precomputed_graph)
+        try:
+            cluster_object.fit(precomputed_graph)
+        except Exception:
+            cluster_object.fit(precomputed_graph.todense())
+
         minHashClustering = MinHashClustering(minHashObject=minHash_object, clusteringObject=cluster_object)
         minHashClustering._precomputed_graph = precomputed_graph
 
@@ -463,7 +480,7 @@ def main(args=None):
                     body += '\\\\\n'
                     # body = ''
                     for i in computed_clusters:
-                        body += '\hline Cluster ' + str(i)
+                        body += '\\hline Cluster ' + str(i)
                         mask_computed_clusters = labels_clustering == i
                         body += ' (' + str(np.sum(mask_computed_clusters)) + ' cells)'
                         for j in range(len(cell_type_color_dict)):
@@ -494,7 +511,7 @@ def main(args=None):
                     body += '\\hline ' + '&' * len(cell_type_color_dict) + '\\\\\n'
 
                     for threshold in [0.7, 0.8, 0.9]:
-                        body += '\hline Correct identified $>{}\\%$'.format(int(threshold * 100))
+                        body += '\\hline Correct identified $>{}\\%$'.format(int(threshold * 100))
                         for i in range(len(cell_type_color_dict)):
                             mask_cell_type = labels_clustering_cell_type == i
 
@@ -507,7 +524,7 @@ def main(args=None):
 
                             body += ' \\%)'
                         body += '\\\\\n'
-                    body += '\hline \n'
+                    body += '\\hline \n'
                     body += '\\end{tabular}\n\\caption{}\n\\end{table}'
 
                     matches_file.write(header)
@@ -532,10 +549,14 @@ def main(args=None):
                                     cell_type_amounts_dict[color_cell_type_dict[j]] = number_of_matches
 
                         matches_file.write('\n')
-
+            all_detected = 0
+            all_possible = 0
             for i in range(len(cell_type_color_dict)):
+
                 mask_cell_type = labels_clustering_cell_type == i
+                all_possible += np.sum(mask_cell_type)
                 if color_cell_type_dict[i] in cell_type_amounts_dict:
+                    all_detected += cell_type_amounts_dict[color_cell_type_dict[i]]
                     cell_type_amounts_dict[color_cell_type_dict[i]] /= np.sum(mask_cell_type)
                 else:
                     cell_type_amounts_dict[color_cell_type_dict[i]] = 0.0
@@ -544,6 +565,11 @@ def main(args=None):
                 correct_associated += cell_type_amounts_dict[cell_iterator]
 
             correct_associated /= len(cell_type_amounts_dict)
+
+            # all_detected /= all_possible
+
+            # correct_associated = ((correct_associated*4) + (all_detected)) / 5
+            # correct_associated = correct_associated
 
             with open('correct_associated', 'w') as file:
                 file.write(str(correct_associated))

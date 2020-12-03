@@ -3,7 +3,7 @@ warnings.simplefilter(action="ignore", category=RuntimeWarning)
 warnings.simplefilter(action="ignore", category=PendingDeprecationWarning)
 import argparse
 
-from hyperopt import hp, fmin, tpe, space_eval, STATUS_OK, Trials
+from hyperopt import hp, fmin, tpe, space_eval, STATUS_OK, Trials, rand, atpe
 import logging
 log = logging.getLogger(__name__)
 from tempfile import NamedTemporaryFile, mkdtemp
@@ -42,7 +42,7 @@ def parse_arguments(args=None):
                            type=int,
                            default=100,
                            help='Number of runs of hyperopt.')
-    parserOpt.add_argument('--nearestNeighbors',
+    parserOpt.add_argument('--nearestNeighbors', '-k',
                            type=int,
                            default=1000,
                            help='Number of runs of hyperopt.')
@@ -91,9 +91,14 @@ def parse_arguments(args=None):
                            ' (Default: %(default)s).',
                            required=False,
                            type=float,
-                           nargs=,
+                           nargs=2,
                            default=(0.0, 0.5)
                            )
+    parserRequired.add_argument('--method', '-me',
+                                help='Method to optimize by hyperopt: random tree, tpe, adaptive tpe',
+                                choices=['random', 'tpe', 'atpe'],
+                                default='random',
+                                required=True)
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads (uses the python multiprocessing module)'
                            ' (Default: %(default)s).',
@@ -123,11 +128,7 @@ def objective(pArgs):
         intraChromosomalContactsOnly = '-ic'
     if pArgs['noPCA']:
         noPCA = '--noPCA'
-    # if pArgs['noUMAP']:
 
-    # noUMAP = '--noUMAP'
-
-    outfile_loop = NamedTemporaryFile()
     args = "-m {} -c {} -cm {} -o ramani_1mb_kmeans_c5.txt -t {} -k {} -nh {}  -dim_pca {} " \
         " -cct {} --colorMap glasbey_dark  {} {} {} "\
         "--umap_n_neighbors {} " \
@@ -174,7 +175,15 @@ def main(args=None):
     # minimize the objective over the space
 
     trials = Trials()
-    best = fmin(objective, space, algo=tpe.suggest, max_evals=args.runs, trials=trials)
+    if args.method == 'random':
+        best = fmin(objective, space, algo=rand.suggest, max_evals=args.runs, trials=trials)
+    elif args.method == 'tpe':
+        best = fmin(objective, space, algo=tpe.suggest, max_evals=args.runs, trials=trials)
+    elif args.method == 'atpe':
+        best = fmin(objective, space, algo=atpe.suggest, max_evals=args.runs, trials=trials)
+    else:
+        print('Error, hyperopt optimization method not known.')
+        exit(1)
 
     with open(args.outputFileName, 'w') as file:
         file.write("# Created by scHiCExplorer schicClusterMinHashHyperopt {}\n\n".format(__version__))

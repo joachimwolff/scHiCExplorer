@@ -165,21 +165,21 @@ def test_kmeans_euclidean():
 
 
 # some issue with the test data, real world data works fine
-@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_spectral_euclidean():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
     outfile_plot = NamedTemporaryFile(prefix='pca_plot_', delete=False)
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -nh {} --euclideanModeMinHash -csp {} --colorMap {} --dpi {} --fontsize {} ".format(ROOT + 'test_matrix.scool',
-                                                                                                                   3, 'spectral', outfile.name, 2, 800, outfile_plot.name,
-                                                                                                                   'tab10', 100, 5).split()
+        --outFileName {} -t {} -nh {} --euclideanModeMinHash -csp {} --colorMap {} --dpi {} --fontsize {} --figuresize {} {}".format(ROOT + 'test_matrix.scool',
+                                                                                                                                     3, 'spectral', outfile.name, 2, 800, outfile_plot.name,
+                                                                                                                                     'tab10', 100, 5, 10, 5).split()
     scHicClusterMinHash.main(args)
     assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_spectral_euclidean.txt", outfile.name)
 
-    res = compare_images(ROOT + "scHicClusterMinHash/plot_pc1_pc2.png", outfile_plot.name + '_pc1_pc2.png', tolerance)
+    res = compare_images(ROOT + "scHicClusterMinHash/plot_pc1_pc2.png", outfile_plot.name + '.png', tolerance)
     assert res is None, res
-    res = compare_images(ROOT + "scHicClusterMinHash/plot_pc2_pc3.png", outfile_plot.name + '_pc2_pc3.png', tolerance)
+    res = compare_images(ROOT + "scHicClusterMinHash/plot_pc2_pc3.png", outfile_plot.name + '.png', tolerance)
     assert res is None, res
 
 
@@ -205,8 +205,6 @@ def test_agglomerative_single_saveMemory():
     assert are_files_equal_clustering(ROOT + "scHicClusterMinHash/cluster_kmeans.txt", outfile.name)
 
 
-# some issue with the test data, real world data works fine
-@pytest.mark.xfail
 def test_kmeans_euclidean_saveMemory():
     outfile = NamedTemporaryFile(suffix='.txt', delete=False)
 

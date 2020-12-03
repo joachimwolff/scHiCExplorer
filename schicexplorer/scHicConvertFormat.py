@@ -53,7 +53,7 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--format', '-f',
                            help='The format of the output files',
                            choices=['schicluster', 'sparse-matrix-files'],
-                           default='none')
+                           default='schicluster')
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
@@ -91,8 +91,8 @@ def convert_to_txt_csr(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder
             cell_name_array.append(pOutputFolder + matrix)
 
         except Exception as e:
-            log.debug('exception: {}'.format(e))
-            log.debug('pixels {}'.format(pixels[:5]))
+            log.debug('Exception: {}'.format(e))
+            log.debug('Pixels {}'.format(pixels[:5]))
             continue
 
     pQueue.put(cell_name_array)
@@ -124,8 +124,8 @@ def convert_to_schicluster(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFo
             cell_name_array.append(pOutputFolder + matrix)
 
         except Exception as e:
-            log.debug('exception: {}'.format(e))
-            log.debug('pixels {}'.format(pixels[:5]))
+            log.debug('Exception: {}'.format(e))
+            log.debug('Pixels {}'.format(pixels[:5]))
             continue
 
     pQueue.put(cell_name_array)

@@ -37,14 +37,6 @@ def parse_arguments(args=None):
                            'ExtractToCool extracts either a given scool file to individual cool files or only a subset given by a list. ExtractScool requires a list of internal cells that should be copied to a new scool file.',
                            choices=['update', 'extractToCool', 'extractScool'],
                            default='none')
-    # parserOpt.add_argument('--update', '-u',
-    #                        help='Update the scool file from the old format of scHiCExplorer until version 4 to the one used since version 5.',
-    #                        required=False,
-    #                        action='store_true')
-    # parserOpt.add_argument('--extract', '-e',
-    #                        help='Path to a file with the cell names to be extracted into an individual cool file',
-    #                        required=False,
-    #                        type=str)
     parserOpt.add_argument('--cellList', '-cl',
                            help='A text file with the cells that should be extracted or copied to the a new scool file.',
                            required=False,

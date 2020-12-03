@@ -167,11 +167,11 @@ def main(args=None):
                     cell_type_color_dict_batch[cell_type] = cell_type_counter_batch
                     color_cell_type_dict_batch[cell_type_counter_batch] = cell_type
                     cell_type_counter_batch += 1
-    
+
     raw_file_name = os.path.splitext(os.path.basename(args.outFileName))[0]
     neighborhood_matrix, matrices_list = create_csr_matrix_all_cells(args.matrix, args.threads, args.chromosomes, outputFolder, raw_file_name, args.intraChromosomalContactsOnly)
 
-    reduce_to_dimension = neighborhood_matrix.shape[0] -1 
+    reduce_to_dimension = neighborhood_matrix.shape[0] - 1
     if args.dimensionReductionMethod == 'knn':
 
         if args.numberOfNearestNeighbors > reduce_to_dimension:
@@ -232,7 +232,7 @@ def main(args=None):
             log.debug('already computed pca')
 
             neighborhood_matrix_knn = neighborhood_matrix
-        
+
         if args.cell_coloring_type:
             plt.figure(figsize=(args.figuresize[0], args.figuresize[1]))
             for i, color in enumerate(colors[:len(cell_type_color_dict)]):
@@ -304,8 +304,7 @@ def main(args=None):
         # compute overlap of cell_type find found clusters
         computed_clusters = set(labels_clustering)
         cell_type_amounts_dict = {}
-        percentage_threshold = 0.8
-        
+        # percentage_threshold = 0.8
 
         for threshold in [0.7, 0.8, 0.9]:
             cell_type_amounts_dict[threshold] = {}
@@ -320,7 +319,7 @@ def main(args=None):
             body += '\\\\\n'
             # body = ''
             for i in computed_clusters:
-                body += '\hline Cluster ' + str(i)
+                body += '\\hline Cluster ' + str(i)
                 mask_computed_clusters = labels_clustering == i
                 body += ' (' + str(np.sum(mask_computed_clusters)) + ' cells)'
                 for j in range(len(cell_type_color_dict)):
@@ -351,7 +350,7 @@ def main(args=None):
             body += '\\hline ' + '&' * len(cell_type_color_dict) + '\\\\\n'
 
             for threshold in [0.7, 0.8, 0.9]:
-                body += '\hline Correct identified $>{}\\%$'.format(int(threshold * 100))
+                body += '\\hline Correct identified $>{}\\%$'.format(int(threshold * 100))
                 for i in range(len(cell_type_color_dict)):
                     mask_cell_type = labels_clustering_cell_type == i
 
@@ -364,67 +363,11 @@ def main(args=None):
 
                     body += ' \\%)'
                 body += '\\\\\n'
-            body += '\hline \n'
+            body += '\\hline \n'
             body += '\\end{tabular}\n\\caption{}\n\\end{table}'
 
             matches_file.write(header)
             matches_file.write(body)
-        # else:
-        #     with open('matches.txt', 'w') as matches_file:
-        #         for i in computed_clusters:
-        #             mask_computed_clusters = labels_clustering == i
-        #             for j in range(len(cell_type_color_dict)):
-        #                 mask_cell_type = labels_clustering_cell_type == j
-
-        #                 mask = mask_computed_clusters & mask_cell_type
-
-        #                 number_of_matches = np.sum(mask)
-        #                 matches_file.write('Computed cluster {} (size: {}) matching with cell type {} (size: {}) {} times. Rate (matches/computed_clusters): {}%\n'.format(
-        #                     i, np.sum(mask_computed_clusters), color_cell_type_dict[j], np.sum(mask_cell_type), number_of_matches, number_of_matches / np.sum(mask_computed_clusters)))
-
-        #                 if number_of_matches / np.sum(mask_computed_clusters) >= percentage_threshold:
-        #                     if color_cell_type_dict[j] in cell_type_amounts_dict:
-        #                         cell_type_amounts_dict[color_cell_type_dict[j]] += number_of_matches
-        #                     else:
-        #                         cell_type_amounts_dict[color_cell_type_dict[j]] = number_of_matches
-
-        #             matches_file.write('\n')
-    
-
-        # plt.figure(figsize=(15, 8))
-
-        # list(set(labels_clustering))
-        # plt.figure(figsize=(15, 8), dpi=80)
-        # # cmap = get_cmap(args.colorMap)
-        # # colors = cmap.colors
-        # colors = process_cmap(args.colorMap)
-        # for i, color in enumerate(colors[:args.numberOfClusters]):
-        #     mask = labels_clustering == i
-        #     plt.scatter(neighborhood_matrix_knn[:, 0].T[mask], neighborhood_matrix_knn[:, 1].T[mask], color=color, label=str(i), s=50, alpha=0.7)
-        # plt.legend(fontsize=args.fontsize)
-        # plt.xticks([])
-        # plt.yticks([])
-        # plt.xlabel('PC1', fontsize=args.fontsize)
-        # plt.ylabel('PC2', fontsize=args.fontsize)
-        # log.debug('args.createScatterPlot {}'.format(args.createScatterPlot))
-        # if '.' not in args.createScatterPlot:
-        #     args.createScatterPlot += '.png'
-        # scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc1_pc2.' + args.createScatterPlot.split('.')[-1]
-        # log.debug('scatter_plot_name {}'.format(scatter_plot_name))
-        # plt.savefig(scatter_plot_name, dpi=args.dpi)
-        # plt.close()
-
-        # for i, color in enumerate(colors[:args.numberOfClusters]):
-        #     mask = labels_clustering == i
-        #     plt.scatter(neighborhood_matrix_knn[:, 1].T[mask], neighborhood_matrix_knn[:, 2].T[mask], color=color, label=str(i), s=50, alpha=0.7)
-        # plt.legend(fontsize=args.fontsize)
-        # plt.xticks([])
-        # plt.yticks([])
-        # plt.xlabel('PC2', fontsize=args.fontsize)
-        # plt.ylabel('PC3', fontsize=args.fontsize)
-        # scatter_plot_name = '.'.join(args.createScatterPlot.split('.')[:-1]) + '_pc2_pc3.' + args.createScatterPlot.split('.')[-1]
-        # plt.savefig(scatter_plot_name, dpi=args.dpi)
-        # plt.close()
 
     matrices_cluster = list(zip(matrices_list, labels_clustering))
     np.savetxt(args.outFileName, matrices_cluster, fmt="%s")

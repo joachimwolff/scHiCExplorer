@@ -255,7 +255,7 @@ def load_matrix_list(pMatrixName, pMatricesList, pArgs, pChromosomeIndices, pQue
     max_value = None
     min_value = None
     all_mat = None
-    all_nan = []
+
     try:
         hic_mat_list = []
         for i, matrix in enumerate(pMatricesList):
@@ -485,7 +485,7 @@ def main(args=None):
 
     grids = gridspec.GridSpec(num_files, num_files)
     grids.update(wspace=0, hspace=0)
-    fig = plt.figure(figsize=(2 * num_files, 2 * num_files))
+    plt.figure(figsize=(2 * num_files, 2 * num_files))
     plt.rcParams['font.size'] = 8.0
 
     min_value = int(big_mat.min())
@@ -495,9 +495,9 @@ def main(args=None):
         # make one value odd and the other even
         max_value += 1
 
-    if args.log1p:
-        major_locator = FixedLocator(list(range(min_value, max_value, 2)))
-        minor_locator = FixedLocator(list(range(min_value, max_value, 1)))
+    # if args.log1p:
+    #     major_locator = FixedLocator(list(range(min_value, max_value, 2)))
+    #     minor_locator = FixedLocator(list(range(min_value, max_value, 1)))
 
     # parallel correlation computation
     all_data_collected = False
