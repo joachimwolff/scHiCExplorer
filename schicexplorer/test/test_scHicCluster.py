@@ -174,14 +174,14 @@ def test_spectral_clustering_csp():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -csp {} --colorMap {} --dpi {} --fontsize {} ".format(ROOT + 'test_matrix.scool',
-                                                                                     3, 'spectral', outfile.name, 1, outfile_plot.name,
-                                                                                     'tab10', 100, 5).split()
+        --outFileName {} -t {} -csp {} --colorMap {} --dpi {} --fontsize {} --figuresize {} {}".format(ROOT + 'test_matrix.scool',
+                                                                                                       3, 'spectral', outfile.name, 1, outfile_plot.name,
+                                                                                                       'tab10', 100, 5, 15, 8).split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral.txt", outfile.name)
-    res = compare_images(ROOT + "scHicCluster/plot_pc1_pc2.png", outfile_plot.name + '_pc1_pc2.png', tolerance)
+    res = compare_images(ROOT + "scHicCluster/plot_pc1_pc2.png", outfile_plot.name + '.png', tolerance)
     assert res is None, res
-    res = compare_images(ROOT + "scHicCluster/plot_pc2_pc3.png", outfile_plot.name + '_pc2_pc3.png', tolerance)
+    res = compare_images(ROOT + "scHicCluster/plot_pc2_pc3.png", outfile_plot.name + '.png', tolerance)
     assert res is None, res
 
 
@@ -203,15 +203,15 @@ def test_spectral_pca_clustering_csp():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {} -csp {} --colorMap {} --dpi {} --fontsize {} ".format(ROOT + 'test_matrix.scool',
-                                                                                             3, 'spectral', outfile.name, 4, "pca", outfile_plot.name,
-                                                                                             'tab10', 100, 5).split()
+        --outFileName {} -t {} -drm {} -csp {} --colorMap {} --dpi {} --fontsize {} --figuresize {} {}".format(ROOT + 'test_matrix.scool',
+                                                                                                               3, 'spectral', outfile.name, 4, "pca", outfile_plot.name,
+                                                                                                               'tab10', 100, 5, 15, 8).split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral_pca.txt", outfile.name)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_spectral.txt", outfile.name)
-    res = compare_images(ROOT + "scHicCluster/plot_pc1_pc2.png", outfile_plot.name + '_pc1_pc2.png', tolerance)
+    res = compare_images(ROOT + "scHicCluster/plot_pc1_pc2.png", outfile_plot.name + '.png', tolerance)
     assert res is None, res
-    res = compare_images(ROOT + "scHicCluster/plot_pc2_pc3.png", outfile_plot.name + '_pc2_pc3.png', tolerance)
+    res = compare_images(ROOT + "scHicCluster/plot_pc2_pc3.png", outfile_plot.name + '.png', tolerance)
     assert res is None, res
 
 
@@ -222,15 +222,15 @@ def test_kmeans_knn_clustering_intra_chromosomal_plot():
 
     outfile.close()
     args = "--matrix {} --numberOfClusters {} --clusterMethod {} \
-        --outFileName {} -t {} -drm {} -ic -csp {} --colorMap {} --dpi {} --fontsize {} ".format(ROOT + 'test_matrix.scool',
-                                                                                                 3, 'kmeans', outfile.name, 2, "knn", outfile_plot.name,
-                                                                                                 'tab10', 100, 5).split()
+        --outFileName {} -t {} -drm {} -ic -csp {} --colorMap {} --dpi {} --fontsize {} --figuresize {} {}".format(ROOT + 'test_matrix.scool',
+                                                                                                                   3, 'kmeans', outfile.name, 2, "knn", outfile_plot.name,
+                                                                                                                   'tab10', 100, 5, 15, 8).split()
     scHicCluster.main(args)
     assert are_files_equal_clustering(ROOT + "scHicCluster/cluster_kmeans_ic_knn.txt", outfile.name)
 
-    res = compare_images(ROOT + "scHicCluster/plot_pc1_pc2.png", outfile_plot.name + '_pc1_pc2.png', tolerance)
+    res = compare_images(ROOT + "scHicCluster/plot_pc1_pc2.png", outfile_plot.name + '.png', tolerance)
     assert res is None, res
-    res = compare_images(ROOT + "scHicCluster/plot_pc2_pc3.png", outfile_plot.name + '_pc2_pc3.png', tolerance)
+    res = compare_images(ROOT + "scHicCluster/plot_pc2_pc3.png", outfile_plot.name + '.png', tolerance)
     assert res is None, res
 
 
