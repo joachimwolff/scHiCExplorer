@@ -1,6 +1,6 @@
 python >=3.6
-# hicexplorer >=3.5.3
-# sparse-neighbors-search >=0.6
+hicexplorer >=3.5.3
+sparse-neighbors-search >=0.7
 numpy >=1.18
 scipy >=1.4
 cooler >=0.8.10
