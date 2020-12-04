@@ -354,10 +354,12 @@ def main(args=None):
 
         precomputed_graph = minHash_object.kneighbors_graph(mode='distance')
         precomputed_graph = np.nan_to_num(precomputed_graph)
+        precomputed_graph.data[np.isinf(precomputed_graph.data)] = 0
         if not args.noPCA:
 
             pca = PCA(n_components=min(precomputed_graph.shape) - 1)
             precomputed_graph = np.nan_to_num(precomputed_graph.todense())
+            precomputed_graph[np.isinf(precomputed_graph)] = 0
             precomputed_graph = pca.fit_transform(precomputed_graph)
 
             if args.dimensionsPCA:
@@ -380,6 +382,8 @@ def main(args=None):
                                     force_approximation_algorithm=umap_params_dict['umap_force_approximation_algorithm'], verbose=umap_params_dict['umap_verbose'], unique=umap_params_dict['umap_unique'])
             precomputed_graph = reducer.fit_transform(precomputed_graph)
         precomputed_graph = np.nan_to_num(precomputed_graph)
+        precomputed_graph[np.isinf(precomputed_graph)] = 0
+
         try:
             cluster_object.fit(precomputed_graph)
         except Exception:
