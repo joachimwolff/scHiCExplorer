@@ -44,21 +44,23 @@ def load_cool_files(pMatricesList, pCutIntervals, pQueue):
 
     matrixFileHandlerList = []
     for i, matrix in enumerate(pMatricesList):
+        try:
+            matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix, pNoCutIntervals=True)
 
-        matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix, pNoCutIntervals=True)
+            _matrix, cut_intervals, nan_bins, \
+                distance_counts, correction_factors = matrixFileHandlerInput.load()
 
-        _matrix, cut_intervals, nan_bins, \
-            distance_counts, correction_factors = matrixFileHandlerInput.load()
+            matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix)
 
-        matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix)
+            matrixFileHandlerOutput.set_matrix_variables(_matrix,
+                                                         pCutIntervals,
+                                                         nan_bins,
+                                                         correction_factors,
+                                                         distance_counts)
 
-        matrixFileHandlerOutput.set_matrix_variables(_matrix,
-                                                     pCutIntervals,
-                                                     nan_bins,
-                                                     correction_factors,
-                                                     distance_counts)
-
-        matrixFileHandlerList.append(matrixFileHandlerOutput)
+            matrixFileHandlerList.append(matrixFileHandlerOutput)
+        except Exception as exp:
+            log.warning('File could not be opend and is excluded: {}. Error message: {} '.format(matrix, str(exp)))
 
     pQueue.put(matrixFileHandlerList)
 

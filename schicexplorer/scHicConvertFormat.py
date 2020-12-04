@@ -50,7 +50,10 @@ def parse_arguments(args=None):
                                 default='chromosomeSize.txt',
                                 type=str)
     parserOpt = parser.add_argument_group('Optional arguments')
-
+    parserOpt.add_argument('--format', '-f',
+                           help='The format of the output files',
+                           choices=['schicluster', 'sparse-matrix-files'],
+                           default='schicluster')
     parserOpt.add_argument('--threads', '-t',
                            help='Number of threads. Using the python multiprocessing module.',
                            required=False,
@@ -60,6 +63,40 @@ def parse_arguments(args=None):
     parserOpt.add_argument('--version', action='version',
                            version='%(prog)s {}'.format(__version__))
     return parser
+
+
+def convert_files(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder, pFormat, pQueue):
+
+    if pFormat == 'schicluster':
+        return convert_to_schicluster(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder, pQueue)
+    elif pFormat == 'sparse-matrix-files':
+        return convert_to_txt_csr(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder, pQueue)
+    else:
+        log.error('Format not known!')
+        pQueue.put([None])
+
+
+def convert_to_txt_csr(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder, pQueue):
+    cell_name_array = []
+
+    for i, matrix in enumerate(pMatricesList):
+
+        try:
+            cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
+
+            pixels = cooler_obj.pixels()[:]
+
+            file_name = pOutputFolder + matrix + '.txt'
+            pixels.to_csv(file_name, sep="\t", index=False, header=False)
+            cell_name_array.append(pOutputFolder + matrix)
+
+        except Exception as e:
+            log.debug('Exception: {}'.format(e))
+            log.debug('Pixels {}'.format(pixels[:5]))
+            continue
+
+    pQueue.put(cell_name_array)
+    return
 
 
 def convert_to_schicluster(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFolder, pQueue):
@@ -87,8 +124,8 @@ def convert_to_schicluster(pMatrixName, pMatricesList, pBinsDataFrame, pOutputFo
             cell_name_array.append(pOutputFolder + matrix)
 
         except Exception as e:
-            log.debug('exception: {}'.format(e))
-            log.debug('pixels {}'.format(pixels[:5]))
+            log.debug('Exception: {}'.format(e))
+            log.debug('Pixels {}'.format(pixels[:5]))
             continue
 
     pQueue.put(cell_name_array)
@@ -129,11 +166,12 @@ def main(args=None):
             matrices_name_list = matrices_list[i * matricesPerThread:]
 
         queue[i] = Queue()
-        process[i] = Process(target=convert_to_schicluster, kwargs=dict(
+        process[i] = Process(target=convert_files, kwargs=dict(
             pMatrixName=matrices_name,
             pMatricesList=matrices_name_list,
             pBinsDataFrame=bins,
             pOutputFolder=args.outputFolder,
+            pFormat=args.format,
             pQueue=queue[i]
         )
         )
@@ -155,6 +193,9 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
+    for subset in cell_name_array_thread:
+        if subset[0] is None:
+            exit(1)
     cell_name_array = [item for sublist in cell_name_array_thread for item in sublist]
 
     # write cell names to file

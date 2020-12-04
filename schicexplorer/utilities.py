@@ -51,7 +51,32 @@ def cell_name_list(pScoolUri):
             exit(1)
 
 
-def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices, pQueue=None):
+def load_matrix(pMatrix, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices):
+    cooler_obj = cooler.Cooler(pMatrix)
+    shape = cooler_obj.shape
+    cooler_obj.binsize
+    chromosome_dataframes_list = []
+
+    if pChromosomes is None:
+        pChromosomes = cooler_obj.chromnames
+    for chromosome in pChromosomes:
+
+        pixels_chromosome = cooler_obj.pixels().fetch(chromosome)
+        # get pixels from one chromosome, but only intra chromosomal contacts
+
+        # per defintion the bin1_id should belong only to the fetched chromosome, therefore only bin2_id needs to be cleaned
+        if pIntraChromosomalContactsOnly:
+            mask_chromosome = pixels_chromosome['bin2_id'].apply(lambda x: x in pChromosomeIndices[chromosome])
+            chromosome_dataframes_list.append(pixels_chromosome[mask_chromosome])
+        else:
+            chromosome_dataframes_list.append(pixels_chromosome)
+
+    pixels_chromosome = pd.concat(chromosome_dataframes_list)
+
+    return pixels_chromosome, shape, cooler_obj.binsize
+
+
+def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices, pDistance=None, pQueue=None):
     neighborhood_matrix = None
     features = []
     data = []
@@ -62,25 +87,7 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
     try:
         for i, matrix in enumerate(pMatricesList):
 
-            cooler_obj = cooler.Cooler(pMatrixName + '::' + matrix)
-            shape = cooler_obj.shape
-            chromosome_dataframes_list = []
-
-            if pChromosomes is None:
-                pChromosomes = cooler_obj.chromnames
-            for chromosome in pChromosomes:
-
-                pixels_chromosome = cooler_obj.pixels().fetch(chromosome)
-                # get pixels from one chromosome, but only intra chromosomal contacts
-
-                # per defintion the bin1_id should belong only to the fetched chromosome, therefore only bin2_id needs to be cleaned
-                if pIntraChromosomalContactsOnly:
-                    mask_chromosome = pixels_chromosome['bin2_id'].apply(lambda x: x in pChromosomeIndices[chromosome])
-                    chromosome_dataframes_list.append(pixels_chromosome[mask_chromosome])
-                else:
-                    chromosome_dataframes_list.append(pixels_chromosome)
-
-            pixels_chromosome = pd.concat(chromosome_dataframes_list)
+            pixels_chromosome, shape, _ = load_matrix(pMatrixName + '::' + matrix, pChromosomes, pIntraChromosomalContactsOnly, pChromosomeIndices)
 
             if max_shape < shape[0]:
                 max_shape = shape[0]
@@ -93,9 +100,21 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
                 if len(_matrix[2]) == 0:
                     valid_matrix_list.append(False)
                     continue
-                valid_matrix_list.append(True)
                 _matrix[0] = _matrix[0].astype(index_datatype)
                 _matrix[1] = _matrix[1].astype(index_datatype)
+
+                if pDistance is not None:
+                    distance = np.absolute(_matrix[0] - _matrix[1])
+                    mask = distance < pDistance
+                    mask_1 = pDistance > 5
+                    mask = np.logical_and(mask, mask_1)
+                    _matrix[0] = _matrix[0][mask]
+                    _matrix[1] = _matrix[1][mask]
+                    _matrix[2] = _matrix[2][mask]
+
+                valid_matrix_list.append(True)
+                # _matrix[0] = _matrix[0].astype(index_datatype)
+                # _matrix[1] = _matrix[1].astype(index_datatype)
 
                 _matrix[0] *= np.int64(shape[0])  # matrix[0] are the instance ids, matrix[3] is the shape
                 _matrix[0] += _matrix[1]  # matrix[3] is the shape, matrix[1] are the feature ids
@@ -119,7 +138,7 @@ def open_and_store_matrix(pMatrixName, pMatricesList, pIndex, pXDimension, pChro
         pQueue.put(str(exp))
 
 
-def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes, pOutputFolder, pRawFileName, pIntraChromosomalContactsOnly=None):
+def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes, pOutputFolder, pRawFileName, pIntraChromosomalContactsOnly=None, pDistance=None):
 
     matrices_name = pMatrixName
     threads = pThreads
@@ -137,13 +156,16 @@ def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes, pOutputFold
     process = [None] * threads
 
     chromosome_indices = None
+    cooler_obj = cooler.Cooler(pMatrixName + '::' + matrices_list[0])
     if pIntraChromosomalContactsOnly:
-        cooler_obj = cooler.Cooler(pMatrixName + '::' + matrices_list[0])
+        # cooler_obj = cooler.Cooler(pMatrixName + '::' + matrices_list[0])
         binsDataFrame = cooler_obj.bins()[:]
         chromosome_indices = {}
         for chromosome in cooler_obj.chromnames:
             chromosome_indices[chromosome] = np.array(binsDataFrame.index[binsDataFrame['chrom'] == chromosome].tolist())
 
+    if pDistance is not None:
+        pDistance = pDistance // cooler_obj.binsize
     for i in range(threads):
 
         if i < threads - 1:
@@ -161,6 +183,7 @@ def create_csr_matrix_all_cells(pMatrixName, pThreads, pChromosomes, pOutputFold
             pChromosomes=pChromosomes,
             pIntraChromosomalContactsOnly=pIntraChromosomalContactsOnly,
             pChromosomeIndices=chromosome_indices,
+            pDistance=pDistance,
             pQueue=queue[i]
         )
         )

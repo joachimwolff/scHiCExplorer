@@ -16,8 +16,8 @@ def test_update_matrices():
     outfile = NamedTemporaryFile(suffix='.scool', delete=False)
 
     outfile.close()
-    args = "--matrix {} --outFileName {} -t {} --update".format(ROOT + 'test_matrix_old.scool',
-                                                                outfile.name, 4, ).split()
+    args = "--matrix {} --outFileName {} -t {} --action update".format(ROOT + 'test_matrix_old.scool',
+                                                                       outfile.name, 4, ).split()
     scHicManageScool.main(args)
 
     test_data_matrix = ROOT + 'test_matrix.scool'
@@ -53,8 +53,8 @@ def test_update_matrices():
 
 def test_extract_matrix():
     output_folder = mkdtemp(prefix="output_")
-    args = "--matrix {} --outFileName {} -t {} --extract {}".format(ROOT + 'test_matrix.scool',
-                                                                    output_folder, 4, ROOT + 'to_extract.txt').split()
+    args = "--matrix {} --outFileName {} -t {} --action extractToCool -cl {}".format(ROOT + 'test_matrix.scool',
+                                                                                     output_folder, 4, ROOT + 'to_extract.txt').split()
     scHicManageScool.main(args)
 
     matrices_list_test_data = ['Diploid_1_CGTACTAG_CTAAGCCT_R1fastqgz', 'Diploid_1_CGTACTAG_CTCTCTAT_R1fastqgz', 'Diploid_1_CGTACTAG_GTAAGGAG_R1fastqgz']

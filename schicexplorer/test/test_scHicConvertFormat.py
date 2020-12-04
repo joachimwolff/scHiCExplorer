@@ -34,7 +34,7 @@ def are_files_equal(file1, file2, delta=2, skip=0):
     return equal
 
 
-def test_consensus_matrices():
+def test_schicluster_matrices():
     outfile_cell_names = NamedTemporaryFile(prefix='.txt', delete=False)
     outfile_chromosome_sizes = NamedTemporaryFile(prefix='.txt', delete=False)
     output_folder = mkdtemp(prefix="output_")
@@ -42,13 +42,30 @@ def test_consensus_matrices():
     outfile_cell_names.close()
     outfile_chromosome_sizes.close()
 
-    args = "--matrix {} -t {} -of {} -oc {} -os {}".format(ROOT + 'test_matrix.scool', 4,
-                                                           output_folder, outfile_cell_names.name, outfile_chromosome_sizes.name).split()
+    args = "--matrix {} -t {} -of {} -oc {} -os {} --format schicluster".format(ROOT + 'test_matrix.scool', 4,
+                                                                                output_folder, outfile_cell_names.name, outfile_chromosome_sizes.name).split()
     scHicConvertFormat.main(args)
 
     assert set(os.listdir(ROOT + "scHicConvertFormat/scHiCluster/cells/")) == set(os.listdir(output_folder + '/cells/'))
     assert are_files_equal(ROOT + 'scHicConvertFormat/scHiCluster/cellNameFile.txt', outfile_cell_names.name, delta=2, skip=0)
     assert are_files_equal(ROOT + 'scHicConvertFormat/scHiCluster/chromosomeSize.txt', outfile_chromosome_sizes.name, delta=2, skip=0)
+
+
+def test_sparse_matrix_files_matrices():
+    outfile_cell_names = NamedTemporaryFile(prefix='.txt', delete=False)
+    outfile_chromosome_sizes = NamedTemporaryFile(prefix='.txt', delete=False)
+    output_folder = mkdtemp(prefix="output_")
+
+    outfile_cell_names.close()
+    outfile_chromosome_sizes.close()
+
+    args = "--matrix {} -t {} -of {} -oc {} -os {} --format sparse-matrix-files".format(ROOT + 'test_matrix.scool', 4,
+                                                                                        output_folder, outfile_cell_names.name, outfile_chromosome_sizes.name).split()
+    scHicConvertFormat.main(args)
+
+    assert set(os.listdir(ROOT + "scHicConvertFormat/sparse-matrix-files/cells/")) == set(os.listdir(output_folder + '/cells/'))
+    assert are_files_equal(ROOT + 'scHicConvertFormat/sparse-matrix-files/cellNameFile.txt', outfile_cell_names.name, delta=2, skip=0)
+    assert are_files_equal(ROOT + 'scHicConvertFormat/sparse-matrix-files/chromosomeSize.txt', outfile_chromosome_sizes.name, delta=2, skip=0)
 
 
 def test_version():

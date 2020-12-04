@@ -16,6 +16,8 @@ from hicmatrix import HiCMatrix as hm
 from hicmatrix.lib import MatrixFileHandler
 from schicexplorer._version import __version__
 from schicexplorer.utilities import cell_name_list
+from scipy.sparse import csr_matrix
+from schicexplorer.utilities import load_matrix
 
 
 def parse_arguments(args=None):
@@ -50,19 +52,47 @@ def parse_arguments(args=None):
     return parser
 
 
-def compute_correction(pMatrixName, pMatrixList, pQueue):
+def compute_correction(pMatrixName, pMatrixList, pCutIntervals, pQueue):
 
     out_queue_list = []
-    for matrix in pMatrixList:
-        hic = hm.hiCMatrix(pMatrixName + '::' + matrix)
 
-        kr = kr_balancing(hic.matrix.shape[0], hic.matrix.shape[1],
-                          hic.matrix.count_nonzero(), hic.matrix.indptr.astype(np.int64, copy=False),
-                          hic.matrix.indices.astype(np.int64, copy=False), hic.matrix.data.astype(np.float64, copy=False))
-        kr.computeKR()
-        correction_factors = kr.get_normalisation_vector(False).todense()
-        hic.setCorrectionFactors(correction_factors)
-        out_queue_list.append(hic)
+    print('len(pMatrixList): ' + str(len(pMatrixList)))
+    try:
+        for i, matrix in enumerate(pMatrixList):
+
+            pixels, shape, _ = load_matrix(pMatrixName + '::' + matrix, None, False, None)
+
+            # _matrix = [None, None, None]
+            if 'bin1_id' in pixels.columns and 'bin2_id' in pixels.columns and 'count' in pixels.columns:
+                instances = pixels['bin1_id'].values
+                features = pixels['bin2_id'].values
+                data = pixels['count'].values
+
+                matrix = csr_matrix((data, (instances, features)), (shape[0], shape[1]), dtype=np.float)
+            else:
+                continue
+
+            kr = kr_balancing(shape[0], shape[1],
+                              matrix.count_nonzero(), matrix.indptr.astype(np.int64, copy=False),
+                              matrix.indices.astype(np.int64, copy=False), matrix.data.astype(np.float64, copy=False))
+            kr.computeKR()
+            correction_factors = kr.get_normalisation_vector(False).todense()
+
+            matrixFileHandlerOutput = MatrixFileHandler(pFileType='cool', pMatrixFile=matrix)
+
+            matrixFileHandlerOutput.set_matrix_variables(matrix,
+                                                         pCutIntervals,
+                                                         None,
+                                                         correction_factors,
+                                                         None)
+
+            out_queue_list.append(matrixFileHandlerOutput)
+            print('DOne i: ' + str(i))
+    except Exception as exp:
+        print('Exception: ' + str(exp))
+        log.debug('Exception! {}'.format(str(exp)))
+        pQueue.put(str(exp))
+        return
 
     pQueue.put(out_queue_list)
     return
@@ -73,10 +103,16 @@ def main(args=None):
     args = parse_arguments().parse_args(args)
 
     threads = args.threads
-    merged_matrices = [None] * threads
+    matrixFileHandler_list = [None] * threads
     matrices_list = cell_name_list(args.matrix)
     if len(matrices_list) < threads:
         threads = len(matrices_list)
+
+    matrixFileHandlerInput = MatrixFileHandler(pFileType='cool', pMatrixFile=args.matrix + "::" + matrices_list[0])
+
+    _matrix, cut_intervals_all, nan_bins, \
+        distance_counts, correction_factors = matrixFileHandlerInput.load()
+
     all_data_collected = False
     thread_done = [False] * threads
     length_index = [None] * threads
@@ -84,6 +120,7 @@ def main(args=None):
     matricesPerThread = len(matrices_list) // threads
     queue = [None] * threads
     process = [None] * threads
+    print('Threads: ' + str(threads))
     for i in range(threads):
 
         if i < threads - 1:
@@ -96,17 +133,22 @@ def main(args=None):
         process[i] = Process(target=compute_correction, kwargs=dict(
             pMatrixName=args.matrix,
             pMatrixList=matrices_name_list,
+            pCutIntervals=cut_intervals_all,
             pQueue=queue[i]
         )
         )
 
         process[i].start()
 
+    fail_flag = False
     while not all_data_collected:
         for i in range(threads):
             if queue[i] is not None and not queue[i].empty():
-                merged_matrices[i] = queue[i].get()
-
+                matrixFileHandler_list[i] = queue[i].get()
+                # csr_matrix_worker = queue[i].get()
+                if isinstance(matrixFileHandler_list[i], str):
+                    log.error('{}'.format(matrixFileHandler_list[i]))
+                    fail_flag = True
                 queue[i] = None
                 process[i].join()
                 process[i].terminate()
@@ -118,16 +160,10 @@ def main(args=None):
                 all_data_collected = False
         time.sleep(1)
 
-    merged_matrices = [item for sublist in merged_matrices for item in sublist]
-    matrixFileHandlerObjects_list = []
-    for i, hic_matrix in enumerate(merged_matrices):
-        matrixFileHandlerOutput = MatrixFileHandler(pMatrixFile=matrices_list[i],
-                                                    pFileType='cool', pFileWasH5=False)
+    if fail_flag:
+        exit(1)
+    matrix_file_handler_object_list = [item for sublist in matrixFileHandler_list for item in sublist]
 
-        matrixFileHandlerOutput.set_matrix_variables(hic_matrix.matrix, hic_matrix.cut_intervals, hic_matrix.nan_bins,
-                                                     hic_matrix.correction_factors, hic_matrix.distance_counts)
-        # matrixFileHandlerOutput.save(args.outFileName + '::' + matrices_list[i], pSymmetric=True, pApplyCorrection=False)
-        matrixFileHandlerObjects_list.append(matrixFileHandlerOutput)
     matrixFileHandler = MatrixFileHandler(pFileType='scool')
-    matrixFileHandler.matrixFile.coolObjectsList = matrixFileHandlerObjects_list
+    matrixFileHandler.matrixFile.coolObjectsList = matrix_file_handler_object_list
     matrixFileHandler.save(args.outFileName, pSymmetric=True, pApplyCorrection=False)
