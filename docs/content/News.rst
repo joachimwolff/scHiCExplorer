@@ -1,6 +1,34 @@
 News
 ====
 
+
+** 4 Dezember 2020**
+
+Release of version 7:
+
+- scHicClusterMinHash:
+    - Adding umap
+    - adding option to color scatter plots with pre-classified information
+- add scHicClusterMinHashHyperopt to 
+- adding scHicCorrelate
+- scHicPlotConsensusMatrix: 
+    - fixing a bug which lead to a small last interaction matrix plot
+- scHicManageSCool:
+   - option to create a scool file given a scool file and a list of to be extracted matrices
+ - scHicConvertFormat:
+   - option to write out sparse matrix text files
+- add scHicTxtToSCool: able to import sparse text files as created by Ramani's bin_schic
+
+
+** 11 August 2020** 
+
+Release of version 6:
+
+- Add saveMemory option
+- Catching the possibility of a deadlock if too much data is loaded with too less cores
+- Fixing the documentation
+
+
 ** 5 August 2020**
 
 Release of version 5:
