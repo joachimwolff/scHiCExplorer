@@ -357,7 +357,8 @@ def main(args=None):
         if not args.noPCA:
 
             pca = PCA(n_components=min(precomputed_graph.shape) - 1)
-            precomputed_graph = pca.fit_transform(precomputed_graph.todense())
+            precomputed_graph = np.nan_to_num(precomputed_graph.todense())
+            precomputed_graph = pca.fit_transform(precomputed_graph)
 
             if args.dimensionsPCA:
                 args.dimensionsPCA = min(args.dimensionsPCA, precomputed_graph.shape[0])
