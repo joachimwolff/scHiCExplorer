@@ -188,7 +188,13 @@ def main(args=None):
     elif args.dimensionReductionMethod == 'pca':
         corrmatrix = np.cov(neighborhood_matrix.todense())
         evals, eigs = linalg.eig(corrmatrix)
-        neighborhood_matrix = eigs[:, :reduce_to_dimension].transpose()
+        neighborhood_matrix = eigs.transpose()
+        if args.dimensionsPCA:
+            args.dimensionsPCA = min(args.dimensionsPCA, neighborhood_matrix.shape[0])
+            neighborhood_matrix = neighborhood_matrix[:, :args.dimensionsPCA]
+        # pca = PCA(n_components=min(neighborhood_matrix.shape) - 1)
+        # neighborhood_matrix = pca.fit_transform(neighborhood_matrix.todense())
+        # 
 
     if args.clusterMethod == 'spectral':
         spectralClustering_object = SpectralClustering(n_clusters=args.numberOfClusters, n_jobs=args.threads,
