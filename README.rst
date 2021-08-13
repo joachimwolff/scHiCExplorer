@@ -1,3 +1,12 @@
+|azure| |rtd| |conda|
+
+.. |azure| image:: https://dev.azure.com/wolffj/scHiCExplorer/_apis/build/status/joachimwolff.scHiCExplorer?branchName=master
+	:target: https://dev.azure.com/wolffj/scHiCExplorer/_build/latest?definitionId=1&branchName=master
+.. |rtd| image:: https://readthedocs.org/projects/schicexplorer/badge/?version=latest
+   :target: http://schicexplorer.readthedocs.io/?badge=latest
+.. |conda| image:: https://anaconda.org/bioconda/schicexplorer/badges/installer/conda.svg   
+   :target: https://conda.anaconda.org/bioconda
+
 scHiCExplorer
 =============
 
@@ -11,6 +20,12 @@ Citation
 
 Joachim Wolff, Leily Rabbani, Ralf Gilsbach, Gautier Richard, Thomas Manke, Rolf Backofen, Björn A Grüning.
 **Galaxy HiCExplorer 3: a web server for reproducible Hi-C, capture Hi-C and single-cell Hi-C data analysis, quality control and visualization, Nucleic Acids Research**, Volume 48, Issue W1, 02 July 2020, Pages W177–W184, https://doi.org/10.1093/nar/gkaa220
+
+Joachim Wolff, Nezar Abdennur, Rolf Backofen, Björn Grüning.
+**Scool: a new data storage format for single-cell Hi-C data, Bioinformatics**, Volume 37, Issue 14, 15 July 2021, Pages 2053–2054, https://doi.org/10.1093/bioinformatics/btaa924
+
+Joachim Wolff, Rolf Backofen, Björn Grüning.
+**Robust and efficient single-cell Hi-C clustering with approximate k-nearest neighbor graphs, Bioinformatics**, btab394, https://doi.org/10.1093/bioinformatics/btab394
 
 Availability
 ------------
